@@ -1,8 +1,15 @@
 {
-  "image": {
-    "IMAGE_URL": "https://cdn.betterttv.net/emote/55028cd2135896936880fdd7/3x"
+  "Image": {
+    "BlueHead": "https://cdn.betterttv.net/emote/55028cd2135896936880fdd7/3x"
   },
-  "URL": {
-    "ANY_URL": "https://www.youtube.com/watch?v=5zwY50-necw"
+  "YouTubeVideo": {
+    "AppCreatorHWOP": "https://www.youtube.com/watch?v=bVAspkYJqGM"
+  },
+  "YoutubeChannel": {
+    "Xun": "https://www.youtube.com/channel/UCGyQ409Sb_Enwc58AAcuEZg",
+    "Dinter": "https://www.youtube.com/channel/UC0SkNQXPJ60hKEFubOz0fDA"
+  },
+  "TwitchChannel": {
+    "Hinas3": "https://www.twitch.tv/hinas3"
   }
 }

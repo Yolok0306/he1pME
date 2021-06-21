@@ -1,5 +1,16 @@
 {
-  "123": "456",
-  "ping": "pong",
-  "mark": "IMG&URL"
+  "123": [
+    "replyText",
+    "456"
+  ],
+  "ping": [
+    "replyText",
+    "pong"
+  ],
+  "embed": [
+    "replyMessageEmbed"
+  ],
+  "time": [
+    "getTheCurrentTime"
+  ]
 }

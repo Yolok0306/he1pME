@@ -1,4 +1,4 @@
-import Service.ChatService;
+import Service.He1pMEService;
 import discord4j.core.DiscordClient;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.util.Objects;
 
 public class He1pME {
-    private static final ChatService chatService = new ChatService();
+    private static final He1pMEService he1pMEService = new He1pMEService();
 
     public static void main(final String[] args) throws IOException, ParseException {
         final GatewayDiscordClient bot = DiscordClient.create(Objects.requireNonNull(getTOKEN())).login().block();
@@ -23,7 +23,7 @@ public class He1pME {
             System.out.printf("-----Logged in as %s #%s-----%n", self.getUsername(), self.getDiscriminator());
         });
 
-        bot.getEventDispatcher().on(MessageCreateEvent.class).subscribe(chatService::chat);
+        bot.getEventDispatcher().on(MessageCreateEvent.class).subscribe(he1pMEService::chat);
 
         bot.onDisconnect().block();
     }
