@@ -15,22 +15,22 @@ public class He1pMEService extends MainService {
             final MessageChannel channel = event.getMessage().getChannel().block();
             if (getJsonValue(instruction).length > 0) {
                 final String[] response = getJsonValue(instruction);
-                if (response[0].equals(REPLYTEXT)) {
-                    channel.createMessage(response[1]).block();
-                } else {
-                    runMethodByName(channel, response);
+                for (final String text : response) {
+                    runMethodByName(channel, text);
                 }
             }
         }
     }
 
-    private void runMethodByName(final MessageChannel channel, final String[] response) {
-        final ChatService obj = new ChatService();
+    private void runMethodByName(final MessageChannel channel, final String text) {
+        final ExtraService extraService = new ExtraService();
         try {
-            final Method method = obj.getClass().getDeclaredMethod(response[0], MessageChannel.class);
-            method.invoke(obj, channel);
-        } catch (final InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
-            e.printStackTrace();
+            final Method method = extraService.getClass().getDeclaredMethod(text, MessageChannel.class);
+            method.invoke(extraService, channel);
+        } catch (final NoSuchMethodException noSuchMethodException) {
+            channel.createMessage(text).block();
+        } catch (final InvocationTargetException | IllegalAccessException exception) {
+            exception.printStackTrace();
         }
     }
 }

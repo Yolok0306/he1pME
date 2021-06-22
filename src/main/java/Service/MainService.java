@@ -29,7 +29,7 @@ class MainService {
         final JSONParser jsonParser = new JSONParser();
         try {
             final JSONObject jsonObject = (JSONObject) jsonParser.parse(new FileReader("src/main/resources/instruction.json"));
-            if (jsonObject.containsKey(key) && jsonObject.get(key) instanceof JSONArray) {
+            if (Optional.ofNullable(jsonObject.get(key)).isPresent() && jsonObject.get(key) instanceof JSONArray) {
                 final JSONArray jsonArray = (JSONArray) jsonObject.get(key);
                 return (String[]) jsonArray.toArray(new String[jsonArray.size()]);
             }
@@ -45,10 +45,19 @@ class MainService {
             final JSONObject jsonObject = (JSONObject) jsonParser.parse(new FileReader("src/main/resources/data.json"));
             if (Optional.ofNullable(jsonObject.get(outerKey)).isPresent() && jsonObject.get(outerKey) instanceof JSONObject) {
                 final JSONObject innerJsonObject = (JSONObject) jsonObject.get(outerKey);
-                if (Optional.ofNullable(innerJsonObject.get(innerKey)).isPresent()) {
-                    return innerJsonObject.get(innerKey).toString();
-                }
+                return Optional.ofNullable(innerJsonObject.get(innerKey).toString()).orElse("");
             }
+        } catch (final IOException | ParseException e) {
+            e.printStackTrace();
+        }
+        return "";
+    }
+
+    protected static String getPersonalInfo(final String key) {
+        final JSONParser jsonParser = new JSONParser();
+        try {
+            final JSONObject jsonObject = (JSONObject) jsonParser.parse(new FileReader("src/main/resources/privateInfo.json"));
+            return Optional.ofNullable(jsonObject.get(key).toString()).orElse("");
         } catch (final IOException | ParseException e) {
             e.printStackTrace();
         }
