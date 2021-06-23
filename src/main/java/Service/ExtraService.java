@@ -5,11 +5,16 @@ import discord4j.rest.util.Color;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Optional;
 
 public class ExtraService extends MainService {
     protected void replyMessageEmbed(final MessageChannel channel) {
-        channel.createMessage("<@" + getPersonalInfo("Yolok") + "> 又再玩糞Game?").block();
-        channel.createEmbed(spec -> spec.setColor(Color.of(0, 255, 127)).setImage(getJsonValue(IMAGE, "Rushia"))).block();
+        final Optional<String> id = getId("Yolok");
+        final Optional<String> img = getURL(IMAGE, "Rushia");
+        if (id.isPresent() && img.isPresent()) {
+            channel.createMessage("<@" + id.get() + "> 又再玩糞Game?").block();
+            channel.createEmbed(spec -> spec.setColor(Color.of(0, 255, 127)).setImage(img.get())).block();
+        }
     }
 
     protected void getCurrentTime(final MessageChannel channel) {

@@ -1,0 +1,14 @@
+{
+  "123": [
+    "456"
+  ],
+  "ping": [
+    "pong"
+  ],
+  "warnYolok": [
+    "replyMessageEmbed"
+  ],
+  "time": [
+    "getCurrentTime"
+  ]
+}
