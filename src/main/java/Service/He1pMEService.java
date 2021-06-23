@@ -11,15 +11,13 @@ public class He1pMEService extends MainService {
     public void chat(final MessageCreateEvent event) {
         final String content = Optional.of(event.getMessage().getContent()).orElse("");
         if (checkSign(content)) {
-            final MessageChannel channel = event.getMessage().getChannel().block();
             final String instruction = format(content);
-            final Optional<String[]> response = getAction(instruction);
-            if (response.isPresent()) {
-                for (final String text : response.get()) {
+            final MessageChannel channel = event.getMessage().getChannel().block();
+            if (getJsonValue(instruction).length > 0) {
+                final String[] response = getJsonValue(instruction);
+                for (final String text : response) {
                     runMethodByName(channel, text);
                 }
-            } else {
-                channel.createMessage("No instructions found!").block();
             }
         }
     }
