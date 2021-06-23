@@ -15,8 +15,8 @@ import java.util.Objects;
 public class He1pME {
     private static final He1pMEService he1pMEService = new He1pMEService();
 
-    public static void main(final String[] args) throws IOException, ParseException {
-        final GatewayDiscordClient bot = DiscordClient.create(Objects.requireNonNull(getTOKEN())).login().block();
+    public static void main(final String[] args) {
+        final GatewayDiscordClient bot = DiscordClient.create(getTOKEN()).login().block();
 
         Objects.requireNonNull(bot).getEventDispatcher().on(ReadyEvent.class).subscribe(event -> {
             final User self = event.getSelf();
@@ -28,9 +28,14 @@ public class He1pME {
         bot.onDisconnect().block();
     }
 
-    private static String getTOKEN() throws IOException, ParseException {
+    private static String getTOKEN() {
         final JSONParser jsonParser = new JSONParser();
-        final JSONObject jsonObject = (JSONObject) jsonParser.parse(new FileReader("src/main/resources/privateInfo.json"));
-        return jsonObject.get("TOKEN").toString();
+        try {
+            final JSONObject jsonObject = (JSONObject) jsonParser.parse(new FileReader("src/main/resources/privateInfo.json"));
+            return jsonObject.get("TOKEN").toString();
+        } catch (final IOException | ParseException e) {
+            e.printStackTrace();
+        }
+        return "";
     }
 }
