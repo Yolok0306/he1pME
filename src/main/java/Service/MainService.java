@@ -21,7 +21,8 @@ class MainService {
     }
 
     protected String format(final String content) {
-        return new StringBuilder(content).delete(0, SIGN.length()).toString();
+        final String instruction = content.split(" ")[0];
+        return new StringBuilder(instruction).delete(0, SIGN.length()).toString();
     }
 
     protected Optional<String[]> getAction(final String key) {
