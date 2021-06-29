@@ -8,7 +8,28 @@
   "warnYolok": [
     "replyMessageEmbed"
   ],
+  "warnXun": [
+    "replyMessageEmbedForXun"
+  ],
   "time": [
     "getCurrentTime"
+  ],
+  "join": [
+    "botJoinChatroom"
+  ],
+  "leave": [
+    "botLeaveChatroom"
+  ],
+  "play": [
+    "botPlayMusic"
+  ],
+  "pause": [
+    "botPauseMusic"
+  ],
+  "resume": [
+    "botResumeMusic"
+  ],
+  "stop": [
+    "botStopMusic"
   ]
 }
