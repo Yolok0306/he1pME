@@ -9,6 +9,7 @@
     <description>custom bot for discord</description>
     <inceptionYear>2021</inceptionYear>
     <properties>
+        <project.java.version>1.8</project.java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
@@ -71,13 +72,9 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.8.1</version>
                 <configuration>
-                    <release>8</release>
-                    <source>8</source>
-                    <target>8</target>
-                    <compilerArguments>
-                        <verbose />
-                        <bootclasspath>${java.home}/lib/rt.jar;${java.home}/lib/jce.jar</bootclasspath>
-                    </compilerArguments>
+                    <source>1.8</source>
+                    <target>1.8</target>
+                    <verbose>true</verbose>
                 </configuration>
             </plugin>
             <plugin>
