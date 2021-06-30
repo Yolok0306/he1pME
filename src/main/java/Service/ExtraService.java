@@ -1,7 +1,7 @@
 package Service;
 
-import Service.musicPlugin.LavaPlayerAudioProvider;
-import Service.musicPlugin.TrackScheduler;
+import Service.MusicService.LavaPlayerAudioProvider;
+import Service.MusicService.TrackScheduler;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager;
