@@ -1,4 +1,4 @@
-package Service.musicPlugin;
+package Service.MusicService;
 
 import com.sedmelluq.discord.lavaplayer.format.StandardAudioDataFormats;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
