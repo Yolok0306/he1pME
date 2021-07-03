@@ -31,12 +31,12 @@ public class ExtraService extends MainService {
         AudioSourceManagers.registerRemoteSources(audioPlayerManager);
     }
 
-    protected void botJoinChatroom(final MessageCreateEvent event) {
+    private void botJoinChatroom(final MessageCreateEvent event) {
         final Optional<VoiceChannel> voiceChannel = getVoiceChannel(event);
         voiceChannel.ifPresent(channel -> channel.join(spec -> spec.setProvider(audioProvider)).block());
     }
 
-    protected void botLeaveChatroom(final MessageCreateEvent event) {
+    private void botLeaveChatroom(final MessageCreateEvent event) {
         final Optional<VoiceChannel> voiceChannel = getVoiceChannel(event);
         voiceChannel.ifPresent(channel -> channel.sendDisconnectVoiceState().block());
     }
@@ -61,6 +61,11 @@ public class ExtraService extends MainService {
         }
     }
 
+    protected void botStopMusic(final MessageCreateEvent event) {
+        audioPlayer.stopTrack();
+        botLeaveChatroom(event);
+    }
+
     protected void botPauseMusic(final MessageCreateEvent event) {
         audioPlayer.setPaused(true);
     }
@@ -69,29 +74,37 @@ public class ExtraService extends MainService {
         audioPlayer.setPaused(false);
     }
 
-    protected void botStopMusic(final MessageCreateEvent event) {
-        audioPlayer.stopTrack();
-        botLeaveChatroom(event);
-    }
-
     protected void replyMessageEmbed(final MessageCreateEvent event) {
         final MessageChannel channel = Objects.requireNonNull(event.getMessage().getChannel().block());
         final Optional<String> id = getId("Yolok");
-        final Optional<String> img = getURL(IMAGE, "Rushia");
+        final Optional<String> img = getURL(IMAGE, "BlueHead");
         if (id.isPresent() && img.isPresent()) {
-            channel.createMessage("<@" + id.get() + "> 又再玩糞Game?").block();
-            channel.createEmbed(spec -> spec.setColor(Color.of(0, 255, 127)).setImage(img.get())).block();
+            channel.createMessage("<@" + id.get() + "> 456").block();
+            channel.createEmbed(spec -> spec.setColor(Color.of(0, 255, 255)).setImage(img.get())).block();
         }
     }
 
-    protected void replyMessageEmbedForXun(final MessageCreateEvent event) {
+    protected void replyMessageEmbedForWarnXun(final MessageCreateEvent event) {
         final MessageChannel channel = Objects.requireNonNull(event.getMessage().getChannel().block());
-        final Optional<String> id = getId("Xun");
         final Optional<String> img = getURL(IMAGE, "Rushia");
-        if (id.isPresent() && img.isPresent()) {
-            channel.createMessage("<@" + id.get() + "> 又再玩糞Game?").block();
-            channel.createEmbed(spec -> spec.setColor(Color.of(0, 255, 127)).setImage(img.get())).block();
-        }
+        img.ifPresent(image -> replyMessageEmbedByXunTemplate("又再玩糞Game?", image, channel));
+    }
+
+    protected void replyMessageEmbedForAskXun(final MessageCreateEvent event) {
+        final MessageChannel channel = Objects.requireNonNull(event.getMessage().getChannel().block());
+        final Optional<String> img = getURL(IMAGE, "RainbowAqua");
+        img.ifPresent(image -> replyMessageEmbedByXunTemplate("打LOL嗎?", image, channel));
+    }
+
+    protected void replyMessageEmbedForConcernXun(final MessageCreateEvent event) {
+        final MessageChannel channel = Objects.requireNonNull(event.getMessage().getChannel().block());
+        final Optional<String> img = getURL(IMAGE, "AreYouOk");
+        img.ifPresent(image -> replyMessageEmbedByXunTemplate("主播人咧?", image, channel));
+    }
+
+    private void replyMessageEmbedByXunTemplate(final String msg, final String img,final MessageChannel channel){
+        channel.createMessage("<@405739724595265541> " +  msg + "?").block();
+        channel.createEmbed(spec -> spec.setColor(Color.of(0, 255, 127)).setImage(img)).block();
     }
 
     protected void getCurrentTime(final MessageCreateEvent event) {

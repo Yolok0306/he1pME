@@ -1,35 +1,29 @@
 {
   "123": [
-    "456"
-  ],
-  "ping": [
-    "pong"
-  ],
-  "warnYolok": [
     "replyMessageEmbed"
   ],
   "warnXun": [
-    "replyMessageEmbedForXun"
+    "replyMessageEmbedForWarnXun"
+  ],
+  "askXun": [
+    "replyMessageEmbedForAskXun"
+  ],
+  "concernXun": [
+    "replyMessageEmbedForConcernXun"
   ],
   "time": [
     "getCurrentTime"
   ],
-  "join": [
-    "botJoinChatroom"
-  ],
-  "leave": [
-    "botLeaveChatroom"
-  ],
   "play": [
     "botPlayMusic"
+  ],
+  "stop": [
+    "botStopMusic"
   ],
   "pause": [
     "botPauseMusic"
   ],
   "resume": [
     "botResumeMusic"
-  ],
-  "stop": [
-    "botStopMusic"
   ]
 }
