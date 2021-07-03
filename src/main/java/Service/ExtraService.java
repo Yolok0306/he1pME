@@ -31,6 +31,20 @@ public class ExtraService extends MainService {
         AudioSourceManagers.registerRemoteSources(audioPlayerManager);
     }
 
+    protected void botPlayMusic(final MessageCreateEvent event) {
+        final String content = event.getMessage().getContent();
+        final String[] array = content.split(" ");
+        if (array.length > 1) {
+            botJoinChatroom(event);
+            audioPlayerManager.loadItem(array[1], trackScheduler);
+        }
+    }
+
+    protected void botStopMusic(final MessageCreateEvent event) {
+        audioPlayer.stopTrack();
+        botLeaveChatroom(event);
+    }
+
     private void botJoinChatroom(final MessageCreateEvent event) {
         final Optional<VoiceChannel> voiceChannel = getVoiceChannel(event);
         voiceChannel.ifPresent(channel -> channel.join(spec -> spec.setProvider(audioProvider)).block());
@@ -50,20 +64,6 @@ public class ExtraService extends MainService {
             }
         }
         return Optional.empty();
-    }
-
-    protected void botPlayMusic(final MessageCreateEvent event) {
-        final String content = event.getMessage().getContent();
-        final String[] array = content.split(" ");
-        if (array.length > 1) {
-            botJoinChatroom(event);
-            audioPlayerManager.loadItem(array[1], trackScheduler);
-        }
-    }
-
-    protected void botStopMusic(final MessageCreateEvent event) {
-        audioPlayer.stopTrack();
-        botLeaveChatroom(event);
     }
 
     protected void botPauseMusic(final MessageCreateEvent event) {
