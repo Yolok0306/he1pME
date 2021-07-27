@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.util.Optional;
 
 class MainService {
-    private final String SIGN = "!";
+    private final String SIGN = "/";
     protected final String IMAGE = "Image";
     protected final String YOUTUBEVIDEO = "YoutubeVideo";
     protected final String YOUTUBECHANNEL = "YoutubeChannel";

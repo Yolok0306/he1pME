@@ -3,27 +3,39 @@
     "replyMessageEmbed"
   ],
   "warnXun": [
-    "replyMessageEmbedForWarnXun"
+    "warnXunByMessageEmbed"
   ],
   "askXun": [
-    "replyMessageEmbedForAskXun"
+    "askXunByMessageEmbed"
   ],
   "concernXun": [
-    "replyMessageEmbedForConcernXun"
+    "concernXunByMessageEmbed"
+  ],
+  "concernYue": [
+    "concernYueByMessageEmbed"
   ],
   "time": [
     "getCurrentTime"
   ],
   "play": [
-    "botPlayMusic"
+    "playMusic"
   ],
   "stop": [
-    "botStopMusic"
+    "stopMusic"
+  ],
+  "skip": [
+    "skipMusic"
   ],
   "pause": [
-    "botPauseMusic"
+    "pauseMusic"
   ],
   "resume": [
-    "botResumeMusic"
+    "resumeMusic"
+  ],
+  "list": [
+    "listQueue"
+  ],
+  "np": [
+    "getMusicInfo"
   ]
 }
