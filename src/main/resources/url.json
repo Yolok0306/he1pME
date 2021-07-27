@@ -1,8 +1,10 @@
 {
   "Image": {
     "BlueHead": "https://cdn.betterttv.net/emote/55028cd2135896936880fdd7/3x",
-    "Rushia": "https://upload.cc/i1/2021/06/22/oISgZe.jpg",
-    "RainbowAqua": "https://upload.cc/i1/2021/06/22/uC2DSV.gif"
+    "HorrorRushia": "https://yolok-storage.s3.ap-east-1.amazonaws.com/He1pME/HorrorRushia.jpg",
+    "RainbowAqua": "https://yolok-storage.s3.ap-east-1.amazonaws.com/He1pME/RainbowAqua.gif",
+    "MikasaConcern" : "https://yolok-storage.s3.ap-east-1.amazonaws.com/He1pME/MikasaConcern.gif",
+    "AngryAqua" : "https://yolok-storage.s3.ap-east-1.amazonaws.com/He1pME/AngryAqua.jfif"
   },
   "YouTubeVideo": {
     "AppCreatorHWOP": "https://www.youtube.com/watch?v=bVAspkYJqGM"
