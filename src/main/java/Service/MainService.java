@@ -1,20 +1,23 @@
 package Service;
 
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import com.amazonaws.services.dynamodbv2.document.Item;
+import com.amazonaws.services.dynamodbv2.document.ItemCollection;
+import com.amazonaws.services.dynamodbv2.document.QueryOutcome;
+import com.amazonaws.services.dynamodbv2.document.spec.QuerySpec;
 
-import java.io.FileReader;
-import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Optional;
 
 class MainService {
     private final String SIGN = "/";
     protected final String IMAGE = "Image";
-    protected final String YOUTUBEVIDEO = "YoutubeVideo";
-    protected final String YOUTUBECHANNEL = "YoutubeChannel";
-    protected final String TWITCHCHANNEL = "TwitchChannel";
+    protected final String YOUTUBE = "Youtube";
+    protected final String TWITCH = "Twitch";
+    private final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
 
     protected Boolean checkSign(final String content) {
         return content.startsWith(SIGN);
@@ -25,49 +28,56 @@ class MainService {
         return new StringBuilder(instruction).delete(0, SIGN.length()).toString();
     }
 
-    protected Optional<String[]> getAction(final String key) {
-        final JSONParser jsonParser = new JSONParser();
+    protected Optional<String> getTokenFromDB(final String searchValue) {
+        final HashMap<String, String> nameMap = new HashMap<String, String>();
+        nameMap.put("#key", "id");
+        final HashMap<String, Object> valueMap = new HashMap<String, Object>();
+        valueMap.put(":value", searchValue);
+        final QuerySpec querySpec = new QuerySpec().withKeyConditionExpression("#key = :value")
+                .withNameMap(nameMap).withValueMap(valueMap);
         try {
-            final JSONObject jsonObject = (JSONObject) jsonParser.parse(new FileReader("src/main/resources/action.json"));
-            final Optional<Object> jsonOptionalObject = Optional.ofNullable(jsonObject.get(key));
-            if (jsonOptionalObject.isPresent()) {
-                final JSONArray jsonArray = (JSONArray) jsonOptionalObject.get();
-                return Optional.ofNullable((String[]) jsonArray.toArray(new String[jsonArray.size()]));
+            final ItemCollection<QueryOutcome> items = dynamoDB.getTable("PrivateInfo").query(querySpec);
+            for (final Item result : items) {
+                return Optional.ofNullable(result.getString("token"));
             }
-        } catch (final IOException | ParseException e) {
-            e.printStackTrace();
+        } catch (final Exception e) {
+            System.err.println(e.getMessage());
         }
         return Optional.empty();
     }
 
-    protected Optional<String> getURL(final String outerKey, final String innerKey) {
-        final JSONParser jsonParser = new JSONParser();
+    protected Optional<String> getUrlFromDB(final String tableName, final String searchValue) {
+        final HashMap<String, String> nameMap = new HashMap<String, String>();
+        nameMap.put("#key", "id");
+        final HashMap<String, Object> valueMap = new HashMap<String, Object>();
+        valueMap.put(":value", searchValue);
+        final QuerySpec querySpec = new QuerySpec().withKeyConditionExpression("#key = :value")
+                .withNameMap(nameMap).withValueMap(valueMap);
         try {
-            final JSONObject jsonObject = (JSONObject) jsonParser.parse(new FileReader("src/main/resources/url.json"));
-            final Optional<Object> outerOptionalJsonObject = Optional.ofNullable(jsonObject.get(outerKey));
-            if (outerOptionalJsonObject.isPresent()) {
-                final JSONObject outerJsonObject = (JSONObject) outerOptionalJsonObject.get();
-                final Optional<Object> innerOptionalJsonObject = Optional.ofNullable(outerJsonObject.get(innerKey));
-                if (innerOptionalJsonObject.isPresent()) {
-                    return Optional.ofNullable(innerOptionalJsonObject.get().toString());
-                }
+            final ItemCollection<QueryOutcome> items = dynamoDB.getTable(tableName).query(querySpec);
+            for (final Item result : items) {
+                return Optional.ofNullable(result.getString("url"));
             }
-        } catch (final IOException | ParseException e) {
-            e.printStackTrace();
+        } catch (final Exception e) {
+            System.err.println(e.getMessage());
         }
         return Optional.empty();
     }
 
-    protected Optional<String> getId(final String name) {
-        final JSONParser jsonParser = new JSONParser();
+    protected Optional<List<String>> getActionFromDB(final String searchValue) {
+        final HashMap<String, String> nameMap = new HashMap<String, String>();
+        nameMap.put("#key", "id");
+        final HashMap<String, Object> valueMap = new HashMap<String, Object>();
+        valueMap.put(":value", searchValue);
+        final QuerySpec querySpec = new QuerySpec().withKeyConditionExpression("#key = :value")
+                .withNameMap(nameMap).withValueMap(valueMap);
         try {
-            final JSONObject jsonObject = (JSONObject) jsonParser.parse(new FileReader("src/main/resources/privateInfo.json"));
-            final Optional<Object> idObject = Optional.ofNullable(jsonObject.get(name));
-            if (idObject.isPresent()) {
-                return Optional.ofNullable(idObject.get().toString());
+            final ItemCollection<QueryOutcome> items = dynamoDB.getTable("Action").query(querySpec);
+            for (final Item result : items) {
+                return Optional.of(Arrays.asList(result.getString("action").split(",")));
             }
-        } catch (final IOException | ParseException e) {
-            e.printStackTrace();
+        } catch (final Exception e) {
+            System.err.println(e.getMessage());
         }
         return Optional.empty();
     }
