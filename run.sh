@@ -1,1 +1,1 @@
-java -jar target/He1pME-1.1.jar
+java -jar target/he1pME-1.1.jar
