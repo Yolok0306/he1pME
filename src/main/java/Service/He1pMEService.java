@@ -4,6 +4,7 @@ import discord4j.core.event.domain.message.MessageCreateEvent;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -14,7 +15,7 @@ public class He1pMEService extends MainService {
         final String content = Optional.of(event.getMessage().getContent()).orElse("");
         if (checkSign(content)) {
             final String instruction = format(content);
-            final Optional<String[]> response = getAction(instruction);
+            final Optional<List<String>> response = getActionFromDB(instruction);
             if (response.isPresent()) {
                 for (final String text : response.get()) {
                     runMethodByName(event, text);
