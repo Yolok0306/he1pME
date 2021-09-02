@@ -1,4 +1,3 @@
 #!/usr/bin/env bash
-if [ -f './pid' ]; then
-    PID=$(cat ./pid) && kill -15 $PID
-fi
+
+kill -9 $(ps aux | grep he1pME)
