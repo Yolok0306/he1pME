@@ -6,7 +6,7 @@ fi
 
 if ps -p $PID > /dev/null
 then
-   echo "he1pME with $PID is already running"
+   echo "he1pME-1.1.jar with $PID is already running"
 else
-    nohup java -jar ./he1pME-1.1.jar > nohups.out 2> errors.log < /dev/null & PID=$!; echo $PID > ./pid
+    nohup java -jar target/he1pME-1.1.jar > he1pME.log 2> error.log < /dev/null & PID=$!; echo $PID > ./pid
 fi
