@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-kill -9 $(ps aux | grep he1pME)
+pkill -f 'he1pME'
