@@ -1,0 +1,22 @@
+package Action;
+
+import Service.ReplyService;
+import discord4j.core.event.domain.message.MessageCreateEvent;
+import discord4j.core.object.entity.channel.MessageChannel;
+
+import java.util.Objects;
+import java.util.Optional;
+
+public class ConcernXunAction extends ReplyService implements Action {
+    @Override
+    public String getAction() {
+        return "concernXun";
+    }
+
+    @Override
+    public void execute(final MessageCreateEvent event) {
+        final MessageChannel messageChannel = Objects.requireNonNull(event.getMessage().getChannel().block());
+        final Optional<String> img = getUrlFromDB(IMAGE, "MikasaConcern");
+        img.ifPresent(image -> replyByXunTemplate(messageChannel, "主播人咧?", image));
+    }
+}
