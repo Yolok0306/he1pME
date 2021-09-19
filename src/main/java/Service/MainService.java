@@ -63,6 +63,6 @@ public class MainService {
         final ItemCollection<QueryOutcome> items = dynamoDB.getTable("Action").query(querySpec);
         final StringBuilder result = new StringBuilder();
         items.forEach(item -> result.append(item.getString("action")));
-        return Optional.of(Arrays.asList(result.toString().split(";")));
+        return Optional.of(Arrays.asList(result.toString().split(",")));
     }
 }

@@ -14,6 +14,14 @@ public class ReplyService extends MainService {
         });
     }
 
+    protected void replyByXianTemplate(final MessageChannel messageChannel, final String msg, final String img) {
+        final Optional<String> id = getTokenFromDB("Xian");
+        id.ifPresent(xian -> {
+            messageChannel.createMessage("<@" + xian + "> " + msg).block();
+            messageChannel.createEmbed(spec -> spec.setColor(Color.of(255, 222, 173)).setImage(img)).block();
+        });
+    }
+
     protected void replyByDefaultTemplate(final MessageChannel messageChannel, final String id, final String msg, final String img) {
         messageChannel.createMessage("<@" + id + "> " + msg).block();
         messageChannel.createEmbed(spec -> spec.setColor(Color.BLUE).setImage(img)).block();
