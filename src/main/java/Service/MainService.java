@@ -2,7 +2,6 @@ package Service;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
-import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.services.dynamodbv2.document.ItemCollection;
 import com.amazonaws.services.dynamodbv2.document.QueryOutcome;
 import com.amazonaws.services.dynamodbv2.document.spec.QuerySpec;
@@ -12,7 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 
-class MainService {
+public class MainService {
     private final String SIGN = "/";
     protected final String IMAGE = "Image";
     protected final String YOUTUBE = "Youtube";
@@ -35,15 +34,10 @@ class MainService {
         valueMap.put(":value", searchValue);
         final QuerySpec querySpec = new QuerySpec().withKeyConditionExpression("#key = :value")
                 .withNameMap(nameMap).withValueMap(valueMap);
-        try {
-            final ItemCollection<QueryOutcome> items = dynamoDB.getTable("PrivateInfo").query(querySpec);
-            for (final Item result : items) {
-                return Optional.ofNullable(result.getString("token"));
-            }
-        } catch (final Exception e) {
-            System.err.println(e.getMessage());
-        }
-        return Optional.empty();
+        final ItemCollection<QueryOutcome> items = dynamoDB.getTable("PrivateInfo").query(querySpec);
+        final StringBuilder result = new StringBuilder();
+        items.forEach(item -> result.append(item.getString("token")));
+        return Optional.of(result.toString());
     }
 
     protected Optional<String> getUrlFromDB(final String tableName, final String searchValue) {
@@ -53,15 +47,10 @@ class MainService {
         valueMap.put(":value", searchValue);
         final QuerySpec querySpec = new QuerySpec().withKeyConditionExpression("#key = :value")
                 .withNameMap(nameMap).withValueMap(valueMap);
-        try {
-            final ItemCollection<QueryOutcome> items = dynamoDB.getTable(tableName).query(querySpec);
-            for (final Item result : items) {
-                return Optional.ofNullable(result.getString("url"));
-            }
-        } catch (final Exception e) {
-            System.err.println(e.getMessage());
-        }
-        return Optional.empty();
+        final ItemCollection<QueryOutcome> items = dynamoDB.getTable(tableName).query(querySpec);
+        final StringBuilder result = new StringBuilder();
+        items.forEach(item -> result.append(item.getString("url")));
+        return Optional.of(result.toString());
     }
 
     protected Optional<List<String>> getActionFromDB(final String searchValue) {
@@ -71,14 +60,9 @@ class MainService {
         valueMap.put(":value", searchValue);
         final QuerySpec querySpec = new QuerySpec().withKeyConditionExpression("#key = :value")
                 .withNameMap(nameMap).withValueMap(valueMap);
-        try {
-            final ItemCollection<QueryOutcome> items = dynamoDB.getTable("Action").query(querySpec);
-            for (final Item result : items) {
-                return Optional.of(Arrays.asList(result.getString("action").split(",")));
-            }
-        } catch (final Exception e) {
-            System.err.println(e.getMessage());
-        }
-        return Optional.empty();
+        final ItemCollection<QueryOutcome> items = dynamoDB.getTable("Action").query(querySpec);
+        final StringBuilder result = new StringBuilder();
+        items.forEach(item -> result.append(item.getString("action")));
+        return Optional.of(Arrays.asList(result.toString().split(",")));
     }
 }

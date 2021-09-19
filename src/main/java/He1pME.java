@@ -1,7 +1,6 @@
 import Service.He1pMEService;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
-import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.services.dynamodbv2.document.ItemCollection;
 import com.amazonaws.services.dynamodbv2.document.QueryOutcome;
 import com.amazonaws.services.dynamodbv2.document.spec.QuerySpec;
@@ -19,14 +18,11 @@ public class He1pME {
 
     public static void main(final String[] args) {
         final GatewayDiscordClient bot = DiscordClient.create(getBotToken()).login().block();
-
         Objects.requireNonNull(bot).getEventDispatcher().on(ReadyEvent.class).subscribe(event -> {
             final User self = event.getSelf();
             System.out.printf("-----Logged in as %s #%s-----%n", self.getUsername(), self.getDiscriminator());
         });
-
         bot.getEventDispatcher().on(MessageCreateEvent.class).subscribe(he1pMEService::chat);
-
         bot.onDisconnect().block();
     }
 
@@ -40,9 +36,7 @@ public class He1pME {
                 .withNameMap(nameMap).withValueMap(valueMap);
         final ItemCollection<QueryOutcome> items = dynamoDB.getTable("Token").query(querySpec);
         final StringBuilder result = new StringBuilder();
-        for (final Item item : items) {
-            result.append(item.getString("token"));
-        }
+        items.forEach(item -> result.append(item.getString("token")));
         return result.toString();
     }
 }
