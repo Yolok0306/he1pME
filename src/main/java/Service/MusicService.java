@@ -31,7 +31,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-public class MusicService extends ReplyService {
+public class MusicService extends MainService {
     private final AudioPlayerManager audioPlayerManager = new DefaultAudioPlayerManager();
     private final AudioPlayer audioPlayer = audioPlayerManager.createPlayer();
     private final TrackScheduler trackScheduler = new TrackScheduler(audioPlayer);

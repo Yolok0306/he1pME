@@ -12,11 +12,12 @@ import java.util.Optional;
 import java.util.Set;
 
 public class He1pMEService extends MainService {
+    private final String SIGN = "/";
     private final MusicService musicService = new MusicService();
     List<String> musicActions = musicService.getMusicMethod();
     Set<Class<? extends Action>> actions = new Reflections("Action").getSubTypesOf(Action.class);
 
-    public void chat(final MessageCreateEvent event) {
+    public void receiveMessage(final MessageCreateEvent event) {
         final String content = Optional.of(event.getMessage().getContent()).orElse("");
         if (checkSign(content)) {
             final String instruction = format(content);
@@ -29,7 +30,16 @@ public class He1pMEService extends MainService {
                 }
             }));
         }
+    }
 
+    private Boolean checkSign(final String content) {
+        return content.startsWith(SIGN);
+    }
+
+    private String format(final String content) {
+        final String[] array = content.split(" ");
+        final String instruction = array[0];
+        return new StringBuilder(instruction).delete(0, SIGN.length()).toString();
     }
 
     private void executeMusicAction(final MessageCreateEvent event, final String response) {

@@ -1,6 +1,6 @@
 package Action;
 
-import Service.ReplyService;
+import Service.MainService;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.channel.MessageChannel;
 
@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 
-public class GetCurrentTimeAction extends ReplyService implements Action {
+public class GetCurrentTimeAction extends MainService implements Action {
     @Override
     public String getAction() {
         return "getCurrentTime";
