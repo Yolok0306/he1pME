@@ -1,13 +1,13 @@
 package Action;
 
-import Service.ReplyService;
+import Service.MainService;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.channel.MessageChannel;
 
 import java.util.Objects;
 import java.util.Optional;
 
-public class ConcernXunAction extends ReplyService implements Action {
+public class ConcernXunAction extends MainService implements Action {
     @Override
     public String getAction() {
         return "concernXun";

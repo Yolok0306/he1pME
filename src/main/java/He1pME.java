@@ -22,7 +22,7 @@ public class He1pME {
             final User self = event.getSelf();
             System.out.printf("-----Logged in as %s #%s-----%n", self.getUsername(), self.getDiscriminator());
         });
-        bot.getEventDispatcher().on(MessageCreateEvent.class).subscribe(he1pMEService::chat);
+        bot.getEventDispatcher().on(MessageCreateEvent.class).subscribe(he1pMEService::receiveMessage);
         bot.onDisconnect().block();
     }
 

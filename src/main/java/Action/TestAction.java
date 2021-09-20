@@ -1,6 +1,6 @@
 package Action;
 
-import Service.ReplyService;
+import Service.MainService;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.rest.util.Color;
@@ -8,7 +8,7 @@ import discord4j.rest.util.Color;
 import java.util.Objects;
 import java.util.Optional;
 
-public class TestAction extends ReplyService implements Action {
+public class TestAction extends MainService implements Action {
     @Override
     public String getAction() {
         return "test";
