@@ -19,43 +19,43 @@ public class MainService {
     protected final String TWITCH = "Twitch";
     private final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
 
-    protected Optional<String> getTokenFromDB(final String searchValue) {
-        final HashMap<String, String> nameMap = new HashMap<String, String>();
+    protected String getTokenFromDB(final String searchValue) {
+        final HashMap<String, String> nameMap = new HashMap<>();
         nameMap.put("#key", "id");
-        final HashMap<String, Object> valueMap = new HashMap<String, Object>();
+        final HashMap<String, Object> valueMap = new HashMap<>();
         valueMap.put(":value", searchValue);
         final QuerySpec querySpec = new QuerySpec().withKeyConditionExpression("#key = :value")
                 .withNameMap(nameMap).withValueMap(valueMap);
         final ItemCollection<QueryOutcome> items = dynamoDB.getTable("PrivateInfo").query(querySpec);
         final StringBuilder result = new StringBuilder();
         items.forEach(item -> result.append(item.getString("token")));
-        return Optional.of(result.toString());
+        return result.toString();
     }
 
-    protected Optional<String> getUrlFromDB(final String tableName, final String searchValue) {
-        final HashMap<String, String> nameMap = new HashMap<String, String>();
+    protected String getUrlFromDB(final String tableName, final String searchValue) {
+        final HashMap<String, String> nameMap = new HashMap<>();
         nameMap.put("#key", "id");
-        final HashMap<String, Object> valueMap = new HashMap<String, Object>();
+        final HashMap<String, Object> valueMap = new HashMap<>();
         valueMap.put(":value", searchValue);
         final QuerySpec querySpec = new QuerySpec().withKeyConditionExpression("#key = :value")
                 .withNameMap(nameMap).withValueMap(valueMap);
         final ItemCollection<QueryOutcome> items = dynamoDB.getTable(tableName).query(querySpec);
         final StringBuilder result = new StringBuilder();
         items.forEach(item -> result.append(item.getString("url")));
-        return Optional.of(result.toString());
+        return result.toString();
     }
 
-    protected Optional<List<String>> getActionFromDB(final String searchValue) {
-        final HashMap<String, String> nameMap = new HashMap<String, String>();
+    protected List<String> getActionFromDB(final String searchValue) {
+        final HashMap<String, String> nameMap = new HashMap<>();
         nameMap.put("#key", "id");
-        final HashMap<String, Object> valueMap = new HashMap<String, Object>();
+        final HashMap<String, Object> valueMap = new HashMap<>();
         valueMap.put(":value", searchValue);
         final QuerySpec querySpec = new QuerySpec().withKeyConditionExpression("#key = :value")
                 .withNameMap(nameMap).withValueMap(valueMap);
         final ItemCollection<QueryOutcome> items = dynamoDB.getTable("Action").query(querySpec);
         final StringBuilder result = new StringBuilder();
         items.forEach(item -> result.append(item.getString("action")));
-        return Optional.of(Arrays.asList(result.toString().split(",")));
+        return Arrays.asList(result.toString().split(","));
     }
 
     protected void replyByHe1pMETemplate(final MessageChannel messageChannel, final String msg) {
@@ -71,17 +71,15 @@ public class MainService {
     }
 
     protected void replyByXunTemplate(final MessageChannel messageChannel, final String msg, final String img) {
-        final Optional<String> id = getTokenFromDB("Xun");
-        id.ifPresent(xun -> {
-            messageChannel.createMessage("<@" + xun + "> " + msg).block();
+        Optional.ofNullable(getTokenFromDB("Xun")).ifPresent(Xun -> {
+            messageChannel.createMessage("<@" + Xun + "> " + msg).block();
             messageChannel.createEmbed(spec -> spec.setColor(Color.of(0, 255, 127)).setImage(img)).block();
         });
     }
 
     protected void replyByXianTemplate(final MessageChannel messageChannel, final String msg, final String img) {
-        final Optional<String> id = getTokenFromDB("Xian");
-        id.ifPresent(xian -> {
-            messageChannel.createMessage("<@" + xian + "> " + msg).block();
+        Optional.ofNullable(getTokenFromDB("Xian")).ifPresent(Xian -> {
+            messageChannel.createMessage("<@" + Xian + "> " + msg).block();
             messageChannel.createEmbed(spec -> spec.setColor(Color.of(255, 222, 173)).setImage(img)).block();
         });
     }

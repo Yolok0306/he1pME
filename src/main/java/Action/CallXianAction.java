@@ -16,7 +16,7 @@ public class CallXianAction extends MainService implements Action {
     @Override
     public void execute(final MessageCreateEvent event) {
         final MessageChannel messageChannel = Objects.requireNonNull(event.getMessage().getChannel().block());
-        final Optional<String> img = getUrlFromDB(IMAGE, "NeNeShake");
-        img.ifPresent(image -> replyByXianTemplate(messageChannel, "集合!!!", image));
+        Optional.ofNullable(getUrlFromDB(IMAGE, "NeNeShake")).ifPresent(image ->
+                replyByXianTemplate(messageChannel, "集合!!!", image));
     }
 }

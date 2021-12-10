@@ -28,9 +28,9 @@ public class He1pME {
 
     private static String getBotToken() {
         final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
-        final HashMap<String, String> nameMap = new HashMap<String, String>();
+        final HashMap<String, String> nameMap = new HashMap<>();
         nameMap.put("#key", "id");
-        final HashMap<String, Object> valueMap = new HashMap<String, Object>();
+        final HashMap<String, Object> valueMap = new HashMap<>();
         valueMap.put(":value", "he1pME");
         final QuerySpec querySpec = new QuerySpec().withKeyConditionExpression("#key = :value")
                 .withNameMap(nameMap).withValueMap(valueMap);

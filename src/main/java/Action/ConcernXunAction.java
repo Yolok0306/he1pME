@@ -16,7 +16,7 @@ public class ConcernXunAction extends MainService implements Action {
     @Override
     public void execute(final MessageCreateEvent event) {
         final MessageChannel messageChannel = Objects.requireNonNull(event.getMessage().getChannel().block());
-        final Optional<String> img = getUrlFromDB(IMAGE, "MikasaConcern");
-        img.ifPresent(image -> replyByXunTemplate(messageChannel, "主播人咧?", image));
+        Optional.ofNullable(getUrlFromDB(IMAGE, "MikasaConcern")).ifPresent(image ->
+                replyByXunTemplate(messageChannel, "主播人咧?", image));
     }
 }

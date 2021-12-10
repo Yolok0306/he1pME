@@ -16,10 +16,8 @@ public class ConcernYueAction extends MainService implements Action {
     @Override
     public void execute(final MessageCreateEvent event) {
         final MessageChannel messageChannel = Objects.requireNonNull(event.getMessage().getChannel().block());
-        final Optional<String> id = getTokenFromDB("Yue");
-        final Optional<String> img = getUrlFromDB(IMAGE, "AngryAqua");
-        if (id.isPresent() && img.isPresent()) {
-            replyByDefaultTemplate(messageChannel, id.get(), "醒了嗎?", img.get());
-        }
+        Optional.ofNullable(getTokenFromDB("Yue")).ifPresent(Yue ->
+                Optional.ofNullable(getUrlFromDB(IMAGE, "AngryAqua")).ifPresent(img ->
+                        replyByDefaultTemplate(messageChannel, Yue, "醒了嗎?", img)));
     }
 }

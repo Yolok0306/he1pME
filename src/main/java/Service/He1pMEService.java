@@ -3,37 +3,49 @@ package Service;
 import Action.Action;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import org.apache.commons.codec.binary.StringUtils;
+import org.apache.commons.collections4.CollectionUtils;
 import org.reflections.Reflections;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.lang.reflect.Modifier;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class He1pMEService extends MainService {
     private final String SIGN = "/";
+    private final List<String> chatRoomIdList = new ArrayList<>(getActionFromDB("getChatRoomId"));
     private final MusicService musicService = new MusicService();
-    List<String> musicActions = musicService.getMusicMethod();
+    private final List<String> musicActionList;
     Set<Class<? extends Action>> actions = new Reflections("Action").getSubTypesOf(Action.class);
 
+    public He1pMEService() {
+        musicActionList = Arrays.stream(MusicService.class.getDeclaredMethods())
+                .filter(method -> method.getModifiers() == Modifier.PROTECTED)
+                .map(Method::getName)
+                .collect(Collectors.toList());
+    }
+
     public void receiveMessage(final MessageCreateEvent event) {
+        final String channelId = Optional.ofNullable(event.getMessage().getChannelId().asString()).orElse("");
         final String content = Optional.of(event.getMessage().getContent()).orElse("");
-        if (checkSign(content)) {
+
+        if (chatRoomIdList.contains(channelId) && content.startsWith(SIGN)) {
             final String instruction = format(content);
-            final Optional<List<String>> responsesOpt = getActionFromDB(instruction);
-            responsesOpt.ifPresent(responses -> responses.forEach(response -> {
-                if (musicActions.contains(response)) {
+            final List<String> responses = getActionFromDB(instruction);
+
+            if (CollectionUtils.isEmpty(responses)) {
+                return;
+            }
+
+            for (final String response : responses) {
+                if (musicActionList.contains(response)) {
                     executeMusicAction(event, response);
                 } else {
                     executeAction(event, response);
                 }
-            }));
+            }
         }
-    }
-
-    private Boolean checkSign(final String content) {
-        return content.startsWith(SIGN);
     }
 
     private String format(final String content) {
