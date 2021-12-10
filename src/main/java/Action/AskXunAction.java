@@ -16,7 +16,7 @@ public class AskXunAction extends MainService implements Action {
     @Override
     public void execute(final MessageCreateEvent event) {
         final MessageChannel messageChannel = Objects.requireNonNull(event.getMessage().getChannel().block());
-        final Optional<String> img = getUrlFromDB(IMAGE, "RainbowAqua");
-        img.ifPresent(image -> replyByXunTemplate(messageChannel, "打LOL嗎?", image));
+        Optional.ofNullable(getUrlFromDB(IMAGE, "RainbowAqua")).ifPresent(image ->
+                replyByXunTemplate(messageChannel, "打LOL嗎?", image));
     }
 }

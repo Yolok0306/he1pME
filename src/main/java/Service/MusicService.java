@@ -11,25 +11,16 @@ import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
 import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackInfo;
-import com.sedmelluq.discord.lavaplayer.track.AudioTrackState;
 import com.sedmelluq.discord.lavaplayer.track.playback.NonAllocatingAudioFrameBuffer;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.message.MessageCreateEvent;
-import discord4j.core.object.VoiceState;
-import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.object.entity.channel.VoiceChannel;
 import discord4j.voice.AudioProvider;
-import org.apache.commons.codec.binary.StringUtils;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
 public class MusicService extends MainService {
     private final AudioPlayerManager audioPlayerManager = new DefaultAudioPlayerManager();
@@ -40,14 +31,6 @@ public class MusicService extends MainService {
     public MusicService() {
         audioPlayerManager.getConfiguration().setFrameBufferFactory(NonAllocatingAudioFrameBuffer::new);
         AudioSourceManagers.registerRemoteSources(audioPlayerManager);
-    }
-
-    protected List<String> getMusicMethod() {
-        return Arrays.stream(MusicService.class.getDeclaredMethods())
-                .filter(method -> method.getModifiers() == Modifier.PROTECTED)
-                .map(Method::getName)
-                .filter(methodName -> !StringUtils.equals(methodName, "getMusicMethod"))
-                .collect(Collectors.toList());
     }
 
     protected void playMusic(final MessageCreateEvent event) {
@@ -91,20 +74,21 @@ public class MusicService extends MainService {
 
     protected void joinBot(final MessageCreateEvent event) {
         if (!checkChannelContainBot(event)) {
-            final Optional<VoiceChannel> voiceChannel = getVoiceChannel(event);
-            voiceChannel.ifPresent(channel -> channel.join(spec -> spec.setProvider(audioProvider)).block());
+            Optional.ofNullable(getVoiceChannel(event)).ifPresent(channel ->
+                    channel.join(spec -> spec.setProvider(audioProvider)).block());
         }
     }
 
     protected void leaveBot(final MessageCreateEvent event) {
         if (checkChannelContainBot(event)) {
-            final Optional<VoiceChannel> voiceChannel = getVoiceChannel(event);
-            voiceChannel.ifPresent(channel -> channel.sendDisconnectVoiceState().block());
+            Optional.ofNullable(getVoiceChannel(event)).ifPresent(channel ->
+                    channel.sendDisconnectVoiceState().block());
         }
     }
 
     protected void getMusicInfo(final MessageCreateEvent event) {
-        if (checkChannelContainBot(event) && audioPlayer.getPlayingTrack().isSeekable()) {
+        if (checkChannelContainBot(event) && Optional.ofNullable(audioPlayer.getPlayingTrack()).isPresent() &&
+                audioPlayer.getPlayingTrack().isSeekable()) {
             final MessageChannel messageChannel = Objects.requireNonNull(event.getMessage().getChannel().block());
             final AudioTrackInfo audioTrackInfo = audioPlayer.getPlayingTrack().getInfo();
             final String title = "Title : " + audioTrackInfo.title;
@@ -130,7 +114,7 @@ public class MusicService extends MainService {
     }
 
     protected void skipMusic() {
-        if (audioPlayer.getPlayingTrack().getState() == AudioTrackState.PLAYING) {
+        if (!trackScheduler.getQueue().isEmpty()) {
             trackScheduler.nextTrack();
         }
     }
@@ -147,22 +131,17 @@ public class MusicService extends MainService {
 
     private Boolean checkChannelContainBot(final MessageCreateEvent event) {
         final AtomicReference<Boolean> result = new AtomicReference<>(false);
-        final Optional<VoiceChannel> voiceChannel = getVoiceChannel(event);
-        voiceChannel.ifPresent(channel ->
-                result.set(channel.isMemberConnected(Snowflake.of(getTokenFromDB("he1pME").get())).block())
-        );
+        Optional.ofNullable(getTokenFromDB("he1pME")).ifPresent(token ->
+                Optional.ofNullable(getVoiceChannel(event)).ifPresent(channel ->
+                        result.set(channel.isMemberConnected(Snowflake.of(token)).block())));
         return result.get();
     }
 
-    private Optional<VoiceChannel> getVoiceChannel(final MessageCreateEvent event) {
-        final Member member = event.getMember().orElse(null);
-        if (Optional.ofNullable(member).isPresent()) {
-            final VoiceState voiceState = member.getVoiceState().block();
-            if (Optional.ofNullable(voiceState).isPresent()) {
-                return Optional.ofNullable(voiceState.getChannel().block());
-            }
-        }
-        return Optional.empty();
+    private VoiceChannel getVoiceChannel(final MessageCreateEvent event) {
+        final AtomicReference<VoiceChannel> voiceChannel = new AtomicReference<>();
+        event.getMember().flatMap(member -> Optional.ofNullable(member.getVoiceState().block()))
+                .ifPresent(voiceState -> voiceChannel.set(voiceState.getChannel().block()));
+        return voiceChannel.get();
     }
 
     private String timeFormat(long time) {

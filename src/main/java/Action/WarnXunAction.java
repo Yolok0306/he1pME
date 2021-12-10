@@ -16,7 +16,7 @@ public class WarnXunAction extends MainService implements Action {
     @Override
     public void execute(final MessageCreateEvent event) {
         final MessageChannel messageChannel = Objects.requireNonNull(event.getMessage().getChannel().block());
-        final Optional<String> img = getUrlFromDB(IMAGE, "HorrorRushia");
-        img.ifPresent(image -> replyByXunTemplate(messageChannel, "又再玩糞Game?", image));
+        Optional.ofNullable(getUrlFromDB(IMAGE, "HorrorRushia")).ifPresent(image ->
+                replyByXunTemplate(messageChannel, "又再玩糞Game?", image));
     }
 }

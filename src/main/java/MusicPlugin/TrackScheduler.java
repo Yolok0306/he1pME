@@ -1,14 +1,13 @@
 package MusicPlugin;
 
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
-import com.sedmelluq.discord.lavaplayer.player.event.AudioEventAdapter;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackEndReason;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-public final class TrackScheduler extends AudioEventAdapter {
+public final class TrackScheduler {
     private final AudioPlayer player;
     private final BlockingQueue<AudioTrack> queue;
 
@@ -22,7 +21,7 @@ public final class TrackScheduler extends AudioEventAdapter {
         // something is playing, it returns false and does nothing. In that case the player was already playing so this
         // track goes to the queue instead.
         if (!player.startTrack(track, true)) {
-            queue.add(track);
+            this.queue.offer(track);
         }
     }
 
@@ -36,14 +35,14 @@ public final class TrackScheduler extends AudioEventAdapter {
     public void nextTrack() {
         // Start the next track, regardless of if something is already playing or not. In case queue was empty, we are
         // giving null to startTrack, which is a valid argument and will simply stop the player.
-        player.startTrack(queue.poll(), false);
+        player.startTrack(this.queue.poll(), false);
     }
 
     public BlockingQueue<AudioTrack> getQueue() {
-        return queue;
+        return this.queue;
     }
 
     public void clearQueue() {
-        queue.clear();
+        this.queue.clear();
     }
 }

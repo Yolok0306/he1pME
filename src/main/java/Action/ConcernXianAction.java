@@ -16,7 +16,7 @@ public class ConcernXianAction extends MainService implements Action {
     @Override
     public void execute(final MessageCreateEvent event) {
         final MessageChannel messageChannel = Objects.requireNonNull(event.getMessage().getChannel().block());
-        final Optional<String> img = getUrlFromDB(IMAGE, "NeNeYa");
-        img.ifPresent(image -> replyByXianTemplate(messageChannel, "記得交心得喔~", image));
+        Optional.ofNullable(getUrlFromDB(IMAGE, "NeNeYa")).ifPresent(image ->
+                replyByXianTemplate(messageChannel, "記得交心得喔~", image));
     }
 }
