@@ -17,7 +17,7 @@ public class He1pMEService extends MainService {
     private final List<String> chatRoomIdList = new ArrayList<>(getActionFromDB("getChatRoomId"));
     private final MusicService musicService = new MusicService();
     private final List<String> musicActionList;
-    Set<Class<? extends Action>> actions = new Reflections("Action").getSubTypesOf(Action.class);
+    Set<Class<? extends Action>> actionSet = new Reflections("Action").getSubTypesOf(Action.class);
 
     public He1pMEService() {
         musicActionList = Arrays.stream(MusicService.class.getDeclaredMethods())
@@ -27,23 +27,24 @@ public class He1pMEService extends MainService {
     }
 
     public void receiveMessage(final MessageCreateEvent event) {
-        final String channelId = Optional.ofNullable(event.getMessage().getChannelId().asString()).orElse("");
+        final String channelId = Optional.of(event.getMessage().getChannelId().asString()).orElse("");
         final String content = Optional.of(event.getMessage().getContent()).orElse("");
 
-        if (chatRoomIdList.contains(channelId) && content.startsWith(SIGN)) {
-            final String instruction = format(content);
-            final List<String> responses = getActionFromDB(instruction);
+        if (!chatRoomIdList.contains(channelId) || !content.startsWith(SIGN)) {
+            return;
+        }
 
-            if (CollectionUtils.isEmpty(responses)) {
+        final String instruction = format(content);
+        if (musicActionList.contains(instruction)) {
+            executeMusicAction(event, instruction);
+        } else {
+            final List<String> responseList = getActionFromDB(instruction);
+            if (CollectionUtils.isEmpty(responseList)) {
                 return;
             }
 
-            for (final String response : responses) {
-                if (musicActionList.contains(response)) {
-                    executeMusicAction(event, response);
-                } else {
-                    executeAction(event, response);
-                }
+            for (final String response : responseList) {
+                executeAction(event, response);
             }
         }
     }
@@ -58,36 +59,25 @@ public class He1pMEService extends MainService {
         try {
             final Method method = musicService.getClass().getDeclaredMethod(response, MessageCreateEvent.class);
             method.invoke(musicService, event);
-        } catch (final NoSuchMethodException noSuchMethodException) {
-            final Method method;
-            try {
-                method = musicService.getClass().getDeclaredMethod(response);
-                method.invoke(musicService);
-            } catch (final NoSuchMethodException | InvocationTargetException | IllegalAccessException exception) {
-                exception.printStackTrace();
-            }
-        } catch (final InvocationTargetException | IllegalAccessException exception) {
+        } catch (final IllegalAccessException | InvocationTargetException | NoSuchMethodException exception) {
             exception.printStackTrace();
         }
     }
 
     private void executeAction(final MessageCreateEvent event, final String response) {
-        actions.stream()
-                .filter(action -> {
-                    try {
-                        return StringUtils.equals(response, action.getDeclaredConstructor().newInstance().getAction());
-                    } catch (final InstantiationException | IllegalAccessException | InvocationTargetException
-                            | NoSuchMethodException exception) {
-                        exception.printStackTrace();
-                    }
-                    return false;
-                }).forEach(action -> {
-                    try {
-                        action.getDeclaredConstructor().newInstance().execute(event);
-                    } catch (final InstantiationException | IllegalAccessException | InvocationTargetException
-                            | NoSuchMethodException exception) {
-                        exception.printStackTrace();
-                    }
-                });
+        actionSet.stream().filter(action -> {
+            try {
+                return StringUtils.equals(response, action.getDeclaredConstructor().newInstance().getAction());
+            } catch (final InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException exception) {
+                exception.printStackTrace();
+            }
+            return false;
+        }).forEach(action -> {
+            try {
+                action.getDeclaredConstructor().newInstance().execute(event);
+            } catch (final InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException exception) {
+                exception.printStackTrace();
+            }
+        });
     }
 }
