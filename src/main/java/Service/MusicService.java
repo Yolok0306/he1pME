@@ -1,7 +1,6 @@
 package Service;
 
-import MusicPlugin.LavaPlayerAudioProvider;
-import MusicPlugin.TrackScheduler;
+import MusicPlugin.GuildAudioManager;
 import com.sedmelluq.discord.lavaplayer.player.AudioLoadResultHandler;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
@@ -16,38 +15,41 @@ import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.object.entity.channel.VoiceChannel;
-import discord4j.voice.AudioProvider;
+import discord4j.core.spec.VoiceChannelJoinSpec;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class MusicService extends MainService {
-    private final AudioPlayerManager audioPlayerManager = new DefaultAudioPlayerManager();
-    private final AudioPlayer audioPlayer = audioPlayerManager.createPlayer();
-    private final TrackScheduler trackScheduler = new TrackScheduler(audioPlayer);
-    private final AudioProvider audioProvider = new LavaPlayerAudioProvider(audioPlayer);
+    public static final AudioPlayerManager PLAYER_MANAGER;
 
-    public MusicService() {
-        audioPlayerManager.getConfiguration().setFrameBufferFactory(NonAllocatingAudioFrameBuffer::new);
-        AudioSourceManagers.registerRemoteSources(audioPlayerManager);
+    static {
+        PLAYER_MANAGER = new DefaultAudioPlayerManager();
+        // This is an optimization strategy that Discord4J can utilize to minimize allocations
+        PLAYER_MANAGER.getConfiguration().setFrameBufferFactory(NonAllocatingAudioFrameBuffer::new);
+        AudioSourceManagers.registerRemoteSources(PLAYER_MANAGER);
+        AudioSourceManagers.registerLocalSource(PLAYER_MANAGER);
     }
 
-    protected void playMusic(final MessageCreateEvent event) {
+    protected void play(final MessageCreateEvent event) {
+        join(event);
         final String content = event.getMessage().getContent();
         final String[] array = content.split(" ");
-        if (checkChannelContainBot(event) && array.length == 2) {
+        if (checkChannelContainBot(event) && Optional.ofNullable(getVoiceChannel(event)).isPresent() && array.length == 2) {
+            final VoiceChannel voiceChannel = getVoiceChannel(event);
             final String musicSource = content.split(" ")[1];
-            audioPlayerManager.loadItemOrdered(audioPlayerManager, musicSource, new AudioLoadResultHandler() {
+            PLAYER_MANAGER.loadItem(musicSource, new AudioLoadResultHandler() {
                 @Override
-                public void trackLoaded(final AudioTrack audioTrack) {
-                    trackScheduler.queue(audioTrack);
+                public void trackLoaded(final AudioTrack track) {
+                    GuildAudioManager.of(voiceChannel.getGuildId()).getScheduler().play(track);
                 }
 
                 @Override
-                public void playlistLoaded(final AudioPlaylist audioPlaylist) {
-                    final AtomicReference<AudioTrack> firstTrack = new AtomicReference<>(audioPlaylist.getSelectedTrack());
-                    firstTrack.set(audioPlaylist.getTracks().get(0));
+                public void playlistLoaded(final AudioPlaylist playlist) {
+                    final AtomicReference<AudioTrack> firstTrack = new AtomicReference<>(playlist.getSelectedTrack());
+                    firstTrack.set(playlist.getTracks().get(0));
                 }
 
                 @Override
@@ -65,30 +67,38 @@ public class MusicService extends MainService {
         }
     }
 
-    protected void stopMusic(final MessageCreateEvent event) {
-        if (checkChannelContainBot(event)) {
-            audioPlayer.stopTrack();
-            trackScheduler.clearQueue();
+    protected void stop(final MessageCreateEvent event) {
+        if (checkChannelContainBot(event) && Optional.ofNullable(getVoiceChannel(event)).isPresent()) {
+            final VoiceChannel voiceChannel = getVoiceChannel(event);
+            GuildAudioManager.of(voiceChannel.getGuildId()).getPlayer().stopTrack();
+            GuildAudioManager.of(voiceChannel.getGuildId()).clearQueue();
+        }
+        leave(event);
+    }
+
+    protected void join(final MessageCreateEvent event) {
+        if (!checkChannelContainBot(event) && Optional.ofNullable(getVoiceChannel(event)).isPresent()) {
+            final VoiceChannel voiceChannel = getVoiceChannel(event);
+            voiceChannel.join(VoiceChannelJoinSpec.builder().build()
+                    .withProvider(GuildAudioManager.of(voiceChannel.getGuildId()).getProvider())).block();
         }
     }
 
-    protected void joinBot(final MessageCreateEvent event) {
-        if (!checkChannelContainBot(event)) {
-            Optional.ofNullable(getVoiceChannel(event)).ifPresent(channel ->
-                    channel.join(spec -> spec.setProvider(audioProvider)).block());
+    protected void leave(final MessageCreateEvent event) {
+        if (checkChannelContainBot(event) && Optional.ofNullable(getVoiceChannel(event)).isPresent()) {
+            final VoiceChannel voiceChannel = getVoiceChannel(event);
+            voiceChannel.sendDisconnectVoiceState().block();
         }
     }
 
-    protected void leaveBot(final MessageCreateEvent event) {
-        if (checkChannelContainBot(event)) {
-            Optional.ofNullable(getVoiceChannel(event)).ifPresent(channel ->
-                    channel.sendDisconnectVoiceState().block());
+    protected void np(final MessageCreateEvent event) {
+        if (!checkChannelContainBot(event) && Optional.ofNullable(getVoiceChannel(event)).isPresent()) {
+            return;
         }
-    }
 
-    protected void getMusicInfo(final MessageCreateEvent event) {
-        if (checkChannelContainBot(event) && Optional.ofNullable(audioPlayer.getPlayingTrack()).isPresent() &&
-                audioPlayer.getPlayingTrack().isSeekable()) {
+        final VoiceChannel voiceChannel = getVoiceChannel(event);
+        final AudioPlayer audioPlayer = GuildAudioManager.of(voiceChannel.getGuildId()).getPlayer();
+        if (Objects.requireNonNull(audioPlayer.getPlayingTrack()).isSeekable()) {
             final MessageChannel messageChannel = Objects.requireNonNull(event.getMessage().getChannel().block());
             final AudioTrackInfo audioTrackInfo = audioPlayer.getPlayingTrack().getInfo();
             final String title = "Title : " + audioTrackInfo.title;
@@ -98,35 +108,41 @@ public class MusicService extends MainService {
         }
     }
 
-    protected void listQueue(final MessageCreateEvent event) {
-        if (checkChannelContainBot(event)) {
+    protected void list(final MessageCreateEvent event) {
+        if (checkChannelContainBot(event) && Optional.ofNullable(getVoiceChannel(event)).isPresent()) {
+            final VoiceChannel voiceChannel = getVoiceChannel(event);
             final MessageChannel messageChannel = Objects.requireNonNull(event.getMessage().getChannel().block());
-            if (trackScheduler.getQueue().isEmpty()) {
-                replyByHe1pMETemplate(messageChannel, "queue is empty");
+            final List<AudioTrack> queue = GuildAudioManager.of(voiceChannel.getGuildId()).getScheduler().getQueue();
+            if (queue.isEmpty()) {
+                replyByHe1pMETemplate(messageChannel, "Queue is empty!");
             } else {
                 //TODO set embed with hyperLink
-                final StringBuilder result = new StringBuilder("queue contains " + trackScheduler.getQueue().size() + " songs");
-                for (final AudioTrack audioTrack : trackScheduler.getQueue())
-                    result.append("\n").append(audioTrack.getInfo().title);
+                final StringBuilder result = new StringBuilder("Queue contains " + queue.size() + " songs :");
+                queue.forEach(audioTrack -> result.append("\n").append(audioTrack.getInfo().title));
                 replyByHe1pMETemplate(messageChannel, result.toString());
             }
         }
     }
 
-    protected void skipMusic() {
-        if (!trackScheduler.getQueue().isEmpty()) {
-            trackScheduler.nextTrack();
+    protected void skip(final MessageCreateEvent event) {
+        if (checkChannelContainBot(event) && Optional.ofNullable(getVoiceChannel(event)).isPresent()) {
+            final VoiceChannel voiceChannel = getVoiceChannel(event);
+            if (!GuildAudioManager.of(voiceChannel.getGuildId()).getScheduler().getQueue().isEmpty()) {
+                GuildAudioManager.of(voiceChannel.getGuildId()).getScheduler().skip();
+            }
         }
     }
 
-    protected void pauseMusic() {
-        final boolean control = audioPlayer.isPaused();
-        audioPlayer.setPaused(!control);
+    protected void pause(final MessageCreateEvent event) {
+        if (checkChannelContainBot(event) && Optional.ofNullable(getVoiceChannel(event)).isPresent()) {
+            final VoiceChannel voiceChannel = getVoiceChannel(event);
+            final boolean control = GuildAudioManager.of(voiceChannel.getGuildId()).getPlayer().isPaused();
+            GuildAudioManager.of(voiceChannel.getGuildId()).getPlayer().setPaused(!control);
+        }
     }
 
-    protected void resumeMusic() {
-        final boolean control = audioPlayer.isPaused();
-        audioPlayer.setPaused(!control);
+    protected void resume(final MessageCreateEvent event) {
+        pause(event);
     }
 
     private Boolean checkChannelContainBot(final MessageCreateEvent event) {
