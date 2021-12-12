@@ -16,7 +16,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class He1pMEService extends CommonService {
-    private final String SIGN = "/";
+    private final String SIGN = "$";
     private final List<String> chatRoomIdList = new ArrayList<>(getAllowChatRoom());
     private final MusicService musicService = new MusicService();
     private final List<String> musicActionList = Arrays.stream(MusicService.class.getDeclaredMethods()).filter(method ->
