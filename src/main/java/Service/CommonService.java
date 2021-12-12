@@ -7,55 +7,51 @@ import com.amazonaws.services.dynamodbv2.document.QueryOutcome;
 import com.amazonaws.services.dynamodbv2.document.spec.QuerySpec;
 import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.rest.util.Color;
+import org.apache.commons.codec.binary.StringUtils;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
-public class MainService {
+public class CommonService {
     protected final String IMAGE = "Image";
     protected final String YOUTUBE = "Youtube";
     protected final String TWITCH = "Twitch";
     private final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
 
-    protected String getTokenFromDB(final String searchValue) {
-        final HashMap<String, String> nameMap = new HashMap<>();
-        nameMap.put("#key", "id");
-        final HashMap<String, Object> valueMap = new HashMap<>();
-        valueMap.put(":value", searchValue);
+    protected List<String> getAllowChatRoom() {
+        final Map<String, String> nameMap = Collections.singletonMap("#key", "name");
+        final Map<String, Object> valueMap = Collections.singletonMap(":value", "AllowChatRoom");
         final QuerySpec querySpec = new QuerySpec().withKeyConditionExpression("#key = :value")
                 .withNameMap(nameMap).withValueMap(valueMap);
-        final ItemCollection<QueryOutcome> items = dynamoDB.getTable("PrivateInfo").query(querySpec);
+        final ItemCollection<QueryOutcome> items = dynamoDB.getTable("AllOfId").query(querySpec);
+        final List<String> result = new ArrayList<>();
+        items.forEach(item -> result.add(item.getString("id")));
+        return result;
+    }
+
+    protected String getIdFromDB(final String searchValue) {
+        final Map<String, String> nameMap = Collections.singletonMap("#key", "name");
+        final Map<String, Object> valueMap = Collections.singletonMap(":value", searchValue);
+        final QuerySpec querySpec = new QuerySpec().withKeyConditionExpression("#key = :value")
+                .withNameMap(nameMap).withValueMap(valueMap);
+        final ItemCollection<QueryOutcome> items = dynamoDB.getTable("AllOfId").query(querySpec);
         final StringBuilder result = new StringBuilder();
-        items.forEach(item -> result.append(item.getString("token")));
+        items.forEach(item -> result.append(item.getString("id")));
         return result.toString();
     }
 
-    protected String getUrlFromDB(final String tableName, final String searchValue) {
-        final HashMap<String, String> nameMap = new HashMap<>();
-        nameMap.put("#key", "id");
-        final HashMap<String, Object> valueMap = new HashMap<>();
-        valueMap.put(":value", searchValue);
+    protected String getUrlFromDB(final String searchValue, final String type) {
+        final Map<String, String> nameMap = Collections.singletonMap("#key", "name");
+        final Map<String, Object> valueMap = Collections.singletonMap(":value", searchValue);
         final QuerySpec querySpec = new QuerySpec().withKeyConditionExpression("#key = :value")
                 .withNameMap(nameMap).withValueMap(valueMap);
-        final ItemCollection<QueryOutcome> items = dynamoDB.getTable(tableName).query(querySpec);
+        final ItemCollection<QueryOutcome> items = dynamoDB.getTable("Url").query(querySpec);
         final StringBuilder result = new StringBuilder();
-        items.forEach(item -> result.append(item.getString("url")));
+        items.forEach(item -> {
+            if (StringUtils.equals(item.getString("type"), type)) {
+                result.append(item.getString("url"));
+            }
+        });
         return result.toString();
-    }
-
-    protected List<String> getActionFromDB(final String searchValue) {
-        final HashMap<String, String> nameMap = new HashMap<>();
-        nameMap.put("#key", "id");
-        final HashMap<String, Object> valueMap = new HashMap<>();
-        valueMap.put(":value", searchValue);
-        final QuerySpec querySpec = new QuerySpec().withKeyConditionExpression("#key = :value")
-                .withNameMap(nameMap).withValueMap(valueMap);
-        final ItemCollection<QueryOutcome> items = dynamoDB.getTable("Action").query(querySpec);
-        final StringBuilder result = new StringBuilder();
-        items.forEach(item -> result.append(item.getString("action")));
-        return Arrays.asList(result.toString().split(","));
     }
 
     protected void replyByHe1pMETemplate(final MessageChannel messageChannel, final String msg) {
@@ -71,14 +67,14 @@ public class MainService {
     }
 
     protected void replyByXunTemplate(final MessageChannel messageChannel, final String msg, final String img) {
-        Optional.ofNullable(getTokenFromDB("Xun")).ifPresent(Xun -> {
+        Optional.ofNullable(getIdFromDB("Xun")).ifPresent(Xun -> {
             messageChannel.createMessage("<@" + Xun + "> " + msg).block();
             messageChannel.createEmbed(spec -> spec.setColor(Color.of(0, 255, 127)).setImage(img)).block();
         });
     }
 
     protected void replyByXianTemplate(final MessageChannel messageChannel, final String msg, final String img) {
-        Optional.ofNullable(getTokenFromDB("Xian")).ifPresent(Xian -> {
+        Optional.ofNullable(getIdFromDB("Xian")).ifPresent(Xian -> {
             messageChannel.createMessage("<@" + Xian + "> " + msg).block();
             messageChannel.createEmbed(spec -> spec.setColor(Color.of(255, 222, 173)).setImage(img)).block();
         });

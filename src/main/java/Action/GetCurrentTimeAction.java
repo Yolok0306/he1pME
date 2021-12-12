@@ -1,23 +1,23 @@
 package Action;
 
-import Service.MainService;
+import Service.CommonService;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.channel.MessageChannel;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.time.ZoneId;
 import java.util.Objects;
 
-public class GetCurrentTimeAction extends MainService implements Action {
+public class GetCurrentTimeAction extends CommonService implements Action {
     @Override
-    public String getAction() {
-        return "getCurrentTime";
+    public String getInstruction() {
+        return "time";
     }
 
     @Override
     public void execute(final MessageCreateEvent event) {
         final MessageChannel messageChannel = Objects.requireNonNull(event.getMessage().getChannel().block());
-        final String time = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        final String time = LocalDateTime.now().atZone(ZoneId.of("Asia/Taipei")).toLocalDateTime().toString();
         replyByHe1pMETemplate(messageChannel, time);
     }
 }
