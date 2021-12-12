@@ -9,22 +9,20 @@ import org.reflections.Reflections;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class He1pMEService extends MainService {
+public class He1pMEService extends CommonService {
     private final String SIGN = "/";
-    private final List<String> chatRoomIdList = new ArrayList<>(getActionFromDB("getChatRoomId"));
+    private final List<String> chatRoomIdList = new ArrayList<>(getAllowChatRoom());
     private final MusicService musicService = new MusicService();
-    private final List<String> musicActionList;
-    Set<Class<? extends Action>> actionSet = new Reflections("Action").getSubTypesOf(Action.class);
-
-    public He1pMEService() {
-        musicActionList = Arrays.stream(MusicService.class.getDeclaredMethods())
-                .filter(method -> method.getModifiers() == Modifier.PROTECTED)
-                .map(Method::getName)
-                .collect(Collectors.toList());
-    }
+    private final List<String> musicActionList = Arrays.stream(MusicService.class.getDeclaredMethods()).filter(method ->
+            method.getModifiers() == Modifier.PROTECTED).map(Method::getName).collect(Collectors.toList());
+    private final List<Class<? extends Action>> actionList =
+            new ArrayList<Class<? extends Action>>(new Reflections("Action").getSubTypesOf(Action.class));
 
     public void receiveMessage(final MessageCreateEvent event) {
         final String channelId = Optional.of(event.getMessage().getChannelId().asString()).orElse("");
@@ -38,14 +36,7 @@ public class He1pMEService extends MainService {
         if (musicActionList.contains(instruction)) {
             executeMusicAction(event, instruction);
         } else {
-            final List<String> responseList = getActionFromDB(instruction);
-            if (CollectionUtils.isEmpty(responseList)) {
-                return;
-            }
-
-            for (final String response : responseList) {
-                executeAction(event, response);
-            }
+            executeAction(event, instruction);
         }
     }
 
@@ -64,20 +55,30 @@ public class He1pMEService extends MainService {
         }
     }
 
-    private void executeAction(final MessageCreateEvent event, final String response) {
-        actionSet.stream().filter(action -> {
+    private void executeAction(final MessageCreateEvent event, final String instruction) {
+        if (CollectionUtils.isEmpty(actionList)) {
+            return;
+        }
+
+        final Optional<Class<? extends Action>> actionOpt = actionList.stream().filter(action -> {
             try {
-                return StringUtils.equals(response, action.getDeclaredConstructor().newInstance().getAction());
+                return StringUtils.equals(instruction, action.getDeclaredConstructor().newInstance().getInstruction());
             } catch (final InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException exception) {
                 exception.printStackTrace();
             }
             return false;
-        }).forEach(action -> {
+        }).findFirst();
+
+        if (actionOpt.isPresent()) {
+            final Class<? extends Action> action = actionOpt.get();
             try {
                 action.getDeclaredConstructor().newInstance().execute(event);
             } catch (final InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException exception) {
                 exception.printStackTrace();
             }
-        });
+        } else {
+            final CallSomeoneService callSomeoneService = new CallSomeoneService();
+            callSomeoneService.CallSomeone(event, instruction);
+        }
     }
 }

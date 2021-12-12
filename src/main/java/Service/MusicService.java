@@ -22,7 +22,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class MusicService extends MainService {
+public class MusicService extends CommonService {
     public static final AudioPlayerManager PLAYER_MANAGER;
 
     static {
@@ -147,7 +147,7 @@ public class MusicService extends MainService {
 
     private Boolean checkChannelContainBot(final MessageCreateEvent event) {
         final AtomicReference<Boolean> result = new AtomicReference<>(false);
-        Optional.ofNullable(getTokenFromDB("he1pME")).ifPresent(token ->
+        Optional.ofNullable(getIdFromDB("he1pME")).ifPresent(token ->
                 Optional.ofNullable(getVoiceChannel(event)).ifPresent(channel ->
                         result.set(channel.isMemberConnected(Snowflake.of(token)).block())));
         return result.get();

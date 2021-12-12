@@ -10,7 +10,8 @@ import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.User;
 
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.Map;
 import java.util.Objects;
 
 public class He1pME {
@@ -28,15 +29,13 @@ public class He1pME {
 
     private static String getBotToken() {
         final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
-        final HashMap<String, String> nameMap = new HashMap<>();
-        nameMap.put("#key", "id");
-        final HashMap<String, Object> valueMap = new HashMap<>();
-        valueMap.put(":value", "he1pME");
+        final Map<String, String> nameMap = Collections.singletonMap("#key", "name");
+        final Map<String, Object> valueMap = Collections.singletonMap(":value", "Token");
         final QuerySpec querySpec = new QuerySpec().withKeyConditionExpression("#key = :value")
                 .withNameMap(nameMap).withValueMap(valueMap);
-        final ItemCollection<QueryOutcome> items = dynamoDB.getTable("Token").query(querySpec);
+        final ItemCollection<QueryOutcome> items = dynamoDB.getTable("AllOfId").query(querySpec);
         final StringBuilder result = new StringBuilder();
-        items.forEach(item -> result.append(item.getString("token")));
+        items.forEach(item -> result.append(item.getString("id")));
         return result.toString();
     }
 }

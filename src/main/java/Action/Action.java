@@ -4,7 +4,7 @@ import discord4j.core.event.domain.message.MessageCreateEvent;
 
 public interface Action {
 
-    String getAction();
+    String getInstruction();
 
     void execute(final MessageCreateEvent event);
 }
