@@ -1,6 +1,9 @@
 package Service;
 
 import Action.Action;
+import com.amazonaws.services.dynamodbv2.document.ItemCollection;
+import com.amazonaws.services.dynamodbv2.document.QueryOutcome;
+import com.amazonaws.services.dynamodbv2.document.spec.QuerySpec;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import org.apache.commons.codec.binary.StringUtils;
 import org.apache.commons.collections4.CollectionUtils;
@@ -9,32 +12,43 @@ import org.reflections.Reflections;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class He1pMEService extends CommonService {
     private final String SIGN = "$";
-    private final List<String> chatRoomIdList = new ArrayList<>(getAllowChatRoom());
     private final MusicService musicService = new MusicService();
-    private final List<String> musicActionList = Arrays.stream(MusicService.class.getDeclaredMethods()).filter(method ->
-            method.getModifiers() == Modifier.PROTECTED).map(Method::getName).collect(Collectors.toList());
-    private final List<Class<? extends Action>> actionList =
-            new ArrayList<Class<? extends Action>>(new Reflections("Action").getSubTypesOf(Action.class));
+    private final CallActionService callActionService = new CallActionService();
+    private final Set<String> chatRoomIdSet = getAllowChatRoom();
+    private final Set<String> musicActionSet = Arrays.stream(MusicService.class.getDeclaredMethods()).filter(method ->
+            method.getModifiers() == Modifier.PROTECTED).map(Method::getName).collect(Collectors.toSet());
+    private final Set<String> callActionSet = callActionService.getAllCallAction();
+    private final Set<Class<? extends Action>> actionSet = new Reflections("Action").getSubTypesOf(Action.class);
+
+    private Set<String> getAllowChatRoom() {
+        final Map<String, String> nameMap = Collections.singletonMap("#key", "name");
+        final Map<String, Object> valueMap = Collections.singletonMap(":value", "AllowChatRoom");
+        final QuerySpec querySpec = new QuerySpec().withKeyConditionExpression("#key = :value")
+                .withNameMap(nameMap).withValueMap(valueMap);
+        final ItemCollection<QueryOutcome> items = dynamoDB.getTable("AllOfId").query(querySpec);
+        final Set<String> result = new HashSet<>();
+        items.forEach(item -> result.add(item.getString("id")));
+        return result;
+    }
 
     public void receiveMessage(final MessageCreateEvent event) {
         final String channelId = Optional.of(event.getMessage().getChannelId().asString()).orElse("");
         final String content = Optional.of(event.getMessage().getContent()).orElse("");
 
-        if (!chatRoomIdList.contains(channelId) || !content.startsWith(SIGN)) {
+        if (!chatRoomIdSet.contains(channelId) || !content.startsWith(SIGN)) {
             return;
         }
 
         final String instruction = format(content);
-        if (musicActionList.contains(instruction)) {
+        if (musicActionSet.contains(instruction)) {
             executeMusicAction(event, instruction);
+        } else if (callActionSet.contains(instruction)) {
+            callActionService.callAction(event, instruction);
         } else {
             executeAction(event, instruction);
         }
@@ -56,29 +70,23 @@ public class He1pMEService extends CommonService {
     }
 
     private void executeAction(final MessageCreateEvent event, final String instruction) {
-        if (CollectionUtils.isEmpty(actionList)) {
+        if (CollectionUtils.isEmpty(actionSet)) {
             return;
         }
 
-        final Optional<Class<? extends Action>> actionOpt = actionList.stream().filter(action -> {
+        actionSet.stream().filter(action -> {
             try {
                 return StringUtils.equals(instruction, action.getDeclaredConstructor().newInstance().getInstruction());
             } catch (final InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException exception) {
                 exception.printStackTrace();
             }
             return false;
-        }).findFirst();
-
-        if (actionOpt.isPresent()) {
-            final Class<? extends Action> action = actionOpt.get();
+        }).findFirst().ifPresent(action -> {
             try {
                 action.getDeclaredConstructor().newInstance().execute(event);
             } catch (final InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException exception) {
                 exception.printStackTrace();
             }
-        } else {
-            final CallSomeoneService callSomeoneService = new CallSomeoneService();
-            callSomeoneService.CallSomeone(event, instruction);
-        }
+        });
     }
 }
