@@ -1,5 +1,6 @@
 package Service;
 
+import SpecialDataStructure.UrlType;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.ItemCollection;
@@ -12,12 +13,8 @@ import org.apache.commons.codec.binary.StringUtils;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.Optional;
 
 public class CommonService {
-    protected final String IMAGE = "Image";
-    protected final String YOUTUBE = "Youtube";
-    protected final String TWITCH = "Twitch";
     protected final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
 
     protected String getIdFromDB(final String searchValue) {
@@ -31,7 +28,7 @@ public class CommonService {
         return result.toString();
     }
 
-    protected String getUrlFromDB(final String searchValue, final String type) {
+    protected String getUrlFromDB(final String searchValue, final UrlType type) {
         final Map<String, String> nameMap = Collections.singletonMap("#key", "name");
         final Map<String, Object> valueMap = Collections.singletonMap(":value", searchValue);
         final QuerySpec querySpec = new QuerySpec().withKeyConditionExpression("#key = :value")
@@ -39,7 +36,7 @@ public class CommonService {
         final ItemCollection<QueryOutcome> items = dynamoDB.getTable("Url").query(querySpec);
         final StringBuilder result = new StringBuilder();
         items.forEach(item -> {
-            if (StringUtils.equals(item.getString("type"), type)) {
+            if (StringUtils.equals(item.getString("type"), type.getType())) {
                 result.append(item.getString("url"));
             }
         });
