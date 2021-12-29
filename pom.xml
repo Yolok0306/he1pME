@@ -33,7 +33,7 @@
         <dependency>
             <groupId>com.amazonaws</groupId>
             <artifactId>aws-java-sdk-dynamodb</artifactId>
-            <version>1.12.122</version>
+            <version>1.12.131</version>
         </dependency>
         <dependency>
             <groupId>org.reflections</groupId>
@@ -58,7 +58,7 @@
                         <manifest>
                             <addClasspath>true</addClasspath>
                             <classpathPrefix>lib/</classpathPrefix>
-                            <mainClass>He1pME</mainClass>
+                            <mainClass>Execute.He1pME</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
