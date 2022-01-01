@@ -14,16 +14,17 @@ import discord4j.rest.util.Color;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 public class CallActionService extends CommonService {
 
     protected void callAction(final MessageCreateEvent event, final String instruction) {
         final MessageChannel messageChannel = Objects.requireNonNull(event.getMessage().getChannel().block());
-        final CallAction callAction = getCallAction(instruction);
-        messageChannel.createMessage("<@" + callAction.getId() + "> " + callAction.getMessage()).block();
-        messageChannel.createMessage(
-                EmbedCreateSpec.create().withColor(callAction.getColor()).withImage(callAction.getImage())
-        ).block();
+        Optional.ofNullable(getCallAction(instruction)).ifPresent(callAction -> {
+            messageChannel.createMessage("<@" + callAction.getId() + "> " + callAction.getMessage()).block();
+            messageChannel.createMessage(EmbedCreateSpec.create().withColor(callAction.getColor())
+                    .withImage(callAction.getImage())).block();
+        });
     }
 
     private CallAction getCallAction(final String searchValue) {
@@ -32,15 +33,18 @@ public class CallActionService extends CommonService {
         final QuerySpec querySpec = new QuerySpec().withKeyConditionExpression("#key = :value")
                 .withNameMap(nameMap).withValueMap(valueMap);
         final ItemCollection<QueryOutcome> items = dynamoDB.getTable("CallAction").query(querySpec);
-        final CallAction result = new CallAction();
-        if (items.iterator().hasNext()) {
-            final Item item = items.iterator().next();
-            result.setId(getIdFromDB(item.getString("name")));
-            result.setMessage(item.getString("message"));
-            result.setImage(getUrlFromDB(item.getString("image"), UrlType.IMAGE));
-            final String[] color = item.getString("color").split(", ");
-            result.setColor(Color.of(Integer.parseInt(color[0]), Integer.parseInt(color[1]), Integer.parseInt(color[2])));
+
+        if (!items.iterator().hasNext()) {
+            return null;
         }
+
+        final Item item = items.iterator().next();
+        final CallAction result = new CallAction();
+        result.setId(getIdFromDB(item.getString("name")));
+        result.setMessage(item.getString("message"));
+        result.setImage(getUrlFromDB(item.getString("image"), UrlType.IMAGE));
+        final String[] color = item.getString("color").split(", ");
+        result.setColor(Color.of(Integer.parseInt(color[0]), Integer.parseInt(color[1]), Integer.parseInt(color[2])));
         return result;
     }
 }
