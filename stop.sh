@@ -1,5 +1,3 @@
 #!/usr/bin/env bash
 
-pkill -f 'he1pME'
-
-cat /dev/null > /home/ubuntu/nohup.out
+pkill -f 'he1pME-1.1.jar' || true
