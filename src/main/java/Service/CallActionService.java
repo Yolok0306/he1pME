@@ -2,6 +2,8 @@ package Service;
 
 import SpecialDataStructure.CallAction;
 import SpecialDataStructure.UrlType;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.services.dynamodbv2.document.ItemCollection;
 import com.amazonaws.services.dynamodbv2.document.QueryOutcome;
@@ -20,25 +22,30 @@ public class CallActionService extends CommonService {
 
     protected void callAction(final MessageCreateEvent event, final String instruction) {
         final MessageChannel messageChannel = Objects.requireNonNull(event.getMessage().getChannel().block());
-        Optional.ofNullable(getCallAction(instruction)).ifPresent(callAction -> {
+        Optional.ofNullable(getDataFromDB(instruction)).ifPresent(item -> {
+            final CallAction callAction = buildCallAction(item);
             messageChannel.createMessage("<@" + callAction.getId() + "> " + callAction.getMessage()).block();
             messageChannel.createMessage(EmbedCreateSpec.create().withColor(callAction.getColor())
                     .withImage(callAction.getImage())).block();
         });
     }
 
-    private CallAction getCallAction(final String searchValue) {
+    private Item getDataFromDB(final String searchValue) {
+        final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
         final Map<String, String> nameMap = Collections.singletonMap("#key", "action");
         final Map<String, Object> valueMap = Collections.singletonMap(":value", searchValue);
         final QuerySpec querySpec = new QuerySpec().withKeyConditionExpression("#key = :value")
                 .withNameMap(nameMap).withValueMap(valueMap);
         final ItemCollection<QueryOutcome> items = dynamoDB.getTable("CallAction").query(querySpec);
-
-        if (!items.iterator().hasNext()) {
-            return null;
+        Item result = null;
+        if (items.iterator().hasNext()) {
+            result = items.iterator().next();
         }
+        dynamoDB.shutdown();
+        return result;
+    }
 
-        final Item item = items.iterator().next();
+    private CallAction buildCallAction(final Item item) {
         final CallAction result = new CallAction();
         result.setId(getIdFromDB(item.getString("name")));
         result.setMessage(item.getString("message"));

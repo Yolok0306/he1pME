@@ -2,38 +2,31 @@ package Service;
 
 import Action.Action;
 import Execute.He1pME;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.ItemCollection;
 import com.amazonaws.services.dynamodbv2.document.ScanOutcome;
 import com.amazonaws.services.dynamodbv2.document.spec.ScanSpec;
 import discord4j.core.event.domain.message.MessageCreateEvent;
-import org.apache.commons.codec.binary.StringUtils;
-import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.reflections.Reflections;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class He1pMEService extends CommonService {
+public class He1pMEService {
     private final String SIGN = "$";
-    private final MusicService musicService = new MusicService();
-    private final CallActionService callActionService = new CallActionService();
     private final Set<String> chatRoomIdSet = new HashSet<>();
-    private final Set<String> callActionSet = new HashSet<>();
-    private final Set<String> musicActionSet = Arrays.stream(MusicService.class.getDeclaredMethods()).filter(method ->
-            method.getModifiers() == Modifier.PROTECTED).map(Method::getName).collect(Collectors.toSet());
-    private final Set<Class<? extends Action>> actionSet = new Reflections("Action").getSubTypesOf(Action.class);
+    private final Set<String> musicActionSet = new HashSet<>();
+    private final Map<String, Class<? extends Action>> actionMap = new HashMap<>();
 
     public He1pMEService() {
+        final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
         final ScanSpec scanSpec = new ScanSpec();
-        ItemCollection<ScanOutcome> items;
-
-        items = dynamoDB.getTable("ServerData").scan(scanSpec);
+        final ItemCollection<ScanOutcome> items = dynamoDB.getTable("ServerData").scan(scanSpec);
         items.forEach(item -> {
             if (StringUtils.equals(item.getString("name"), "AllowChatRoom")) {
                 chatRoomIdSet.add(item.getString("id"));
@@ -41,9 +34,20 @@ public class He1pMEService extends CommonService {
                 He1pME.token = item.getString("id");
             }
         });
+        dynamoDB.shutdown();
 
-        items = dynamoDB.getTable("CallAction").scan(scanSpec);
-        items.forEach(item -> callActionSet.add(item.getString("action")));
+        musicActionSet.addAll(Arrays.stream(MusicService.class.getDeclaredMethods()).filter(method ->
+                method.getModifiers() == Modifier.PROTECTED).map(Method::getName).collect(Collectors.toSet()));
+
+        actionMap.putAll(new Reflections("Action").getSubTypesOf(Action.class).stream()
+                .collect(Collectors.toMap(action -> {
+                    try {
+                        return action.getDeclaredConstructor().newInstance().getInstruction();
+                    } catch (final Exception exception) {
+                        exception.printStackTrace();
+                    }
+                    return null;
+                }, Function.identity(), (existing, replacement) -> existing)));
     }
 
     public void receiveMessage(final MessageCreateEvent event) {
@@ -57,10 +61,10 @@ public class He1pMEService extends CommonService {
         final String instruction = format(content);
         if (musicActionSet.contains(instruction)) {
             executeMusicAction(event, instruction);
-        } else if (callActionSet.contains(instruction)) {
-            callActionService.callAction(event, instruction);
-        } else {
+        } else if (actionMap.containsKey(instruction)) {
             executeAction(event, instruction);
+        } else {
+            new CallActionService().callAction(event, instruction);
         }
     }
 
@@ -72,31 +76,19 @@ public class He1pMEService extends CommonService {
 
     private void executeMusicAction(final MessageCreateEvent event, final String response) {
         try {
-            final Method method = musicService.getClass().getDeclaredMethod(response, MessageCreateEvent.class);
-            method.invoke(musicService, event);
-        } catch (final IllegalAccessException | InvocationTargetException | NoSuchMethodException exception) {
+            final Method method = MusicService.class.getDeclaredMethod(response, MessageCreateEvent.class);
+            method.invoke(new MusicService(), event);
+        } catch (final Exception exception) {
             exception.printStackTrace();
         }
     }
 
     private void executeAction(final MessageCreateEvent event, final String instruction) {
-        if (CollectionUtils.isEmpty(actionSet)) {
-            return;
+        final Class<? extends Action> action = actionMap.get(instruction);
+        try {
+            action.getDeclaredConstructor().newInstance().execute(event);
+        } catch (final Exception exception) {
+            exception.printStackTrace();
         }
-
-        actionSet.stream().filter(action -> {
-            try {
-                return StringUtils.equals(instruction, action.getDeclaredConstructor().newInstance().getInstruction());
-            } catch (final InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException exception) {
-                exception.printStackTrace();
-            }
-            return false;
-        }).findFirst().ifPresent(action -> {
-            try {
-                action.getDeclaredConstructor().newInstance().execute(event);
-            } catch (final InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException exception) {
-                exception.printStackTrace();
-            }
-        });
     }
 }

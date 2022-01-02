@@ -3,19 +3,20 @@ package Service;
 import SpecialDataStructure.UrlType;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.services.dynamodbv2.document.ItemCollection;
 import com.amazonaws.services.dynamodbv2.document.QueryOutcome;
 import com.amazonaws.services.dynamodbv2.document.spec.QuerySpec;
 import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.rest.util.Color;
-import org.apache.commons.codec.binary.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.Collections;
 import java.util.Map;
 
 public class CommonService {
-    protected final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
+    private final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
 
     protected String getIdFromDB(final String searchValue) {
         final Map<String, String> nameMap = Collections.singletonMap("#key", "name");
@@ -23,9 +24,13 @@ public class CommonService {
         final QuerySpec querySpec = new QuerySpec().withKeyConditionExpression("#key = :value")
                 .withNameMap(nameMap).withValueMap(valueMap);
         final ItemCollection<QueryOutcome> items = dynamoDB.getTable("AllOfId").query(querySpec);
-        final StringBuilder result = new StringBuilder();
-        items.forEach(item -> result.append(item.getString("id")));
-        return result.toString();
+
+        if (!items.iterator().hasNext()) {
+            return null;
+        }
+
+        final Item item = items.iterator().next();
+        return item.getString("id");
     }
 
     protected String getUrlFromDB(final String searchValue, final UrlType type) {
@@ -34,13 +39,13 @@ public class CommonService {
         final QuerySpec querySpec = new QuerySpec().withKeyConditionExpression("#key = :value")
                 .withNameMap(nameMap).withValueMap(valueMap);
         final ItemCollection<QueryOutcome> items = dynamoDB.getTable("Url").query(querySpec);
-        final StringBuilder result = new StringBuilder();
-        items.forEach(item -> {
-            if (StringUtils.equals(item.getString("type"), type.getType())) {
-                result.append(item.getString("url"));
-            }
-        });
-        return result.toString();
+
+        if (!items.iterator().hasNext()) {
+            return null;
+        }
+
+        final Item item = items.iterator().next();
+        return StringUtils.equals(item.getString("type"), type.getType()) ? item.getString("url") : null;
     }
 
     protected void replyByHe1pMETemplate(final MessageChannel messageChannel, final String msg) {
