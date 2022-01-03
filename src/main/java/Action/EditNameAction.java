@@ -24,10 +24,9 @@ public class EditNameAction extends CommonService implements Action {
             final String oldName = Objects.requireNonNull(member).getDisplayName();
             final String newName = context.split(" ").length < 3 ?
                     Objects.requireNonNull(member).getUsername() : getNewName(context);
-            final String message = "修改暱稱成功: \"" + oldName + "\" -> \"" + newName + "\"";
             final GuildMemberEditSpec guildMemberEditSpec = GuildMemberEditSpec.builder().build();
             Objects.requireNonNull(member).edit(guildMemberEditSpec.withNicknameOrNull(newName)).block();
-            replyByHe1pMETemplate(messageChannel, message);
+            replyByHe1pMETemplate(messageChannel, "修改暱稱成功", "\"" + oldName + "\" -> \"" + newName + "\"");
         });
     }
 

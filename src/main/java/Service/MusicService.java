@@ -104,7 +104,7 @@ public class MusicService extends CommonService {
             final String title = "Title : " + audioTrackInfo.title;
             final String author = "\nAuthor : " + audioTrackInfo.author;
             final String time = "\nTime : " + timeFormat(audioTrackInfo.length);
-            replyByHe1pMETemplate(messageChannel, title + author + time);
+            replyByHe1pMETemplate(messageChannel, "播放資訊", title + author + time);
         }
     }
 
@@ -114,12 +114,12 @@ public class MusicService extends CommonService {
             final MessageChannel messageChannel = Objects.requireNonNull(event.getMessage().getChannel().block());
             final List<AudioTrack> queue = GuildAudioManager.of(voiceChannel.getGuildId()).getScheduler().getQueue();
             if (queue.isEmpty()) {
-                replyByHe1pMETemplate(messageChannel, "Queue is empty!");
+                replyByHe1pMETemplate(messageChannel, "音樂清單", "空");
             } else {
                 //TODO set embed with hyperLink
                 final StringBuilder result = new StringBuilder("Queue contains " + queue.size() + " songs :");
                 queue.forEach(audioTrack -> result.append("\n").append(audioTrack.getInfo().title));
-                replyByHe1pMETemplate(messageChannel, result.toString());
+                replyByHe1pMETemplate(messageChannel, "音樂清單", result.toString());
             }
         }
     }
