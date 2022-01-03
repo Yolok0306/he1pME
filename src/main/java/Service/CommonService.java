@@ -3,7 +3,6 @@ package Service;
 import SpecialDataStructure.UrlType;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
-import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.services.dynamodbv2.document.ItemCollection;
 import com.amazonaws.services.dynamodbv2.document.QueryOutcome;
 import com.amazonaws.services.dynamodbv2.document.spec.QuerySpec;
@@ -16,40 +15,45 @@ import java.util.Collections;
 import java.util.Map;
 
 public class CommonService {
-    private final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
 
     protected String getIdFromDB(final String searchValue) {
+        final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
         final Map<String, String> nameMap = Collections.singletonMap("#key", "name");
         final Map<String, Object> valueMap = Collections.singletonMap(":value", searchValue);
         final QuerySpec querySpec = new QuerySpec().withKeyConditionExpression("#key = :value")
                 .withNameMap(nameMap).withValueMap(valueMap);
         final ItemCollection<QueryOutcome> items = dynamoDB.getTable("AllOfId").query(querySpec);
 
-        if (!items.iterator().hasNext()) {
-            return null;
+        String result = null;
+        if (items.iterator().hasNext()) {
+            result = items.iterator().next().getString("id");
         }
 
-        final Item item = items.iterator().next();
-        return item.getString("id");
+        dynamoDB.shutdown();
+        return result;
     }
 
     protected String getUrlFromDB(final String searchValue, final UrlType type) {
+        final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
         final Map<String, String> nameMap = Collections.singletonMap("#key", "name");
         final Map<String, Object> valueMap = Collections.singletonMap(":value", searchValue);
         final QuerySpec querySpec = new QuerySpec().withKeyConditionExpression("#key = :value")
                 .withNameMap(nameMap).withValueMap(valueMap);
         final ItemCollection<QueryOutcome> items = dynamoDB.getTable("Url").query(querySpec);
 
-        if (!items.iterator().hasNext()) {
-            return null;
+        String result = null;
+        if (items.iterator().hasNext() && StringUtils.equals(items.iterator().next().getString("type"), type.getType())) {
+            result = items.iterator().next().getString("url");
         }
 
-        final Item item = items.iterator().next();
-        return StringUtils.equals(item.getString("type"), type.getType()) ? item.getString("url") : null;
+        dynamoDB.shutdown();
+        return result;
     }
 
-    protected void replyByHe1pMETemplate(final MessageChannel messageChannel, final String msg) {
+    protected void replyByHe1pMETemplate(final MessageChannel messageChannel, final String title, final String desc) {
         final Color color = Color.of(255, 192, 203);
-        messageChannel.createMessage(EmbedCreateSpec.create().withTitle(msg).withColor(color)).block();
+        messageChannel.createMessage(
+                EmbedCreateSpec.create().withTitle(title).withDescription(desc).withColor(color)
+        ).block();
     }
 }
