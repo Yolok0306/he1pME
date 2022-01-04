@@ -6,13 +6,17 @@ import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.ItemCollection;
 import com.amazonaws.services.dynamodbv2.document.QueryOutcome;
 import com.amazonaws.services.dynamodbv2.document.spec.QuerySpec;
+import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.channel.MessageChannel;
+import discord4j.core.spec.EmbedCreateFields;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.rest.util.Color;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 
 public class CommonService {
 
@@ -50,10 +54,18 @@ public class CommonService {
         return result;
     }
 
-    protected void replyByHe1pMETemplate(final MessageChannel messageChannel, final String title, final String desc) {
+    protected void replyByHe1pMETemplate(final MessageCreateEvent event, final String title,
+                                         final String desc, final String thumb) {
+        final MessageChannel messageChannel = Objects.requireNonNull(event.getMessage().getChannel().block());
         final Color color = Color.of(255, 192, 203);
-        messageChannel.createMessage(
-                EmbedCreateSpec.create().withTitle(title).withDescription(desc).withColor(color)
-        ).block();
+        final EmbedCreateSpec.Builder embedCreateSpec = EmbedCreateSpec.builder().title(title).description(desc)
+                .thumbnail(Optional.ofNullable(thumb).orElse("")).color(color);
+        event.getMember().ifPresent(member -> {
+            final String name = member.getUsername();
+            final String avatarUrl = member.getAvatarUrl();
+            final EmbedCreateFields.Author author = EmbedCreateFields.Author.of(name, null, avatarUrl);
+            embedCreateSpec.author(author);
+        });
+        messageChannel.createMessage(embedCreateSpec.build()).block();
     }
 }

@@ -13,7 +13,6 @@ import com.sedmelluq.discord.lavaplayer.track.AudioTrackInfo;
 import com.sedmelluq.discord.lavaplayer.track.playback.NonAllocatingAudioFrameBuffer;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.message.MessageCreateEvent;
-import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.object.entity.channel.VoiceChannel;
 import discord4j.core.spec.VoiceChannelJoinSpec;
 
@@ -99,27 +98,28 @@ public class MusicService extends CommonService {
         final VoiceChannel voiceChannel = getVoiceChannel(event);
         final AudioPlayer audioPlayer = GuildAudioManager.of(voiceChannel.getGuildId()).getPlayer();
         if (Objects.requireNonNull(audioPlayer.getPlayingTrack()).isSeekable()) {
-            final MessageChannel messageChannel = Objects.requireNonNull(event.getMessage().getChannel().block());
             final AudioTrackInfo audioTrackInfo = audioPlayer.getPlayingTrack().getInfo();
-            final String title = "Title : " + audioTrackInfo.title;
-            final String author = "\nAuthor : " + audioTrackInfo.author;
-            final String time = "\nTime : " + timeFormat(audioTrackInfo.length);
-            replyByHe1pMETemplate(messageChannel, "播放資訊", title + author + time);
+            final String title = "播放資訊";
+            final String desc = "標題 : " + titleFormat(audioTrackInfo.title) + "\n創作者 : " +
+                    audioTrackInfo.author + "\n音樂長度 : " + timeFormat(audioTrackInfo.length);
+            replyByHe1pMETemplate(event, title, desc, null);
         }
     }
 
     protected void list(final MessageCreateEvent event) {
         if (checkChannelContainBot(event) && Optional.ofNullable(getVoiceChannel(event)).isPresent()) {
             final VoiceChannel voiceChannel = getVoiceChannel(event);
-            final MessageChannel messageChannel = Objects.requireNonNull(event.getMessage().getChannel().block());
             final List<AudioTrack> queue = GuildAudioManager.of(voiceChannel.getGuildId()).getScheduler().getQueue();
             if (queue.isEmpty()) {
-                replyByHe1pMETemplate(messageChannel, "音樂清單", "空");
+                final String title = "播放清單有0首歌 :";
+                final String desc = "播放清單為空";
+                replyByHe1pMETemplate(event, title, desc, null);
             } else {
                 //TODO set embed with hyperLink
-                final StringBuilder result = new StringBuilder("Queue contains " + queue.size() + " songs :");
-                queue.forEach(audioTrack -> result.append("\n").append(audioTrack.getInfo().title));
-                replyByHe1pMETemplate(messageChannel, "音樂清單", result.toString());
+                final String title = "播放清單有" + queue.size() + "首歌 :";
+                final StringBuilder desc = new StringBuilder();
+                queue.forEach(audioTrack -> desc.append(titleFormat(audioTrack.getInfo().title)).append("\n"));
+                replyByHe1pMETemplate(event, title, desc.toString(), null);
             }
         }
     }
@@ -158,6 +158,10 @@ public class MusicService extends CommonService {
         event.getMember().flatMap(member -> Optional.ofNullable(member.getVoiceState().block()))
                 .ifPresent(voiceState -> voiceChannel.set(voiceState.getChannel().block()));
         return voiceChannel.get();
+    }
+
+    private String titleFormat(final String title) {
+        return title.length() > 38 ? title.substring(0, 35) + "..." : title;
     }
 
     private String timeFormat(long time) {
