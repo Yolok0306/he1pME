@@ -3,7 +3,6 @@ package Action;
 import Service.CommonService;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.Member;
-import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.spec.GuildMemberEditSpec;
 
 import java.util.Objects;
@@ -16,7 +15,6 @@ public class EditNameAction extends CommonService implements Action {
 
     @Override
     public void execute(final MessageCreateEvent event) {
-        final MessageChannel messageChannel = Objects.requireNonNull(event.getMessage().getChannel().block());
         final String context = event.getMessage().getContent().toString();
 
         event.getMessage().getMemberMentions().stream().findFirst().ifPresent(partialMember -> {
@@ -26,7 +24,10 @@ public class EditNameAction extends CommonService implements Action {
                     Objects.requireNonNull(member).getUsername() : getNewName(context);
             final GuildMemberEditSpec guildMemberEditSpec = GuildMemberEditSpec.builder().build();
             Objects.requireNonNull(member).edit(guildMemberEditSpec.withNicknameOrNull(newName)).block();
-            replyByHe1pMETemplate(messageChannel, "修改暱稱成功", "\"" + oldName + "\" -> \"" + newName + "\"");
+            final String title = "修改暱稱成功";
+            final String desc = oldName + " -> " + newName;
+            final String thumb = Objects.requireNonNull(member).getAvatarUrl();
+            replyByHe1pMETemplate(event, title, desc, thumb);
         });
     }
 
