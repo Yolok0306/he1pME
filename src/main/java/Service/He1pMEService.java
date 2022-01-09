@@ -27,6 +27,11 @@ public class He1pMEService {
         final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
         final ScanSpec scanSpec = new ScanSpec();
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("ServerData").scan(scanSpec);
+
+        if (!items.iterator().hasNext()) {
+            throw new IllegalStateException("can not get any AllowChatRoom id or Token from database !");
+        }
+
         items.forEach(item -> {
             if (StringUtils.equals(item.getString("name"), "AllowChatRoom")) {
                 chatRoomIdSet.add(item.getString("id"));

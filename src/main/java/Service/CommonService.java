@@ -3,6 +3,7 @@ package Service;
 import SpecialDataStructure.UrlType;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.services.dynamodbv2.document.ItemCollection;
 import com.amazonaws.services.dynamodbv2.document.QueryOutcome;
 import com.amazonaws.services.dynamodbv2.document.spec.QuerySpec;
@@ -11,6 +12,7 @@ import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.spec.EmbedCreateFields;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.rest.util.Color;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.Collections;
@@ -18,9 +20,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+@Slf4j
 public class CommonService {
 
-    protected String getIdFromDB(final String searchValue) {
+    protected Optional<String> getIdFromDB(final String searchValue) {
         final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
         final Map<String, String> nameMap = Collections.singletonMap("#key", "name");
         final Map<String, Object> valueMap = Collections.singletonMap(":value", searchValue);
@@ -28,16 +31,17 @@ public class CommonService {
                 .withNameMap(nameMap).withValueMap(valueMap);
         final ItemCollection<QueryOutcome> items = dynamoDB.getTable("AllOfId").query(querySpec);
 
-        String result = null;
-        if (items.iterator().hasNext()) {
-            result = items.iterator().next().getString("id");
+        if (!items.iterator().hasNext()) {
+            log.error(searchValue + "'s id is not in database !");
+            return Optional.empty();
         }
 
+        final String result = items.iterator().next().getString("id");
         dynamoDB.shutdown();
-        return result;
+        return Optional.ofNullable(result);
     }
 
-    protected String getUrlFromDB(final String searchValue, final UrlType type) {
+    protected Optional<String> getUrlFromDB(final String searchValue, final UrlType type) {
         final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
         final Map<String, String> nameMap = Collections.singletonMap("#key", "name");
         final Map<String, Object> valueMap = Collections.singletonMap(":value", searchValue);
@@ -45,13 +49,21 @@ public class CommonService {
                 .withNameMap(nameMap).withValueMap(valueMap);
         final ItemCollection<QueryOutcome> items = dynamoDB.getTable("Url").query(querySpec);
 
-        String result = null;
-        if (items.iterator().hasNext() && StringUtils.equals(items.iterator().next().getString("type"), type.getType())) {
-            result = items.iterator().next().getString("url");
+        if (!items.iterator().hasNext()) {
+            log.error(searchValue + "'s url is not in database !");
+            return Optional.empty();
         }
 
+        final Item item = items.iterator().next();
+
+        if (!StringUtils.equals(item.getString("type"), type.getType())) {
+            log.error(searchValue + "'s url type is not equal to \"" + type.getType() + "\" !");
+            return Optional.empty();
+        }
+
+        final String result = item.getString("url");
         dynamoDB.shutdown();
-        return result;
+        return Optional.ofNullable(result);
     }
 
     protected void replyByHe1pMETemplate(final MessageCreateEvent event, final String title,
