@@ -12,46 +12,56 @@ import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.rest.util.Color;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.ObjectUtils;
 
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+@Slf4j
 public class CallActionService extends CommonService {
 
     protected void callAction(final MessageCreateEvent event, final String instruction) {
         final MessageChannel messageChannel = Objects.requireNonNull(event.getMessage().getChannel().block());
-        Optional.ofNullable(getDataFromDB(instruction)).ifPresent(item -> {
+        getDataFromDB(instruction).ifPresent(item -> {
             final CallAction callAction = buildCallAction(item);
+            if (ObjectUtils.isEmpty(callAction.getId()) || ObjectUtils.isEmpty(callAction.getImage())) {
+                return;
+            }
+
             messageChannel.createMessage("<@" + callAction.getId() + "> " + callAction.getMessage()).block();
             messageChannel.createMessage(EmbedCreateSpec.create().withColor(callAction.getColor())
                     .withImage(callAction.getImage())).block();
         });
     }
 
-    private Item getDataFromDB(final String searchValue) {
+    private Optional<Item> getDataFromDB(final String searchValue) {
         final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
         final Map<String, String> nameMap = Collections.singletonMap("#key", "action");
         final Map<String, Object> valueMap = Collections.singletonMap(":value", searchValue);
         final QuerySpec querySpec = new QuerySpec().withKeyConditionExpression("#key = :value")
                 .withNameMap(nameMap).withValueMap(valueMap);
         final ItemCollection<QueryOutcome> items = dynamoDB.getTable("CallAction").query(querySpec);
-        Item result = null;
-        if (items.iterator().hasNext()) {
-            result = items.iterator().next();
+
+        if (!items.iterator().hasNext()) {
+            log.error("can not find action : " + searchValue + " in database !");
+            return Optional.empty();
         }
+
+        final Item result = items.iterator().next();
         dynamoDB.shutdown();
-        return result;
+        return Optional.ofNullable(result);
     }
 
     private CallAction buildCallAction(final Item item) {
-        final CallAction result = new CallAction();
-        result.setId(getIdFromDB(item.getString("name")));
-        result.setMessage(item.getString("message"));
-        result.setImage(getUrlFromDB(item.getString("image"), UrlType.IMAGE));
+        final CallAction.CallActionBuilder result = CallAction.builder();
+        getIdFromDB(item.getString("name")).ifPresent(result::id);
+        result.message(item.getString("message"));
+        getUrlFromDB(item.getString("image"), UrlType.IMAGE).ifPresent(result::image);
         final String[] color = item.getString("color").split(", ");
-        result.setColor(Color.of(Integer.parseInt(color[0]), Integer.parseInt(color[1]), Integer.parseInt(color[2])));
-        return result;
+        result.color(Color.of(Integer.parseInt(color[0]), Integer.parseInt(color[1]), Integer.parseInt(color[2])));
+        return result.build();
     }
 }

@@ -36,8 +36,8 @@ public class MusicService extends CommonService {
         join(event);
         final String content = event.getMessage().getContent();
         final String[] array = content.split(" ");
-        if (checkChannelContainBot(event) && Optional.ofNullable(getVoiceChannel(event)).isPresent() && array.length == 2) {
-            final VoiceChannel voiceChannel = getVoiceChannel(event);
+        if (checkChannelContainBot(event) && getVoiceChannel(event).isPresent() && array.length == 2) {
+            final VoiceChannel voiceChannel = getVoiceChannel(event).get();
             final String musicSource = content.split(" ")[1];
             PLAYER_MANAGER.loadItem(musicSource, new AudioLoadResultHandler() {
                 @Override
@@ -67,8 +67,8 @@ public class MusicService extends CommonService {
     }
 
     protected void stop(final MessageCreateEvent event) {
-        if (checkChannelContainBot(event) && Optional.ofNullable(getVoiceChannel(event)).isPresent()) {
-            final VoiceChannel voiceChannel = getVoiceChannel(event);
+        if (checkChannelContainBot(event) && getVoiceChannel(event).isPresent()) {
+            final VoiceChannel voiceChannel = getVoiceChannel(event).get();
             GuildAudioManager.of(voiceChannel.getGuildId()).getPlayer().stopTrack();
             GuildAudioManager.of(voiceChannel.getGuildId()).clearQueue();
         }
@@ -76,39 +76,37 @@ public class MusicService extends CommonService {
     }
 
     protected void join(final MessageCreateEvent event) {
-        if (!checkChannelContainBot(event) && Optional.ofNullable(getVoiceChannel(event)).isPresent()) {
-            final VoiceChannel voiceChannel = getVoiceChannel(event);
+        if (!checkChannelContainBot(event) && getVoiceChannel(event).isPresent()) {
+            final VoiceChannel voiceChannel = getVoiceChannel(event).get();
             voiceChannel.join(VoiceChannelJoinSpec.builder().build()
                     .withProvider(GuildAudioManager.of(voiceChannel.getGuildId()).getProvider())).block();
         }
     }
 
     protected void leave(final MessageCreateEvent event) {
-        if (checkChannelContainBot(event) && Optional.ofNullable(getVoiceChannel(event)).isPresent()) {
-            final VoiceChannel voiceChannel = getVoiceChannel(event);
+        if (checkChannelContainBot(event) && getVoiceChannel(event).isPresent()) {
+            final VoiceChannel voiceChannel = getVoiceChannel(event).get();
             voiceChannel.sendDisconnectVoiceState().block();
         }
     }
 
     protected void np(final MessageCreateEvent event) {
-        if (!checkChannelContainBot(event) && Optional.ofNullable(getVoiceChannel(event)).isPresent()) {
-            return;
-        }
-
-        final VoiceChannel voiceChannel = getVoiceChannel(event);
-        final AudioPlayer audioPlayer = GuildAudioManager.of(voiceChannel.getGuildId()).getPlayer();
-        if (Objects.requireNonNull(audioPlayer.getPlayingTrack()).isSeekable()) {
-            final AudioTrackInfo audioTrackInfo = audioPlayer.getPlayingTrack().getInfo();
-            final String title = "播放資訊";
-            final String desc = "標題 : " + titleFormat(audioTrackInfo.title) + "\n創作者 : " +
-                    audioTrackInfo.author + "\n音樂長度 : " + timeFormat(audioTrackInfo.length);
-            replyByHe1pMETemplate(event, title, desc, null);
+        if (checkChannelContainBot(event) && getVoiceChannel(event).isPresent()) {
+            final VoiceChannel voiceChannel = getVoiceChannel(event).get();
+            final AudioPlayer audioPlayer = GuildAudioManager.of(voiceChannel.getGuildId()).getPlayer();
+            if (Objects.requireNonNull(audioPlayer.getPlayingTrack()).isSeekable()) {
+                final AudioTrackInfo audioTrackInfo = audioPlayer.getPlayingTrack().getInfo();
+                final String title = "播放資訊";
+                final String desc = "標題 : " + titleFormat(audioTrackInfo.title) + "\n創作者 : " +
+                        audioTrackInfo.author + "\n音樂長度 : " + timeFormat(audioTrackInfo.length);
+                replyByHe1pMETemplate(event, title, desc, null);
+            }
         }
     }
 
     protected void list(final MessageCreateEvent event) {
-        if (checkChannelContainBot(event) && Optional.ofNullable(getVoiceChannel(event)).isPresent()) {
-            final VoiceChannel voiceChannel = getVoiceChannel(event);
+        if (checkChannelContainBot(event) && getVoiceChannel(event).isPresent()) {
+            final VoiceChannel voiceChannel = getVoiceChannel(event).get();
             final List<AudioTrack> queue = GuildAudioManager.of(voiceChannel.getGuildId()).getScheduler().getQueue();
             if (queue.isEmpty()) {
                 final String title = "播放清單有0首歌 :";
@@ -125,8 +123,8 @@ public class MusicService extends CommonService {
     }
 
     protected void skip(final MessageCreateEvent event) {
-        if (checkChannelContainBot(event) && Optional.ofNullable(getVoiceChannel(event)).isPresent()) {
-            final VoiceChannel voiceChannel = getVoiceChannel(event);
+        if (checkChannelContainBot(event) && getVoiceChannel(event).isPresent()) {
+            final VoiceChannel voiceChannel = getVoiceChannel(event).get();
             if (!GuildAudioManager.of(voiceChannel.getGuildId()).getScheduler().getQueue().isEmpty()) {
                 GuildAudioManager.of(voiceChannel.getGuildId()).getScheduler().skip();
             }
@@ -134,8 +132,8 @@ public class MusicService extends CommonService {
     }
 
     protected void pause(final MessageCreateEvent event) {
-        if (checkChannelContainBot(event) && Optional.ofNullable(getVoiceChannel(event)).isPresent()) {
-            final VoiceChannel voiceChannel = getVoiceChannel(event);
+        if (checkChannelContainBot(event) && getVoiceChannel(event).isPresent()) {
+            final VoiceChannel voiceChannel = getVoiceChannel(event).get();
             final boolean control = GuildAudioManager.of(voiceChannel.getGuildId()).getPlayer().isPaused();
             GuildAudioManager.of(voiceChannel.getGuildId()).getPlayer().setPaused(!control);
         }
@@ -147,17 +145,16 @@ public class MusicService extends CommonService {
 
     private Boolean checkChannelContainBot(final MessageCreateEvent event) {
         final AtomicReference<Boolean> result = new AtomicReference<>(false);
-        Optional.ofNullable(getIdFromDB("he1pME")).ifPresent(token ->
-                Optional.ofNullable(getVoiceChannel(event)).ifPresent(channel ->
-                        result.set(channel.isMemberConnected(Snowflake.of(token)).block())));
+        getIdFromDB("he1pME").ifPresent(token -> getVoiceChannel(event).ifPresent(channel ->
+                result.set(channel.isMemberConnected(Snowflake.of(token)).block())));
         return result.get();
     }
 
-    private VoiceChannel getVoiceChannel(final MessageCreateEvent event) {
+    private Optional<VoiceChannel> getVoiceChannel(final MessageCreateEvent event) {
         final AtomicReference<VoiceChannel> voiceChannel = new AtomicReference<>();
         event.getMember().flatMap(member -> Optional.ofNullable(member.getVoiceState().block()))
                 .ifPresent(voiceState -> voiceChannel.set(voiceState.getChannel().block()));
-        return voiceChannel.get();
+        return Optional.ofNullable(voiceChannel.get());
     }
 
     private String titleFormat(final String title) {
