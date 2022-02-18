@@ -61,7 +61,9 @@ public class CallActionService extends CommonService {
         result.message(item.getString("message"));
         getUrlFromDB(item.getString("image"), UrlType.IMAGE).ifPresent(result::image);
         final String[] color = item.getString("color").split(", ");
-        result.color(Color.of(Integer.parseInt(color[0]), Integer.parseInt(color[1]), Integer.parseInt(color[2])));
+        if (color.length == 3) {
+            result.color(Color.of(Integer.parseInt(color[0]), Integer.parseInt(color[1]), Integer.parseInt(color[2])));
+        }
         return result.build();
     }
 }
