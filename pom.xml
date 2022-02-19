@@ -28,12 +28,12 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
-            <version>1.7.32</version>
+            <version>1.7.36</version>
         </dependency>
         <dependency>
             <groupId>com.amazonaws</groupId>
             <artifactId>aws-java-sdk-dynamodb</artifactId>
-            <version>1.12.131</version>
+            <version>1.12.154</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -68,7 +68,7 @@
                         <manifest>
                             <addClasspath>true</addClasspath>
                             <classpathPrefix>lib/</classpathPrefix>
-                            <mainClass>Execute.He1pME</mainClass>
+                            <mainClass>He1pME</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
