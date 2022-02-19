@@ -1,12 +1,13 @@
 package Service;
 
 import Action.Action;
-import Execute.He1pME;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.services.dynamodbv2.document.ItemCollection;
 import com.amazonaws.services.dynamodbv2.document.ScanOutcome;
 import com.amazonaws.services.dynamodbv2.document.spec.ScanSpec;
+import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import org.apache.commons.lang3.StringUtils;
 import org.reflections.Reflections;
@@ -17,7 +18,10 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class He1pMEService {
+public class He1pMEService extends TimerTask {
+    CallActionService callActionService = new CallActionService();
+    GoodBoyService goodBoyService = new GoodBoyService();
+    public String token;
     private final String SIGN = "$";
     private final Set<String> chatRoomIdSet = new HashSet<>();
     private final Set<String> musicActionSet = new HashSet<>();
@@ -29,16 +33,18 @@ public class He1pMEService {
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("ServerData").scan(scanSpec);
 
         if (!items.iterator().hasNext()) {
-            throw new IllegalStateException("can not get any AllowChatRoom id or Token from database !");
+            throw new IllegalStateException("can not get any server data from database !");
         }
 
-        items.forEach(item -> {
+        for (final Item item : items) {
             if (StringUtils.equals(item.getString("name"), "AllowChatRoom")) {
                 chatRoomIdSet.add(item.getString("id"));
+            } else if (StringUtils.equals(item.getString("name"), "BadWord")) {
+                goodBoyService.badWordSet.add(item.getString("id"));
             } else if (StringUtils.equals(item.getString("name"), "Token")) {
-                He1pME.token = item.getString("id");
+                token = item.getString("id");
             }
-        });
+        }
         dynamoDB.shutdown();
 
         musicActionSet.addAll(Arrays.stream(MusicService.class.getDeclaredMethods()).filter(method ->
@@ -55,21 +61,35 @@ public class He1pMEService {
                 }, Function.identity(), (existing, replacement) -> existing)));
     }
 
+    @Override
+    public void run() {
+        goodBoyService.updateMap();
+    }
+
     public void receiveMessage(final MessageCreateEvent event) {
         final String channelId = Optional.of(event.getMessage().getChannelId().asString()).orElse("");
         final String content = Optional.of(event.getMessage().getContent()).orElse("");
 
-        if (!chatRoomIdSet.contains(channelId) || !content.startsWith(SIGN)) {
+        if (!chatRoomIdSet.contains(channelId)) {
+            goodBoyService.checkContent(event, content);
             return;
         }
 
-        final String instruction = format(content);
-        if (musicActionSet.contains(instruction)) {
-            executeMusicAction(event, instruction);
-        } else if (actionMap.containsKey(instruction)) {
-            executeAction(event, instruction);
-        } else {
-            new CallActionService().callAction(event, instruction);
+        if (content.startsWith(SIGN)) {
+            final String instruction = format(content);
+            if (musicActionSet.contains(instruction)) {
+                executeMusicAction(event, instruction);
+            } else if (actionMap.containsKey(instruction)) {
+                executeAction(event, instruction);
+            } else {
+                callActionService.callAction(event, instruction);
+            }
+        } else if (!content.startsWith("!")) {
+            event.getMember().ifPresent(member -> {
+                if (!member.getRoleIds().contains(Snowflake.of("880413244416753674"))) {
+                    event.getMessage().delete().block();
+                }
+            });
         }
     }
 
