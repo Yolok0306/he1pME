@@ -97,8 +97,8 @@ public class MusicService extends CommonService {
             if (Objects.requireNonNull(audioPlayer.getPlayingTrack()).isSeekable()) {
                 final AudioTrackInfo audioTrackInfo = audioPlayer.getPlayingTrack().getInfo();
                 final String title = "播放資訊";
-                final String desc = "標題 : " + titleFormat(audioTrackInfo.title) + "\n創作者 : " +
-                        audioTrackInfo.author + "\n音樂長度 : " + timeFormat(audioTrackInfo.length);
+                final String desc = "◆ 標題 : " + titleFormat(audioTrackInfo.title) + "\n◆ 創作者 : " +
+                        audioTrackInfo.author + "\n◆ 音樂長度 : " + timeFormat(audioTrackInfo.length);
                 replyByHe1pMETemplate(event, title, desc, null);
             }
         }

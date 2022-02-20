@@ -73,7 +73,7 @@ public class CommonService {
         final EmbedCreateSpec.Builder embedCreateSpec = EmbedCreateSpec.builder().title(title).description(desc)
                 .thumbnail(Optional.ofNullable(thumb).orElse("")).color(color);
         event.getMember().ifPresent(member -> {
-            final String name = member.getUsername();
+            final String name = member.getTag();
             final String avatarUrl = member.getAvatarUrl();
             final EmbedCreateFields.Author author = EmbedCreateFields.Author.of(name, null, avatarUrl);
             embedCreateSpec.author(author);
