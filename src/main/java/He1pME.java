@@ -54,12 +54,10 @@ public class He1pME {
         }
 
         for (final Item item : items) {
-            if (StringUtils.equals(item.getString("name"), "AllowChatRoom")) {
-                receiveEventService.addChatRoomIdSet(item.getString("id"));
+            if (StringUtils.equals(item.getString("name"), "Token")) {
+                token = (item.getString("id"));
             } else if (StringUtils.equals(item.getString("name"), "BadWord")) {
                 goodBoyService.addBadWordSet(item.getString("id"));
-            } else if (StringUtils.equals(item.getString("name"), "Token")) {
-                token = (item.getString("id"));
             }
         }
         dynamoDB.shutdown();

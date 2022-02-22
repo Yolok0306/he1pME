@@ -2,20 +2,17 @@ package Service;
 
 import Action.Action;
 import discord4j.core.event.domain.message.MessageCreateEvent;
+import discord4j.core.object.entity.channel.TextChannel;
+import org.apache.commons.lang3.StringUtils;
 
 import java.lang.reflect.Method;
 import java.util.*;
 
 public class ReceiveEventService {
     private final String SIGN = "$";
-    private final Set<String> chatRoomIdSet = new HashSet<>();
     private final Set<String> musicActionSet = new HashSet<>();
     private final Map<String, Class<? extends Action>> actionMap = new HashMap<>();
     CallActionService callActionService = new CallActionService();
-
-    public void addChatRoomIdSet(final String chatRoomId) {
-        this.chatRoomIdSet.add(chatRoomId);
-    }
 
     public void addMusicActionSet(final Set<String> musicActionSet) {
         this.musicActionSet.addAll(musicActionSet);
@@ -26,13 +23,13 @@ public class ReceiveEventService {
     }
 
     public void receiveMessage(final MessageCreateEvent event, final GoodBoyService goodBoyService) {
-        final String channelId = Optional.of(event.getMessage().getChannelId().asString()).orElse("");
         final String content = Optional.of(event.getMessage().getContent()).orElse("");
 
-        if (!chatRoomIdSet.contains(channelId)) {
+        if (Boolean.FALSE.equals(isInstructionChannel(event))) {
             goodBoyService.checkContent(event, content);
         } else if (content.startsWith(SIGN)) {
             final String instruction = format(content);
+
             if (musicActionSet.contains(instruction)) {
                 executeMusicAction(event, instruction);
             } else if (actionMap.containsKey(instruction)) {
@@ -45,6 +42,15 @@ public class ReceiveEventService {
                 event.getMessage().delete().block();
             }
         }
+    }
+
+    private boolean isInstructionChannel(final MessageCreateEvent event) {
+        if (event.getMessage().getChannel().block() instanceof TextChannel) {
+            final TextChannel textChannel = (TextChannel) event.getMessage().getChannel().block();
+            assert textChannel != null;
+            return StringUtils.containsIgnoreCase(textChannel.getName(), "指令");
+        }
+        return false;
     }
 
     private String format(final String content) {
