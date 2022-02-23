@@ -18,12 +18,12 @@ public class GoodBoyService extends CommonService {
     }
 
     protected void checkContent(final MessageCreateEvent event, final String content) {
-        if (badWordSet.isEmpty() || !isBadWord(content)) {
+        if (badWordSet.isEmpty()) {
             return;
         }
 
         event.getMember().ifPresent(member -> {
-            if (member.isBot() || Objects.requireNonNull(member.getBasePermissions().block()).contains(Permission.ADMINISTRATOR)) {
+            if (member.isBot() || isAdministrator(member) || !isBadWord(content)) {
                 return;
             }
 
@@ -36,13 +36,51 @@ public class GoodBoyService extends CommonService {
         });
     }
 
-    private boolean isBadWord(final String content) {
+    private boolean isAdministrator(final Member member) {
+        return Objects.requireNonNull(member.getBasePermissions().block()).contains(Permission.ADMINISTRATOR);
+    }
+
+    private boolean isBadWord(String content) {
+        content = fullWidthToHalfWidth(content);
+        content = removeMentionInfoAndSymbol(content);
+
+        if (StringUtils.isBlank(content)) {
+            return false;
+        }
+
         for (final String badWord : badWordSet) {
-            if (StringUtils.containsIgnoreCase(content, badWord)) {
+            if (badWord.matches("^\\d++$") && StringUtils.equals(content, badWord)) {
+                return true;
+            } else if (!badWord.matches("^\\d++$") && StringUtils.contains(content, badWord)) {
                 return true;
             }
         }
         return false;
+    }
+
+    private String fullWidthToHalfWidth(String content) {
+        for (final char c : content.toCharArray()) {
+            content = content.replace("　","");
+            if ((int) c >= 65281 && (int) c <= 65374) {
+                content = content.replace(c, (char) (((int) c) - 65248));
+            }
+        }
+        return content;
+    }
+
+    private String removeMentionInfoAndSymbol(String content){
+        if (content.matches("^.*@everyone.*$")) {
+            content = content.replaceAll("@everyone", "");
+        }
+
+        if (content.matches("^.*<@[!&]\\d{18}>.*$")) {
+            content = content.replaceAll("<@[!&]\\d{18}>", "");
+        }
+
+        if (content.matches("^.*\\p{Punct}++.*$")) {
+            content = content.replaceAll("\\p{Punct}", "");
+        }
+        return content;
     }
 
     protected void updateMap() {
