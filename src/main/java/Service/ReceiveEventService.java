@@ -7,6 +7,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class ReceiveEventService {
     private final String SIGN = "$";
@@ -37,20 +38,20 @@ public class ReceiveEventService {
             } else {
                 callActionService.callAction(event, instruction);
             }
-        } else if (!content.startsWith("!") && event.getMember().isPresent()) {
-            if (!event.getMember().get().isBot()) {
-                event.getMessage().delete().block();
-            }
+        } else if (!content.startsWith("!") && event.getMember().isPresent() && !event.getMember().get().isBot()) {
+            event.getMessage().delete().block();
         }
     }
 
     private boolean isInstructionChannel(final MessageCreateEvent event) {
-        if (event.getMessage().getChannel().block() instanceof TextChannel) {
-            final TextChannel textChannel = (TextChannel) event.getMessage().getChannel().block();
-            assert textChannel != null;
-            return StringUtils.containsIgnoreCase(textChannel.getName(), "指令");
-        }
-        return false;
+        final AtomicReference<String> channelName = new AtomicReference<>();
+        event.getMessage().getChannel().subscribe(messageChannel -> {
+            if (messageChannel instanceof TextChannel) {
+                final TextChannel textChannel = (TextChannel) messageChannel;
+                channelName.set(textChannel.getName());
+            }
+        });
+        return StringUtils.contains(channelName.get(), "指令");
     }
 
     private String format(final String content) {
