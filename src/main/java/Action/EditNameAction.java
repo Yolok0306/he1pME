@@ -15,12 +15,12 @@ public class EditNameAction extends CommonService implements Action {
 
     @Override
     public void execute(final MessageCreateEvent event) {
-        final String context = event.getMessage().getContent().toString();
+        final String content = event.getMessage().getContent().toString();
 
         event.getMessage().getMemberMentions().stream().findFirst().ifPresent(partialMember -> {
             final Member member = partialMember.asFullMember().block();
             final String oldName = Objects.requireNonNull(member).getDisplayName();
-            final String newName = getNewName(context);
+            final String newName = content.replaceAll("\\$editName\\s<@[!]\\d{18}>\\s++", "");
             final GuildMemberEditSpec guildMemberEditSpec = GuildMemberEditSpec.builder().build();
             Objects.requireNonNull(member).edit(guildMemberEditSpec.withNicknameOrNull(newName)).block();
             final String title = "修改暱稱成功";
@@ -28,12 +28,5 @@ public class EditNameAction extends CommonService implements Action {
             final String thumb = Objects.requireNonNull(member).getAvatarUrl();
             replyByHe1pMETemplate(event, title, desc, thumb);
         });
-    }
-
-    private String getNewName(String content) {
-        if (content.matches("^\\$editName\\s<@[!&]\\d{18}>\\s.*$")) {
-            content = content.replaceAll("\\$editName\\s<@[!&]\\d{18}>\\s", "");
-        }
-        return content;
     }
 }

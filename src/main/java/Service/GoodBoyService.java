@@ -41,17 +41,20 @@ public class GoodBoyService extends CommonService {
     }
 
     private boolean isBadWord(String content) {
+        content = content.replaceAll("@everyone|@here", "");
+        content = content.replaceAll("<@[!&]\\d{18}>", "");
         content = fullWidthToHalfWidth(content);
-        content = removeMentionInfoAndSymbol(content);
+        content = content.replaceAll("\\p{Punct}", "");
+        content = content.replaceAll("\\p{Blank}", "");
 
         if (StringUtils.isBlank(content)) {
             return false;
         }
 
         for (final String badWord : badWordSet) {
-            if (badWord.matches("^\\d++$") && StringUtils.equals(content, badWord)) {
+            if (badWord.matches("^\\d$") && StringUtils.containsOnly(content, badWord)) {
                 return true;
-            } else if (!badWord.matches("^\\d++$") && StringUtils.contains(content, badWord)) {
+            } else if (!badWord.matches("^\\d$") && StringUtils.contains(content, badWord)) {
                 return true;
             }
         }
@@ -60,7 +63,7 @@ public class GoodBoyService extends CommonService {
 
     private String fullWidthToHalfWidth(String content) {
         for (final char c : content.toCharArray()) {
-            content = content.replace("　","");
+            content = content.replace("　", "");
             if ((int) c >= 65281 && (int) c <= 65374) {
                 content = content.replace(c, (char) (((int) c) - 65248));
             }
@@ -68,7 +71,7 @@ public class GoodBoyService extends CommonService {
         return content;
     }
 
-    private String removeMentionInfoAndSymbol(String content){
+    private String removeMentionInfoAndSymbol(String content) {
         if (content.matches("^.*@everyone.*$")) {
             content = content.replaceAll("@everyone", "");
         }

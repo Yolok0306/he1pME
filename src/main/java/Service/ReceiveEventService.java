@@ -55,9 +55,9 @@ public class ReceiveEventService {
     }
 
     private String format(final String content) {
-        final String[] array = content.split(" ");
-        final String instruction = array[0];
-        return new StringBuilder(instruction).delete(0, SIGN.length()).toString();
+        final int spaceIndex = content.indexOf(" ");
+        final String instruction = spaceIndex == -1 ? content : content.substring(0, spaceIndex);
+        return instruction.replace(SIGN, "");
     }
 
     private void executeMusicAction(final MessageCreateEvent event, final String response) {
