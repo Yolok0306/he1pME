@@ -1,13 +1,13 @@
 package Action;
 
-import Service.CommonService;
+import Util.CommonUtil;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.Member;
 import discord4j.core.spec.GuildMemberEditSpec;
 
 import java.util.Objects;
 
-public class EditNameAction extends CommonService implements Action {
+public class EditNameAction implements Action {
     @Override
     public String getInstruction() {
         return "editName";
@@ -26,7 +26,7 @@ public class EditNameAction extends CommonService implements Action {
             final String title = "修改暱稱成功";
             final String desc = oldName + " -> " + newName;
             final String thumb = Objects.requireNonNull(member).getAvatarUrl();
-            replyByHe1pMETemplate(event, title, desc, thumb);
+            CommonUtil.replyByHe1pMETemplate(event, title, desc, thumb);
         });
     }
 }

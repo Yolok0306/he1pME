@@ -1,6 +1,7 @@
 package Service;
 
-import discord4j.common.util.Snowflake;
+import Util.CommonUtil;
+import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.Member;
 import discord4j.rest.util.Permission;
@@ -8,10 +9,9 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.util.*;
 
-public class GoodBoyService extends CommonService {
+public class GoodBoyService {
     private final Set<String> badWordSet = new HashSet<>();
-    private final Map<Member, Integer> badBoyMap = new HashMap<>();
-    private final Snowflake muteRole = Snowflake.of("836214787918528582");
+    private final Map<String, Integer> badBoyMap = new HashMap<>();
 
     public void addBadWordSet(final String badWord) {
         badWordSet.add(badWord);
@@ -28,11 +28,11 @@ public class GoodBoyService extends CommonService {
             }
 
             event.getMessage().delete().block();
-            member.addRole(muteRole, "Bad Boy").block();
+            member.addRole(CommonUtil.muteRole, "Bad Boy").block();
             final String title = "言論審查系統";
             final String desc = "◆ 不當言論 : " + content + "\n◆ 懲處 : 禁言3分鐘";
-            replyByHe1pMETemplate(event, title, desc, null);
-            badBoyMap.put(member, 3);
+            CommonUtil.replyByHe1pMETemplate(event, title, desc, null);
+            badBoyMap.put(member.getGuildId() + "-" + member.getId(), 3);
         });
     }
 
@@ -42,7 +42,8 @@ public class GoodBoyService extends CommonService {
 
     private boolean isBadWord(String content) {
         content = content.replaceAll("@everyone|@here", "");
-        content = content.replaceAll("<@[!&]\\d{18}>", "");
+        content = content.replaceAll("<@[!&#]\\d{18}/<#\\d{18}>>", "");
+        content = content.replaceAll("<#\\d{18}>", "");
         content = fullWidthToHalfWidth(content);
         content = content.replaceAll("\\p{Punct}", "");
         content = content.replaceAll("\\p{Blank}", "");
@@ -71,31 +72,22 @@ public class GoodBoyService extends CommonService {
         return content;
     }
 
-    private String removeMentionInfoAndSymbol(String content) {
-        if (content.matches("^.*@everyone.*$")) {
-            content = content.replaceAll("@everyone", "");
-        }
-
-        if (content.matches("^.*<@[!&]\\d{18}>.*$")) {
-            content = content.replaceAll("<@[!&]\\d{18}>", "");
-        }
-
-        if (content.matches("^.*\\p{Punct}++.*$")) {
-            content = content.replaceAll("\\p{Punct}", "");
-        }
-        return content;
-    }
-
-    protected void updateMap() {
+    protected void updateMap(final GatewayDiscordClient bot) {
         if (badBoyMap.isEmpty()) {
             return;
         }
 
-        for (final Map.Entry<Member, Integer> entry : badBoyMap.entrySet()) {
+        for (final Map.Entry<String, Integer> entry : badBoyMap.entrySet()) {
             if (entry.getValue() > 1) {
                 badBoyMap.replace(entry.getKey(), entry.getValue() - 1);
             } else {
-                entry.getKey().removeRole(muteRole, "Good Boy").block();
+                final String guildId = entry.getKey().split("-")[0];
+                final String memberId = entry.getKey().split("-")[1];
+                bot.getGuilds().toStream()
+                        .filter(guild -> StringUtils.equals(guild.getId().toString(), guildId))
+                        .findFirst().flatMap(guild -> guild.getMembers().toStream()
+                                .filter(member -> StringUtils.equals(member.getId().toString(), memberId))
+                                .findFirst()).ifPresent(member -> member.removeRole(CommonUtil.muteRole).block());
                 badBoyMap.remove(entry.getKey());
             }
         }
