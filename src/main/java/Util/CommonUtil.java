@@ -1,4 +1,4 @@
-package Service;
+package Util;
 
 import SpecialDataStructure.UrlType;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
@@ -7,6 +7,7 @@ import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.services.dynamodbv2.document.ItemCollection;
 import com.amazonaws.services.dynamodbv2.document.QueryOutcome;
 import com.amazonaws.services.dynamodbv2.document.spec.QuerySpec;
+import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.spec.EmbedCreateFields;
@@ -21,9 +22,10 @@ import java.util.Objects;
 import java.util.Optional;
 
 @Slf4j
-public class CommonService {
+public class CommonUtil {
+    public static final Snowflake muteRole = Snowflake.of("836214787918528582");
 
-    protected Optional<String> getIdFromDB(final String searchValue) {
+    public static Optional<String> getIdFromDB(final String searchValue) {
         final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
         final Map<String, String> nameMap = Collections.singletonMap("#key", "name");
         final Map<String, Object> valueMap = Collections.singletonMap(":value", searchValue);
@@ -41,7 +43,7 @@ public class CommonService {
         return Optional.ofNullable(result);
     }
 
-    protected Optional<String> getUrlFromDB(final String searchValue, final UrlType type) {
+    public static Optional<String> getUrlFromDB(final String searchValue, final UrlType type) {
         final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
         final Map<String, String> nameMap = Collections.singletonMap("#key", "name");
         final Map<String, Object> valueMap = Collections.singletonMap(":value", searchValue);
@@ -66,8 +68,8 @@ public class CommonService {
         return Optional.ofNullable(result);
     }
 
-    protected void replyByHe1pMETemplate(final MessageCreateEvent event, final String title,
-                                         final String desc, final String thumb) {
+    public static void replyByHe1pMETemplate(final MessageCreateEvent event, final String title,
+                                             final String desc, final String thumb) {
         final MessageChannel messageChannel = Objects.requireNonNull(event.getMessage().getChannel().block());
         final Color color = Color.of(255, 192, 203);
         final EmbedCreateSpec.Builder embedCreateSpec = EmbedCreateSpec.builder().title(title).description(desc)

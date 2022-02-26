@@ -1,13 +1,13 @@
 package Action;
 
-import Service.CommonService;
+import Util.CommonUtil;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
-public class GetCurrentTimeAction extends CommonService implements Action {
+public class GetCurrentTimeAction implements Action {
     @Override
     public String getInstruction() {
         return "time";
@@ -19,6 +19,6 @@ public class GetCurrentTimeAction extends CommonService implements Action {
         final LocalDateTime localDateTime = LocalDateTime.now().atZone(ZoneId.of("Asia/Taipei")).toLocalDateTime();
         final String title = "現在時間 (UTC+8)";
         final String desc = dateTimeFormatter.format(localDateTime);
-        replyByHe1pMETemplate(event, title, desc, null);
+        CommonUtil.replyByHe1pMETemplate(event, title, desc, null);
     }
 }

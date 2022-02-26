@@ -1,6 +1,7 @@
 package Service;
 
 import MusicPlugin.GuildAudioManager;
+import Util.CommonUtil;
 import com.sedmelluq.discord.lavaplayer.player.AudioLoadResultHandler;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
@@ -21,7 +22,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class MusicService extends CommonService {
+public class MusicService {
     public static final AudioPlayerManager PLAYER_MANAGER;
 
     static {
@@ -97,9 +98,10 @@ public class MusicService extends CommonService {
             if (Objects.requireNonNull(audioPlayer.getPlayingTrack()).isSeekable()) {
                 final AudioTrackInfo audioTrackInfo = audioPlayer.getPlayingTrack().getInfo();
                 final String title = "播放資訊";
-                final String desc = "◆ 標題 : " + titleFormat(audioTrackInfo.title) + "\n◆ 創作者 : " +
-                        audioTrackInfo.author + "\n◆ 音樂長度 : " + timeFormat(audioTrackInfo.length);
-                replyByHe1pMETemplate(event, title, desc, null);
+                final String desc = titleFormat("Title : " + audioTrackInfo.title) +
+                        "\nAuthor : " + audioTrackInfo.author +
+                        "\nTime : " + timeFormat(audioTrackInfo.length);
+                CommonUtil.replyByHe1pMETemplate(event, title, desc, null);
             }
         }
     }
@@ -111,13 +113,13 @@ public class MusicService extends CommonService {
             if (queue.isEmpty()) {
                 final String title = "播放清單有0首歌 :";
                 final String desc = "播放清單為空";
-                replyByHe1pMETemplate(event, title, desc, null);
+                CommonUtil.replyByHe1pMETemplate(event, title, desc, null);
             } else {
                 //TODO set embed with hyperLink
                 final String title = "播放清單有" + queue.size() + "首歌 :";
                 final StringBuilder desc = new StringBuilder();
-                queue.forEach(audioTrack -> desc.append(titleFormat(audioTrack.getInfo().title)).append("\n"));
-                replyByHe1pMETemplate(event, title, desc.toString(), null);
+                queue.forEach(audioTrack -> desc.append(titleFormat("◆ " + audioTrack.getInfo().title)).append("\n"));
+                CommonUtil.replyByHe1pMETemplate(event, title, desc.toString(), null);
             }
         }
     }
@@ -143,10 +145,18 @@ public class MusicService extends CommonService {
         pause(event);
     }
 
+    protected void clear(final MessageCreateEvent event) {
+        if (checkChannelContainBot(event) && getVoiceChannel(event).isPresent()) {
+            final VoiceChannel voiceChannel = getVoiceChannel(event).get();
+            GuildAudioManager.of(voiceChannel.getGuildId()).clearQueue();
+        }
+    }
+
     private Boolean checkChannelContainBot(final MessageCreateEvent event) {
         final AtomicReference<Boolean> result = new AtomicReference<>(false);
-        getIdFromDB("he1pME").ifPresent(token -> getVoiceChannel(event).ifPresent(channel ->
-                result.set(channel.isMemberConnected(Snowflake.of(token)).block())));
+        CommonUtil.getIdFromDB("he1pME").ifPresent(token ->
+                getVoiceChannel(event).ifPresent(channel ->
+                        result.set(channel.isMemberConnected(Snowflake.of(token)).block())));
         return result.get();
     }
 
@@ -158,7 +168,7 @@ public class MusicService extends CommonService {
     }
 
     private String titleFormat(final String title) {
-        return title.length() > 38 ? title.substring(0, 35) + "..." : title;
+        return title.length() > 42 ? title.substring(0, 40) + "..." : title;
     }
 
     private String timeFormat(long time) {

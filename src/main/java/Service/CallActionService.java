@@ -2,6 +2,7 @@ package Service;
 
 import SpecialDataStructure.CallAction;
 import SpecialDataStructure.UrlType;
+import Util.CommonUtil;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.Item;
@@ -21,7 +22,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 @Slf4j
-public class CallActionService extends CommonService {
+public class CallActionService {
 
     protected void callAction(final MessageCreateEvent event, final String instruction) {
         final MessageChannel messageChannel = Objects.requireNonNull(event.getMessage().getChannel().block());
@@ -57,9 +58,9 @@ public class CallActionService extends CommonService {
 
     private CallAction buildCallAction(final Item item) {
         final CallAction.CallActionBuilder result = CallAction.builder();
-        getIdFromDB(item.getString("name")).ifPresent(result::id);
+        CommonUtil.getIdFromDB(item.getString("name")).ifPresent(result::id);
         result.message(item.getString("message"));
-        getUrlFromDB(item.getString("image"), UrlType.IMAGE).ifPresent(result::image);
+        CommonUtil.getUrlFromDB(item.getString("image"), UrlType.IMAGE).ifPresent(result::image);
         final String[] color = item.getString("color").split(", ");
         if (color.length == 3) {
             result.color(Color.of(Integer.parseInt(color[0]), Integer.parseInt(color[1]), Integer.parseInt(color[2])));
