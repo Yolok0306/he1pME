@@ -5,6 +5,7 @@ import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.Member;
 import discord4j.rest.util.Permission;
+import discord4j.rest.util.PermissionSet;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.*;
@@ -23,7 +24,7 @@ public class GoodBoyService {
         }
 
         event.getMember().ifPresent(member -> {
-            if (member.isBot() || isAdministrator(member) || !isBadWord(content)) {
+            if (member.isBot() || notNeedToCheck(member) || !isBadWord(content)) {
                 return;
             }
 
@@ -36,13 +37,14 @@ public class GoodBoyService {
         });
     }
 
-    private boolean isAdministrator(final Member member) {
-        return Objects.requireNonNull(member.getBasePermissions().block()).contains(Permission.ADMINISTRATOR);
+    private boolean notNeedToCheck(final Member member) {
+        final PermissionSet permissionSet = Optional.ofNullable(member.getBasePermissions().block()).orElse(PermissionSet.none());
+        return permissionSet.contains(Permission.ADMINISTRATOR) || permissionSet.contains(Permission.MANAGE_ROLES);
     }
 
     private boolean isBadWord(String content) {
         content = content.replaceAll("@everyone|@here", "");
-        content = content.replaceAll("<@[!&#]\\d{18}/<#\\d{18}>>", "");
+        content = content.replaceAll("<@[!&]\\d{18}>", "");
         content = content.replaceAll("<#\\d{18}>", "");
         content = fullWidthToHalfWidth(content);
         content = content.replaceAll("\\p{Punct}", "");
@@ -53,9 +55,9 @@ public class GoodBoyService {
         }
 
         for (final String badWord : badWordSet) {
-            if (badWord.matches("^\\d$") && StringUtils.containsOnly(content, badWord)) {
+            if (badWord.length() == 1 && StringUtils.containsOnly(content, badWord)) {
                 return true;
-            } else if (!badWord.matches("^\\d$") && StringUtils.contains(content, badWord)) {
+            } else if (badWord.length() > 1 && StringUtils.contains(content, badWord)) {
                 return true;
             }
         }
