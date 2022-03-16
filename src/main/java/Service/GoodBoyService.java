@@ -39,7 +39,7 @@ public class GoodBoyService {
 
     private boolean notNeedToCheck(final Member member) {
         final PermissionSet permissionSet = Optional.ofNullable(member.getBasePermissions().block()).orElse(PermissionSet.none());
-        return permissionSet.contains(Permission.ADMINISTRATOR) || permissionSet.contains(Permission.MANAGE_ROLES);
+        return permissionSet.contains(Permission.ADMINISTRATOR) || permissionSet.contains(Permission.MODERATE_MEMBERS);
     }
 
     private boolean isBadWord(String content) {

@@ -23,6 +23,7 @@ import java.util.Optional;
 
 @Slf4j
 public class CommonUtil {
+    public static final String SIGN = "$";
     public static final Snowflake muteRole = Snowflake.of("836214787918528582");
 
     public static Optional<String> getIdFromDB(final String searchValue) {
