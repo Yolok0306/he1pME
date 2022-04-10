@@ -1,9 +1,11 @@
 package MusicPlugin;
 
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
+import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import discord4j.common.util.Snowflake;
 import discord4j.voice.AudioProvider;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -40,8 +42,7 @@ public final class GuildAudioManager {
         return provider;
     }
 
-
-    public void clearQueue() {
-        scheduler.getQueue().clear();
+    public List<AudioTrack> getQueue() {
+        return scheduler.getQueue();
     }
 }

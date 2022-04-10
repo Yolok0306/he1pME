@@ -71,7 +71,7 @@ public class MusicService {
         if (checkChannelContainBot(event) && getVoiceChannel(event).isPresent()) {
             final VoiceChannel voiceChannel = getVoiceChannel(event).get();
             GuildAudioManager.of(voiceChannel.getGuildId()).getPlayer().stopTrack();
-            GuildAudioManager.of(voiceChannel.getGuildId()).clearQueue();
+            GuildAudioManager.of(voiceChannel.getGuildId()).getQueue().clear();
         }
         leave(event);
     }
@@ -95,7 +95,7 @@ public class MusicService {
         if (checkChannelContainBot(event) && getVoiceChannel(event).isPresent()) {
             final VoiceChannel voiceChannel = getVoiceChannel(event).get();
             final AudioPlayer audioPlayer = GuildAudioManager.of(voiceChannel.getGuildId()).getPlayer();
-            if (Objects.requireNonNull(audioPlayer.getPlayingTrack()).isSeekable()) {
+            if (Objects.nonNull(audioPlayer.getPlayingTrack()) && audioPlayer.getPlayingTrack().isSeekable()) {
                 final AudioTrackInfo audioTrackInfo = audioPlayer.getPlayingTrack().getInfo();
                 final String title = "播放資訊";
                 final String desc = titleFormat("Title : " + audioTrackInfo.title) +
@@ -148,7 +148,7 @@ public class MusicService {
     protected void clear(final MessageCreateEvent event) {
         if (checkChannelContainBot(event) && getVoiceChannel(event).isPresent()) {
             final VoiceChannel voiceChannel = getVoiceChannel(event).get();
-            GuildAudioManager.of(voiceChannel.getGuildId()).clearQueue();
+            GuildAudioManager.of(voiceChannel.getGuildId()).getQueue().clear();
         }
     }
 

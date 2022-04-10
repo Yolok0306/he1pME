@@ -1,8 +1,5 @@
 import Action.Action;
-import Service.GoodBoyService;
-import Service.MusicService;
-import Service.ReceiveEventService;
-import Service.TimerTaskService;
+import Service.*;
 import Util.CommonUtil;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
@@ -12,6 +9,7 @@ import com.amazonaws.services.dynamodbv2.document.ScanOutcome;
 import com.amazonaws.services.dynamodbv2.document.spec.ScanSpec;
 import discord4j.core.DiscordClient;
 import discord4j.core.GatewayDiscordClient;
+import discord4j.core.event.domain.VoiceStateUpdateEvent;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.gateway.intent.Intent;
@@ -29,7 +27,8 @@ import java.util.stream.Collectors;
 
 public class He1pME {
     private static String token;
-    private static final ReceiveEventService receiveEventService = new ReceiveEventService();
+    private static final MessageEventService messageEventService = new MessageEventService();
+    private static final VoiceStateService voiceStateService = new VoiceStateService();
     private static final GoodBoyService goodBoyService = new GoodBoyService();
     private static final Timer timer = new Timer();
 
@@ -44,7 +43,8 @@ public class He1pME {
             System.out.printf("-----Logged in as %s #%s-----%n", event.getSelf().getUsername(), event.getSelf().getDiscriminator());
         });
         timer.schedule(new TimerTaskService(bot, goodBoyService), 0, 60000);
-        bot.getEventDispatcher().on(MessageCreateEvent.class).subscribe(event -> receiveEventService.receiveMessage(event, goodBoyService));
+        bot.getEventDispatcher().on(MessageCreateEvent.class).subscribe(event -> messageEventService.receiveEvent(event, goodBoyService));
+        bot.getEventDispatcher().on(VoiceStateUpdateEvent.class).subscribe(voiceStateService::receiveEvent);
         bot.onDisconnect().block();
     }
 
@@ -66,10 +66,10 @@ public class He1pME {
         }
         dynamoDB.shutdown();
 
-        receiveEventService.addMusicActionSet(Arrays.stream(MusicService.class.getDeclaredMethods()).filter(method ->
+        messageEventService.addMusicActionSet(Arrays.stream(MusicService.class.getDeclaredMethods()).filter(method ->
                 method.getModifiers() == Modifier.PROTECTED).map(Method::getName).collect(Collectors.toSet()));
 
-        receiveEventService.putActionMap(new Reflections("Action").getSubTypesOf(Action.class).stream()
+        messageEventService.putActionMap(new Reflections("Action").getSubTypesOf(Action.class).stream()
                 .collect(Collectors.toMap(action -> {
                     try {
                         return action.getDeclaredConstructor().newInstance().getInstruction();

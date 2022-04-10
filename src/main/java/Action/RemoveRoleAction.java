@@ -4,10 +4,10 @@ import Util.CommonUtil;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 
-public class AddRoleAction implements Action {
+public class RemoveRoleAction implements Action {
     @Override
     public String getInstruction() {
-        return "addRole";
+        return "removeRole";
     }
 
     @Override
@@ -17,11 +17,11 @@ public class AddRoleAction implements Action {
                         event.getMember().ifPresent(member ->
                                 member.getHighestRole().subscribe(highestRole -> {
                                     final Snowflake roleId = role.getId();
-                                    if (CommonUtil.isHigher(highestRole, role) && !partialMember.getRoleIds().contains(roleId)) {
-                                        final String reason = "AddRoleAction : " + member.getDisplayName();
-                                        partialMember.addRole(roleId, reason).block();
-                                        final String title = "新增身分組成功";
-                                        final String desc = "新增身分組 : " + role.getName();
+                                    if (CommonUtil.isHigher(highestRole, role) && partialMember.getRoleIds().contains(roleId)) {
+                                        final String reason = "RemoveRoleAction : " + member.getDisplayName();
+                                        partialMember.removeRole(roleId, reason).block();
+                                        final String title = "移除身分組成功";
+                                        final String desc = "移除身分組 : " + role.getName();
                                         final String thumb = partialMember.getAvatarUrl();
                                         CommonUtil.replyByHe1pMETemplate(event, title, desc, thumb);
                                     }
