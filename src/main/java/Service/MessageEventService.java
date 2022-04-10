@@ -10,7 +10,7 @@ import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class ReceiveEventService {
+public class MessageEventService {
     private final Set<String> musicActionSet = new HashSet<>();
     private final Map<String, Class<? extends Action>> actionMap = new HashMap<>();
     CallActionService callActionService = new CallActionService();
@@ -23,7 +23,7 @@ public class ReceiveEventService {
         this.actionMap.putAll(actionMap);
     }
 
-    public void receiveMessage(final MessageCreateEvent event, final GoodBoyService goodBoyService) {
+    public void receiveEvent(final MessageCreateEvent event, final GoodBoyService goodBoyService) {
         final String content = Optional.of(event.getMessage().getContent()).orElse("");
 
         if (Boolean.FALSE.equals(isInstructionChannel(event))) {

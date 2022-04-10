@@ -9,6 +9,7 @@ import com.amazonaws.services.dynamodbv2.document.QueryOutcome;
 import com.amazonaws.services.dynamodbv2.document.spec.QuerySpec;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.message.MessageCreateEvent;
+import discord4j.core.object.entity.Role;
 import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.spec.EmbedCreateFields;
 import discord4j.core.spec.EmbedCreateSpec;
@@ -24,7 +25,7 @@ import java.util.Optional;
 @Slf4j
 public class CommonUtil {
     public static final String SIGN = "$";
-    public static final Snowflake muteRole = Snowflake.of("836214787918528582");
+    public static final Snowflake muteRole = Snowflake.of(CommonUtil.getIdFromDB("MuteRole").orElse(""));
 
     public static Optional<String> getIdFromDB(final String searchValue) {
         final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
@@ -82,5 +83,10 @@ public class CommonUtil {
             embedCreateSpec.author(author);
         });
         messageChannel.createMessage(embedCreateSpec.build()).block();
+    }
+
+    public static boolean isHigher(final Role role1, final Role role2) {
+        return role1.getPosition().blockOptional().isPresent() && role2.getPosition().blockOptional().isPresent() &&
+                role1.getPosition().blockOptional().get() > role2.getPosition().blockOptional().get();
     }
 }

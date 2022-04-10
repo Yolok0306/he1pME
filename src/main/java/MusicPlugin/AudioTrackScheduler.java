@@ -10,7 +10,6 @@ import java.util.LinkedList;
 import java.util.List;
 
 public final class AudioTrackScheduler extends AudioEventAdapter {
-
     private final List<AudioTrack> queue;
     private final AudioPlayer player;
 
