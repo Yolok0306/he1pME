@@ -31,7 +31,7 @@ public class GoodBoyService {
             event.getMessage().delete().block();
             member.addRole(CommonUtil.muteRole, "Bad Boy").block();
             final String title = "言論審查系統";
-            final String desc = "◆ 不當言論 : " + content + "\n◆ 懲處 : 禁言3分鐘";
+            final String desc = "◆ 不當言論 : " + content + StringUtils.LF + "◆ 懲處 : 禁言3分鐘";
             CommonUtil.replyByHe1pMETemplate(event, title, desc, null);
             badBoyMap.put(member.getGuildId() + "-" + member.getId(), 3);
         });
@@ -43,12 +43,12 @@ public class GoodBoyService {
     }
 
     private boolean isBadWord(String content) {
-        content = content.replaceAll("@everyone|@here", "");
-        content = content.replaceAll("<@[!&]\\d{18}>", "");
-        content = content.replaceAll("<#\\d{18}>", "");
+        content = content.replaceAll("@everyone|@here", StringUtils.EMPTY);
+        content = content.replaceAll("<@[!&]\\d{18}>", StringUtils.EMPTY);
+        content = content.replaceAll("<#\\d{18}>", StringUtils.EMPTY);
         content = fullWidthToHalfWidth(content);
-        content = content.replaceAll("\\p{Punct}", "");
-        content = content.replaceAll("\\p{Blank}", "");
+        content = content.replaceAll("\\p{Punct}", StringUtils.EMPTY);
+        content = content.replaceAll("\\p{Blank}", StringUtils.EMPTY);
 
         if (StringUtils.isBlank(content)) {
             return false;
@@ -66,7 +66,7 @@ public class GoodBoyService {
 
     private String fullWidthToHalfWidth(String content) {
         for (final char c : content.toCharArray()) {
-            content = content.replace("　", "");
+            content = content.replace("　", StringUtils.EMPTY);
             if ((int) c >= 65281 && (int) c <= 65374) {
                 content = content.replace(c, (char) (((int) c) - 65248));
             }

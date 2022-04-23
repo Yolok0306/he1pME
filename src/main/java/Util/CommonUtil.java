@@ -25,7 +25,7 @@ import java.util.Optional;
 @Slf4j
 public class CommonUtil {
     public static final String SIGN = "$";
-    public static final Snowflake muteRole = Snowflake.of(CommonUtil.getIdFromDB("MuteRole").orElse(""));
+    public static final Snowflake muteRole = Snowflake.of(CommonUtil.getIdFromDB("MuteRole").orElse(StringUtils.EMPTY));
 
     public static Optional<String> getIdFromDB(final String searchValue) {
         final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
@@ -75,7 +75,7 @@ public class CommonUtil {
         final MessageChannel messageChannel = Objects.requireNonNull(event.getMessage().getChannel().block());
         final Color color = Color.of(255, 192, 203);
         final EmbedCreateSpec.Builder embedCreateSpec = EmbedCreateSpec.builder().title(title).description(desc)
-                .thumbnail(Optional.ofNullable(thumb).orElse("")).color(color);
+                .thumbnail(Optional.ofNullable(thumb).orElse(StringUtils.EMPTY)).color(color);
         event.getMember().ifPresent(member -> {
             final String name = member.getTag();
             final String avatarUrl = member.getAvatarUrl();
@@ -83,6 +83,14 @@ public class CommonUtil {
             embedCreateSpec.author(author);
         });
         messageChannel.createMessage(embedCreateSpec.build()).block();
+    }
+
+    public static String descFormat(final String desc) {
+        return StringUtils.abbreviate(desc,43);
+    }
+
+    public static String descStartWithDiamondFormat(final String desc) {
+        return StringUtils.abbreviate(desc,36);
     }
 
     public static boolean isHigher(final Role role1, final Role role2) {
