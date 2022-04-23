@@ -16,11 +16,14 @@ import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.channel.VoiceChannel;
 import discord4j.core.spec.VoiceChannelJoinSpec;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 public class MusicService {
     public static final AudioPlayerManager PLAYER_MANAGER;
@@ -36,10 +39,9 @@ public class MusicService {
     protected void play(final MessageCreateEvent event) {
         join(event);
         final String content = event.getMessage().getContent();
-        final String[] array = content.split(" ");
-        if (checkChannelContainBot(event) && getVoiceChannel(event).isPresent() && array.length == 2) {
+        final String musicSource = content.replaceAll("\\" + CommonUtil.SIGN + "play\\p{Blank}++", StringUtils.EMPTY);
+        if (checkChannelContainBot(event) && getVoiceChannel(event).isPresent() && StringUtils.isNotBlank(musicSource)) {
             final VoiceChannel voiceChannel = getVoiceChannel(event).get();
-            final String musicSource = content.split(" ")[1];
             PLAYER_MANAGER.loadItem(musicSource, new AudioLoadResultHandler() {
                 @Override
                 public void trackLoaded(final AudioTrack track) {
@@ -98,9 +100,9 @@ public class MusicService {
             if (Objects.nonNull(audioPlayer.getPlayingTrack()) && audioPlayer.getPlayingTrack().isSeekable()) {
                 final AudioTrackInfo audioTrackInfo = audioPlayer.getPlayingTrack().getInfo();
                 final String title = "播放資訊";
-                final String desc = titleFormat("Title : " + audioTrackInfo.title) +
-                        "\nAuthor : " + audioTrackInfo.author +
-                        "\nTime : " + timeFormat(audioTrackInfo.length);
+                final String desc = CommonUtil.descFormat("Title : " + audioTrackInfo.title) + StringUtils.LF +
+                        CommonUtil.descFormat("Author : " + audioTrackInfo.author) + StringUtils.LF +
+                        CommonUtil.descFormat("Time : " + timeFormat(audioTrackInfo.length));
                 CommonUtil.replyByHe1pMETemplate(event, title, desc, null);
             }
         }
@@ -115,10 +117,10 @@ public class MusicService {
                 final String desc = "播放清單為空";
                 CommonUtil.replyByHe1pMETemplate(event, title, desc, null);
             } else {
-                //TODO set embed with hyperLink
                 final String title = "播放清單有" + queue.size() + "首歌 :";
-                final StringBuilder desc = new StringBuilder();
-                queue.forEach(audioTrack -> desc.append(titleFormat("◆ " + audioTrack.getInfo().title)).append("\n"));
+                final String desc = queue.stream()
+                        .map(audioTrack -> CommonUtil.descStartWithDiamondFormat("◆ " + audioTrack.getInfo().title))
+                        .collect(Collectors.joining(StringUtils.LF));
                 CommonUtil.replyByHe1pMETemplate(event, title, desc.toString(), null);
             }
         }
@@ -139,10 +141,6 @@ public class MusicService {
             final boolean control = GuildAudioManager.of(voiceChannel.getGuildId()).getPlayer().isPaused();
             GuildAudioManager.of(voiceChannel.getGuildId()).getPlayer().setPaused(!control);
         }
-    }
-
-    protected void resume(final MessageCreateEvent event) {
-        pause(event);
     }
 
     protected void clear(final MessageCreateEvent event) {
@@ -167,16 +165,10 @@ public class MusicService {
         return Optional.ofNullable(voiceChannel.get());
     }
 
-    private String titleFormat(final String title) {
-        return title.length() > 42 ? title.substring(0, 40) + "..." : title;
-    }
-
-    private String timeFormat(long time) {
-        time /= 1000;
-        final long hours = time / 3600;
-        time -= (hours * 3600);
-        final String minutes = String.format("%02d", time / 60);
-        final String seconds = String.format("%02d", time % 60);
+    private String timeFormat(long milliseconds) {
+        final long hours = TimeUnit.MILLISECONDS.toHours(milliseconds);
+        final long minutes = TimeUnit.MILLISECONDS.toMinutes(milliseconds);
+        final long seconds = TimeUnit.MILLISECONDS.toSeconds(milliseconds) % 60;
         return hours == 0 ? minutes + ":" + seconds : hours + ":" + minutes + ":" + seconds;
     }
 }

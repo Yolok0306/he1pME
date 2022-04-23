@@ -24,7 +24,7 @@ public class MessageEventService {
     }
 
     public void receiveEvent(final MessageCreateEvent event, final GoodBoyService goodBoyService) {
-        final String content = Optional.of(event.getMessage().getContent()).orElse("");
+        final String content = Optional.of(event.getMessage().getContent()).orElse(StringUtils.EMPTY);
 
         if (Boolean.FALSE.equals(isInstructionChannel(event))) {
             goodBoyService.checkContent(event, content);
