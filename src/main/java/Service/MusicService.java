@@ -12,7 +12,6 @@ import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackInfo;
 import com.sedmelluq.discord.lavaplayer.track.playback.NonAllocatingAudioFrameBuffer;
-import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.channel.VoiceChannel;
 import discord4j.core.spec.VoiceChannelJoinSpec;
@@ -37,7 +36,12 @@ public class MusicService {
     }
 
     protected void play(final MessageCreateEvent event) {
-        join(event);
+        if (!checkChannelContainBot(event) && getVoiceChannel(event).isPresent()) {
+            final VoiceChannel voiceChannel = getVoiceChannel(event).get();
+            voiceChannel.join(VoiceChannelJoinSpec.builder().build()
+                    .withProvider(GuildAudioManager.of(voiceChannel.getGuildId()).getProvider())).block();
+        }
+
         final String content = event.getMessage().getContent();
         final String musicSource = content.replaceAll("\\" + CommonUtil.SIGN + "play\\p{Blank}++", StringUtils.EMPTY);
         if (checkChannelContainBot(event) && getVoiceChannel(event).isPresent() && StringUtils.isNotBlank(musicSource)) {
@@ -56,37 +60,20 @@ public class MusicService {
 
                 @Override
                 public void noMatches() {
-                    Objects.requireNonNull(event.getMessage().getChannel().block())
-                            .createMessage("Could not play: " + musicSource).block();
+                    event.getMessage().getChannel().subscribe(messageChannel ->
+                            messageChannel.createMessage("Could not play: " + musicSource).block());
                 }
 
                 @Override
                 public void loadFailed(final FriendlyException exception) {
-                    Objects.requireNonNull(event.getMessage().getChannel().block())
-                            .createMessage(exception.getMessage()).block();
+                    event.getMessage().getChannel().subscribe(messageChannel ->
+                            messageChannel.createMessage(exception.getMessage()).block());
                 }
             });
         }
     }
 
     protected void stop(final MessageCreateEvent event) {
-        if (checkChannelContainBot(event) && getVoiceChannel(event).isPresent()) {
-            final VoiceChannel voiceChannel = getVoiceChannel(event).get();
-            GuildAudioManager.of(voiceChannel.getGuildId()).getPlayer().stopTrack();
-            GuildAudioManager.of(voiceChannel.getGuildId()).getQueue().clear();
-        }
-        leave(event);
-    }
-
-    protected void join(final MessageCreateEvent event) {
-        if (!checkChannelContainBot(event) && getVoiceChannel(event).isPresent()) {
-            final VoiceChannel voiceChannel = getVoiceChannel(event).get();
-            voiceChannel.join(VoiceChannelJoinSpec.builder().build()
-                    .withProvider(GuildAudioManager.of(voiceChannel.getGuildId()).getProvider())).block();
-        }
-    }
-
-    protected void leave(final MessageCreateEvent event) {
         if (checkChannelContainBot(event) && getVoiceChannel(event).isPresent()) {
             final VoiceChannel voiceChannel = getVoiceChannel(event).get();
             voiceChannel.sendDisconnectVoiceState().block();
@@ -152,9 +139,8 @@ public class MusicService {
 
     private Boolean checkChannelContainBot(final MessageCreateEvent event) {
         final AtomicReference<Boolean> result = new AtomicReference<>(false);
-        CommonUtil.getIdFromDB("he1pME").ifPresent(token ->
-                getVoiceChannel(event).ifPresent(channel ->
-                        result.set(channel.isMemberConnected(Snowflake.of(token)).block())));
+        CommonUtil.bot.getSelf().subscribe(user -> getVoiceChannel(event).ifPresent(voiceChannel ->
+                result.set(voiceChannel.isMemberConnected(user.getId()).block())));
         return result.get();
     }
 
@@ -165,7 +151,7 @@ public class MusicService {
         return Optional.ofNullable(voiceChannel.get());
     }
 
-    private String timeFormat(long milliseconds) {
+    private String timeFormat(final long milliseconds) {
         final long hours = TimeUnit.MILLISECONDS.toHours(milliseconds);
         final long minutes = TimeUnit.MILLISECONDS.toMinutes(milliseconds);
         final long seconds = TimeUnit.MILLISECONDS.toSeconds(milliseconds) % 60;

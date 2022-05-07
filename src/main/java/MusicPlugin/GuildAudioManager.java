@@ -13,20 +13,18 @@ import static Service.MusicService.PLAYER_MANAGER;
 
 public final class GuildAudioManager {
     private static final Map<Snowflake, GuildAudioManager> MANAGERS = new ConcurrentHashMap<>();
-
-    public static GuildAudioManager of(final Snowflake id) {
-        return MANAGERS.computeIfAbsent(id, ignored -> new GuildAudioManager());
-    }
-
     private final AudioPlayer player;
     private final AudioTrackScheduler scheduler;
     private final LavaPlayerAudioProvider provider;
 
-    private GuildAudioManager() {
-        player = PLAYER_MANAGER.createPlayer();
-        scheduler = new AudioTrackScheduler(player);
-        provider = new LavaPlayerAudioProvider(player);
+    public static GuildAudioManager of(final Snowflake guild) {
+        return MANAGERS.computeIfAbsent(guild, ignored -> new GuildAudioManager(guild));
+    }
 
+    private GuildAudioManager(final Snowflake guild) {
+        player = PLAYER_MANAGER.createPlayer();
+        scheduler = new AudioTrackScheduler(player, guild);
+        provider = new LavaPlayerAudioProvider(player);
         player.addListener(scheduler);
     }
 
