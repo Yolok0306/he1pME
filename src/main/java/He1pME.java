@@ -20,6 +20,7 @@ import org.reflections.Reflections;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Objects;
 import java.util.Timer;
 import java.util.function.Function;
@@ -27,22 +28,30 @@ import java.util.stream.Collectors;
 
 public class He1pME {
     private static String token;
+    private static final GoodBoyService goodBoyService = new GoodBoyService();
     private static final MessageEventService messageEventService = new MessageEventService();
     private static final VoiceStateService voiceStateService = new VoiceStateService();
-    private static final GoodBoyService goodBoyService = new GoodBoyService();
     private static final Timer timer = new Timer();
 
     public static void main(final String[] args) {
         init();
         final IntentSet intentSet = IntentSet.of(Intent.GUILDS, Intent.GUILD_MEMBERS, Intent.GUILD_MESSAGES, Intent.GUILD_VOICE_STATES);
         final GatewayDiscordClient bot = DiscordClient.create(token).gateway().setEnabledIntents(intentSet).login().block();
-        Objects.requireNonNull(bot).getEventDispatcher().on(ReadyEvent.class).subscribe(event -> {
+
+        if (Objects.isNull(bot)) {
+            throw new RuntimeException("Bot token : \"" + token + "\" is invalid !");
+        }
+
+        CommonUtil.setBot(bot);
+
+        bot.getEventDispatcher().on(ReadyEvent.class).subscribe(event -> {
             bot.getGuilds().toStream().forEach(guild -> guild.getMembers().toStream()
                     .filter(member -> member.getRoleIds().contains(CommonUtil.muteRole))
                     .forEach(member -> member.removeRole(CommonUtil.muteRole).block()));
             System.out.printf("-----Logged in as %s #%s-----%n", event.getSelf().getUsername(), event.getSelf().getDiscriminator());
         });
-        timer.schedule(new TimerTaskService(bot, goodBoyService), 0, 60000);
+
+        timer.schedule(new TimerTaskService(goodBoyService), 60000, 60000);
         bot.getEventDispatcher().on(MessageCreateEvent.class).subscribe(event -> messageEventService.receiveEvent(event, goodBoyService));
         bot.getEventDispatcher().on(VoiceStateUpdateEvent.class).subscribe(voiceStateService::receiveEvent);
         bot.onDisconnect().block();
@@ -59,7 +68,7 @@ public class He1pME {
 
         for (final Item item : items) {
             if (StringUtils.equals(item.getString("name"), "Token")) {
-                token = (item.getString("id"));
+                token = item.getString("id");
             } else if (StringUtils.equals(item.getString("name"), "BadWord")) {
                 goodBoyService.addBadWordSet(item.getString("id"));
             }
@@ -77,6 +86,6 @@ public class He1pME {
                         exception.printStackTrace();
                     }
                     return null;
-                }, Function.identity(), (existing, replacement) -> existing)));
+                }, Function.identity(), (existing, replacement) -> existing, HashMap::new)));
     }
 }
