@@ -39,9 +39,12 @@ public class GoodBoyService {
             }
 
             event.getMessage().delete().block();
-            callTimeOutApi(member.getGuildId().asString(), member.getId().asString());
+            final int statusCode = callTimeOutApi(member.getGuildId().asString(), member.getId().asString());
             final String title = "言論審查系統";
-            final String desc = "◆ 不當言論 : " + content + StringUtils.LF + "◆ 懲處 : 禁言" + punishmentTime + "分鐘";
+            final String desc = 299 >= statusCode && statusCode >= 200 ?
+                    "◆ 不當言論 : " + content + StringUtils.LF + "◆ 懲處 : 禁言" + punishmentTime + "分鐘" :
+                    "◆ 不當言論 : " + content + StringUtils.LF + "◆ 懲處 : Time Out API失效了沒辦法禁言" +
+                            StringUtils.LF + "◆ Status Code : " + statusCode;
             CommonUtil.replyByHe1pMETemplate(event, title, desc, null);
         });
     }
@@ -83,24 +86,25 @@ public class GoodBoyService {
         return content;
     }
 
-    private void callTimeOutApi(final String guildId, final String memberId) {
+    private int callTimeOutApi(final String guildId, final String memberId) {
+        final Date futureTime = new Date(System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(punishmentTime));
         final SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.sssXXX");
         simpleDateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-        final Date futureTime = new Date(System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(punishmentTime));
-        final String timeout = simpleDateFormat.format(futureTime);
-        final String body = "{\"communication_disabled_until\" : \"" + timeout + "\"}";
+        final String body = "{\"communication_disabled_until\" : \"" + simpleDateFormat.format(futureTime) + "\"}";
         try {
             final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).build();
             final HttpRequest httpRequest = HttpRequest.newBuilder()
                     .uri(new URI(CommonUtil.BASE_URI + "/guilds/" + guildId + "/members/" + memberId))
-                    .header("Authorization", "Bot " + CommonUtil.TOKEN)
                     .header("Content-Type", "application/json")
+                    .header("Authorization", "Bot " + CommonUtil.TOKEN)
                     .method("PATCH", HttpRequest.BodyPublishers.ofString(body))
                     .build();
             final HttpResponse<String> httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             log.info(httpResponse.statusCode() + StringUtils.SPACE + httpResponse.body());
+            return httpResponse.statusCode();
         } catch (final URISyntaxException | IOException | InterruptedException e) {
             e.printStackTrace();
         }
+        return StringUtils.INDEX_NOT_FOUND;
     }
 }
