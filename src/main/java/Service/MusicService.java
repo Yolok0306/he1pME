@@ -106,6 +106,7 @@ public class MusicService {
             } else {
                 final String title = "播放清單有" + queue.size() + "首歌 :";
                 final String desc = queue.stream()
+                        .filter(Objects::nonNull)
                         .map(audioTrack -> CommonUtil.descStartWithDiamondFormat("◆ " + audioTrack.getInfo().title))
                         .collect(Collectors.joining(StringUtils.LF));
                 CommonUtil.replyByHe1pMETemplate(event, title, desc.toString(), null);
@@ -139,7 +140,7 @@ public class MusicService {
 
     private Boolean checkChannelContainBot(final MessageCreateEvent event) {
         final AtomicReference<Boolean> result = new AtomicReference<>(false);
-        CommonUtil.bot.getSelf().subscribe(user -> getVoiceChannel(event).ifPresent(voiceChannel ->
+        CommonUtil.BOT.getSelf().subscribe(user -> getVoiceChannel(event).ifPresent(voiceChannel ->
                 result.set(voiceChannel.isMemberConnected(user.getId()).block())));
         return result.get();
     }

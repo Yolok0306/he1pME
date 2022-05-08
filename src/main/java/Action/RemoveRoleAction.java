@@ -4,6 +4,8 @@ import Util.CommonUtil;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 
+import java.util.Objects;
+
 public class RemoveRoleAction implements Action {
     @Override
     public String getInstruction() {
@@ -12,8 +14,8 @@ public class RemoveRoleAction implements Action {
 
     @Override
     public void execute(final MessageCreateEvent event) {
-        event.getMessage().getMemberMentions().stream().findFirst().ifPresent(partialMember ->
-                event.getMessage().getRoleMentions().toStream().findFirst().ifPresent(role ->
+        event.getMessage().getMemberMentions().stream().filter(Objects::nonNull).findFirst().ifPresent(partialMember ->
+                event.getMessage().getRoleMentions().toStream().filter(Objects::nonNull).findFirst().ifPresent(role ->
                         event.getMember().ifPresent(member ->
                                 member.getHighestRole().subscribe(highestRole -> {
                                     final Snowflake roleId = role.getId();

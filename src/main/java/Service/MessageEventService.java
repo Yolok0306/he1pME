@@ -4,29 +4,30 @@ import Action.Action;
 import Util.CommonUtil;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.channel.TextChannel;
+import lombok.Getter;
+import lombok.Setter;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class MessageEventService {
-    private final Set<String> musicActionSet = new HashSet<>();
-    private final Map<String, Class<? extends Action>> actionMap = new HashMap<>();
-    CallActionService callActionService = new CallActionService();
+    @Setter
+    private Set<String> musicActionSet;
+    @Setter
+    private Map<String, Class<? extends Action>> actionMap;
+    @Getter
+    private final GoodBoyService goodBoyService = new GoodBoyService();
+    private final CallActionService callActionService = new CallActionService();
 
-    public void addMusicActionSet(final Set<String> musicActionSet) {
-        this.musicActionSet.addAll(musicActionSet);
-    }
-
-    public void putActionMap(final Map<String, Class<? extends Action>> actionMap) {
-        this.actionMap.putAll(actionMap);
-    }
-
-    public void receiveEvent(final MessageCreateEvent event, final GoodBoyService goodBoyService) {
+    public void receiveEvent(final MessageCreateEvent event) {
         final String content = Optional.of(event.getMessage().getContent()).orElse(StringUtils.EMPTY);
 
-        if (Boolean.FALSE.equals(isInstructionChannel(event))) {
+        if (BooleanUtils.isFalse(isInstructionChannel(event))) {
             goodBoyService.checkContent(event, content);
         } else if (content.startsWith(CommonUtil.SIGN)) {
             final String instruction = format(content);
@@ -55,7 +56,7 @@ public class MessageEventService {
     }
 
     private String format(final String content) {
-        final int spaceIndex = content.indexOf(" ");
+        final int spaceIndex = content.indexOf(StringUtils.SPACE);
         final String instruction = spaceIndex == -1 ? content : content.substring(0, spaceIndex);
         return instruction.substring(CommonUtil.SIGN.length());
     }

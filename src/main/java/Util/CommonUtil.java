@@ -7,7 +7,6 @@ import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.services.dynamodbv2.document.ItemCollection;
 import com.amazonaws.services.dynamodbv2.document.QueryOutcome;
 import com.amazonaws.services.dynamodbv2.document.spec.QuerySpec;
-import discord4j.common.util.Snowflake;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.Role;
@@ -26,8 +25,9 @@ import java.util.Optional;
 @Slf4j
 public class CommonUtil {
     public static final String SIGN = "$";
-    public static GatewayDiscordClient bot;
-    public static final Snowflake muteRole = Snowflake.of(CommonUtil.getIdFromDB("MuteRole").orElse(StringUtils.EMPTY));
+    public static String TOKEN;
+    public static GatewayDiscordClient BOT;
+    public static String BASE_URI = "https://discord.com/api/v9";
 
     public static Optional<String> getIdFromDB(final String searchValue) {
         final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
@@ -98,9 +98,5 @@ public class CommonUtil {
     public static boolean isHigher(final Role role1, final Role role2) {
         return role1.getPosition().blockOptional().isPresent() && role2.getPosition().blockOptional().isPresent() &&
                 role1.getPosition().blockOptional().get() > role2.getPosition().blockOptional().get();
-    }
-
-    public static void setBot(final GatewayDiscordClient bot) {
-        CommonUtil.bot = bot;
     }
 }
