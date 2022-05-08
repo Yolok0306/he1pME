@@ -6,7 +6,6 @@ import com.sedmelluq.discord.lavaplayer.player.event.AudioEventAdapter;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackEndReason;
 import discord4j.common.util.Snowflake;
-import discord4j.core.GatewayDiscordClient;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.BooleanUtils;
 
@@ -18,7 +17,6 @@ public final class AudioTrackScheduler extends AudioEventAdapter {
     private final List<AudioTrack> queue;
     private final AudioPlayer player;
     private final Snowflake guild;
-    private final GatewayDiscordClient bot = CommonUtil.bot;
 
     public AudioTrackScheduler(final AudioPlayer player, final Snowflake guild) {
         // The queue may be modifed by different threads so guarantee memory safety
@@ -56,7 +54,7 @@ public final class AudioTrackScheduler extends AudioEventAdapter {
     public void onTrackEnd(final AudioPlayer player, final AudioTrack track, final AudioTrackEndReason endReason) {
         // Advance the player if the track completed naturally (FINISHED) or if the track cannot play (LOAD_FAILED)
         if (CollectionUtils.isEmpty(queue)) {
-            bot.getUserById(bot.getSelfId()).subscribe(user ->
+            CommonUtil.BOT.getUserById(CommonUtil.BOT.getSelfId()).subscribe(user ->
                     user.asMember(guild).subscribe(member ->
                             member.getVoiceState().subscribe(voiceState ->
                                     voiceState.getChannel().subscribe(voiceChannel ->

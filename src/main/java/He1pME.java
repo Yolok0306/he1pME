@@ -1,5 +1,7 @@
 import Action.Action;
-import Service.*;
+import Service.MessageEventService;
+import Service.MusicService;
+import Service.VoiceStateService;
 import Util.CommonUtil;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
@@ -22,16 +24,15 @@ import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Objects;
-import java.util.Timer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class He1pME {
     private static String token;
-    private static final GoodBoyService goodBoyService = new GoodBoyService();
     private static final MessageEventService messageEventService = new MessageEventService();
     private static final VoiceStateService voiceStateService = new VoiceStateService();
-    private static final Timer timer = new Timer();
+//    private static final TimerTaskService timerTaskService = new TimerTaskService();
+//    private static final Timer timer = new Timer();
 
     public static void main(final String[] args) {
         init();
@@ -39,20 +40,17 @@ public class He1pME {
         final GatewayDiscordClient bot = DiscordClient.create(token).gateway().setEnabledIntents(intentSet).login().block();
 
         if (Objects.isNull(bot)) {
-            throw new RuntimeException("Bot token : \"" + token + "\" is invalid !");
+            throw new IllegalStateException("Bot token : \"" + token + "\" is invalid !");
         }
 
-        CommonUtil.setBot(bot);
+        CommonUtil.TOKEN = token;
+        CommonUtil.BOT = bot;
 
-        bot.getEventDispatcher().on(ReadyEvent.class).subscribe(event -> {
-            bot.getGuilds().toStream().forEach(guild -> guild.getMembers().toStream()
-                    .filter(member -> member.getRoleIds().contains(CommonUtil.muteRole))
-                    .forEach(member -> member.removeRole(CommonUtil.muteRole).block()));
-            System.out.printf("-----Logged in as %s #%s-----%n", event.getSelf().getUsername(), event.getSelf().getDiscriminator());
-        });
+        bot.getEventDispatcher().on(ReadyEvent.class).subscribe(event ->
+                System.out.printf("-----Logged in as %s #%s-----%n", event.getSelf().getUsername(), event.getSelf().getDiscriminator()));
 
-        timer.schedule(new TimerTaskService(goodBoyService), 60000, 60000);
-        bot.getEventDispatcher().on(MessageCreateEvent.class).subscribe(event -> messageEventService.receiveEvent(event, goodBoyService));
+//        timer.schedule(timerTaskService, 60000, 60000);
+        bot.getEventDispatcher().on(MessageCreateEvent.class).subscribe(messageEventService::receiveEvent);
         bot.getEventDispatcher().on(VoiceStateUpdateEvent.class).subscribe(voiceStateService::receiveEvent);
         bot.onDisconnect().block();
     }
@@ -63,22 +61,23 @@ public class He1pME {
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("ServerData").scan(scanSpec);
 
         if (!items.iterator().hasNext()) {
-            throw new IllegalStateException("can not get any server data from database !");
+            throw new IllegalStateException("Can not get any server data from database !");
         }
 
         for (final Item item : items) {
             if (StringUtils.equals(item.getString("name"), "Token")) {
                 token = item.getString("id");
             } else if (StringUtils.equals(item.getString("name"), "BadWord")) {
-                goodBoyService.addBadWordSet(item.getString("id"));
+                messageEventService.getGoodBoyService().addBadWordSet(item.getString("id"));
             }
         }
         dynamoDB.shutdown();
 
-        messageEventService.addMusicActionSet(Arrays.stream(MusicService.class.getDeclaredMethods()).filter(method ->
+        messageEventService.setMusicActionSet(Arrays.stream(MusicService.class.getDeclaredMethods()).filter(method ->
                 method.getModifiers() == Modifier.PROTECTED).map(Method::getName).collect(Collectors.toSet()));
 
-        messageEventService.putActionMap(new Reflections("Action").getSubTypesOf(Action.class).stream()
+        messageEventService.setActionMap(new Reflections("Action").getSubTypesOf(Action.class).stream()
+                .filter(Objects::nonNull)
                 .collect(Collectors.toMap(action -> {
                     try {
                         return action.getDeclaredConstructor().newInstance().getInstruction();
