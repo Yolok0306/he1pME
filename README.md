@@ -4,6 +4,8 @@ to store relevant data.
 
 ### Features
 * Music player
-* Edit the nicknames of server members
-* Special instructions for marking server members
+* Filter bad words and automatically time out members
+* Editing a guild member's nickname
+* Editing a guild member's role
+* Special instructions to mark guild members
 * Get current time
