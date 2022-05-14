@@ -1,4 +1,4 @@
-package SpecialDataStructure;
+package Entity;
 
 import discord4j.rest.util.Color;
 import lombok.Builder;

@@ -1,11 +1,13 @@
 package Action;
 
+import Annotation.help;
 import Util.CommonUtil;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 
 import java.util.Objects;
 
+@help(example = "removeRole @member @role", description = "為標記的成員移除標記的身分組")
 public class RemoveRoleAction implements Action {
     @Override
     public String getInstruction() {

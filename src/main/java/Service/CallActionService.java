@@ -1,7 +1,6 @@
 package Service;
 
-import SpecialDataStructure.CallAction;
-import SpecialDataStructure.UrlType;
+import Entity.CallAction;
 import Util.CommonUtil;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
@@ -10,14 +9,12 @@ import com.amazonaws.services.dynamodbv2.document.ItemCollection;
 import com.amazonaws.services.dynamodbv2.document.QueryOutcome;
 import com.amazonaws.services.dynamodbv2.document.spec.QuerySpec;
 import discord4j.core.event.domain.message.MessageCreateEvent;
-import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.rest.util.Color;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.Collections;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -25,46 +22,49 @@ import java.util.Optional;
 public class CallActionService {
 
     protected void callAction(final MessageCreateEvent event, final String instruction) {
-        final MessageChannel messageChannel = Objects.requireNonNull(event.getMessage().getChannel().block());
-        getDataFromDB(instruction).ifPresent(item -> {
+        event.getMessage().getChannel().subscribe(messageChannel -> getDataFromDB(instruction).ifPresent(item -> {
             final CallAction callAction = buildCallAction(item);
-            if (ObjectUtils.isEmpty(callAction.getId()) || ObjectUtils.isEmpty(callAction.getImage())) {
+            if (StringUtils.isBlank(callAction.getId()) || Objects.isNull(callAction.getImage())) {
                 return;
             }
 
             messageChannel.createMessage("<@" + callAction.getId() + "> " + callAction.getMessage()).block();
             messageChannel.createMessage(EmbedCreateSpec.create().withColor(callAction.getColor())
                     .withImage(callAction.getImage())).block();
-        });
+        }));
     }
 
     private Optional<Item> getDataFromDB(final String searchValue) {
         final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
-        final Map<String, String> nameMap = Collections.singletonMap("#key", "action");
-        final Map<String, Object> valueMap = Collections.singletonMap(":value", searchValue);
-        final QuerySpec querySpec = new QuerySpec().withKeyConditionExpression("#key = :value")
-                .withNameMap(nameMap).withValueMap(valueMap);
+        final QuerySpec querySpec = new QuerySpec()
+                .withKeyConditionExpression("#key = :value")
+                .withNameMap(Collections.singletonMap("#key", "action"))
+                .withValueMap(Collections.singletonMap(":value", searchValue));
         final ItemCollection<QueryOutcome> items = dynamoDB.getTable("CallAction").query(querySpec);
 
-        if (!items.iterator().hasNext()) {
-            log.error("can not find action : " + searchValue + " in database !");
-            return Optional.empty();
+        final Item result;
+        if (items.iterator().hasNext()) {
+            result = items.iterator().next();
+        } else {
+            result = null;
+            log.error("Can not find data with action = \"" + searchValue + "\" in CallAction table !");
         }
 
-        final Item result = items.iterator().next();
         dynamoDB.shutdown();
         return Optional.ofNullable(result);
     }
 
     private CallAction buildCallAction(final Item item) {
         final CallAction.CallActionBuilder result = CallAction.builder();
-        CommonUtil.getIdFromDB(item.getString("name")).ifPresent(result::id);
+        CommonUtil.getMemberDataFromDB(item.getString("name")).ifPresent(memberData -> {
+            result.id(memberData.getString("id"));
+            final int red = memberData.getNumber("red").intValue();
+            final int green = memberData.getNumber("green").intValue();
+            final int blue = memberData.getNumber("blue").intValue();
+            result.color(Color.of(red, green, blue));
+        });
         result.message(item.getString("message"));
-        CommonUtil.getUrlFromDB(item.getString("image"), UrlType.IMAGE).ifPresent(result::image);
-        final String[] color = item.getString("color").split(", ");
-        if (color.length == 3) {
-            result.color(Color.of(Integer.parseInt(color[0]), Integer.parseInt(color[1]), Integer.parseInt(color[2])));
-        }
+        result.image(item.getString("image"));
         return result.build();
     }
 }

@@ -1,4 +1,4 @@
-package MusicPlugin;
+package Plugin;
 
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
