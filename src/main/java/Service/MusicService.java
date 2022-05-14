@@ -1,6 +1,7 @@
 package Service;
 
-import MusicPlugin.GuildAudioManager;
+import Annotation.help;
+import Plugin.GuildAudioManager;
 import Util.CommonUtil;
 import com.sedmelluq.discord.lavaplayer.player.AudioLoadResultHandler;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
@@ -35,6 +36,7 @@ public class MusicService {
         AudioSourceManagers.registerLocalSource(PLAYER_MANAGER);
     }
 
+    @help(example = "play [musicURI]", description = "撥放音樂")
     protected void play(final MessageCreateEvent event) {
         if (!checkChannelContainBot(event) && getVoiceChannel(event).isPresent()) {
             final VoiceChannel voiceChannel = getVoiceChannel(event).get();
@@ -73,6 +75,7 @@ public class MusicService {
         }
     }
 
+    @help(example = "stop", description = "停止撥放音樂")
     protected void stop(final MessageCreateEvent event) {
         if (checkChannelContainBot(event) && getVoiceChannel(event).isPresent()) {
             final VoiceChannel voiceChannel = getVoiceChannel(event).get();
@@ -80,6 +83,7 @@ public class MusicService {
         }
     }
 
+    @help(example = "np", description = "顯示歌曲的播放資訊")
     protected void np(final MessageCreateEvent event) {
         if (checkChannelContainBot(event) && getVoiceChannel(event).isPresent()) {
             final VoiceChannel voiceChannel = getVoiceChannel(event).get();
@@ -95,6 +99,7 @@ public class MusicService {
         }
     }
 
+    @help(example = "list", description = "顯示播放清單")
     protected void list(final MessageCreateEvent event) {
         if (checkChannelContainBot(event) && getVoiceChannel(event).isPresent()) {
             final VoiceChannel voiceChannel = getVoiceChannel(event).get();
@@ -114,6 +119,7 @@ public class MusicService {
         }
     }
 
+    @help(example = "skip", description = "跳過這首歌曲")
     protected void skip(final MessageCreateEvent event) {
         if (checkChannelContainBot(event) && getVoiceChannel(event).isPresent()) {
             final VoiceChannel voiceChannel = getVoiceChannel(event).get();
@@ -123,6 +129,7 @@ public class MusicService {
         }
     }
 
+    @help(example = "pause", description = "暫停/撥放歌曲")
     protected void pause(final MessageCreateEvent event) {
         if (checkChannelContainBot(event) && getVoiceChannel(event).isPresent()) {
             final VoiceChannel voiceChannel = getVoiceChannel(event).get();
@@ -131,6 +138,7 @@ public class MusicService {
         }
     }
 
+    @help(example = "clear", description = "清空播放清單")
     protected void clear(final MessageCreateEvent event) {
         if (checkChannelContainBot(event) && getVoiceChannel(event).isPresent()) {
             final VoiceChannel voiceChannel = getVoiceChannel(event).get();

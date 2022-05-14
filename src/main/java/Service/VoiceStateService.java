@@ -1,6 +1,6 @@
 package Service;
 
-import MusicPlugin.GuildAudioManager;
+import Plugin.GuildAudioManager;
 import Util.CommonUtil;
 import discord4j.core.event.domain.VoiceStateUpdateEvent;
 

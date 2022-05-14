@@ -1,4 +1,5 @@
 import Action.Action;
+import Annotation.help;
 import Service.MessageEventService;
 import Service.MusicService;
 import Service.VoiceStateService;
@@ -20,7 +21,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.reflections.Reflections;
 
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Objects;
@@ -61,7 +61,7 @@ public class He1pME {
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("ServerData").scan(scanSpec);
 
         if (!items.iterator().hasNext()) {
-            throw new IllegalStateException("Can not get any server data from database !");
+            throw new IllegalStateException("Can not get any data from ServerData table !");
         }
 
         for (final Item item : items) {
@@ -73,18 +73,22 @@ public class He1pME {
         }
         dynamoDB.shutdown();
 
-        messageEventService.setMusicActionSet(Arrays.stream(MusicService.class.getDeclaredMethods()).filter(method ->
-                method.getModifiers() == Modifier.PROTECTED).map(Method::getName).collect(Collectors.toSet()));
+        messageEventService.setMusicActionSet(Arrays.stream(MusicService.class.getDeclaredMethods())
+                .filter(Objects::nonNull)
+                .filter(method -> method.isAnnotationPresent(help.class))
+                .map(Method::getName)
+                .collect(Collectors.toSet()));
 
         messageEventService.setActionMap(new Reflections("Action").getSubTypesOf(Action.class).stream()
                 .filter(Objects::nonNull)
+                .filter(action -> action.isAnnotationPresent(help.class))
                 .collect(Collectors.toMap(action -> {
                     try {
                         return action.getDeclaredConstructor().newInstance().getInstruction();
                     } catch (final Exception exception) {
                         exception.printStackTrace();
                     }
-                    return null;
+                    return StringUtils.EMPTY;
                 }, Function.identity(), (existing, replacement) -> existing, HashMap::new)));
     }
 }
