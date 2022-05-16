@@ -1,29 +1,47 @@
 package Util;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
-import com.amazonaws.services.dynamodbv2.document.DynamoDB;
-import com.amazonaws.services.dynamodbv2.document.Item;
-import com.amazonaws.services.dynamodbv2.document.ItemCollection;
-import com.amazonaws.services.dynamodbv2.document.QueryOutcome;
+import com.amazonaws.services.dynamodbv2.document.*;
 import com.amazonaws.services.dynamodbv2.document.spec.QuerySpec;
+import com.amazonaws.services.dynamodbv2.document.spec.ScanSpec;
 import discord4j.core.GatewayDiscordClient;
-import discord4j.core.event.domain.message.MessageCreateEvent;
+import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Role;
+import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.spec.EmbedCreateFields;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.rest.util.Color;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
-import java.util.Collections;
-import java.util.Optional;
+import java.util.*;
 
 @Slf4j
 public class CommonUtil {
     public static final String SIGN = "$";
     public static String TOKEN;
     public static GatewayDiscordClient BOT;
+    public static final Set<String> BAD_WORD_SET = new HashSet<>();
     public static String BASE_URI = "https://discord.com/api/v9";
+
+    public static void loadServerDataFromDB() {
+        final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
+        final ScanSpec scanSpec = new ScanSpec();
+        final ItemCollection<ScanOutcome> items = dynamoDB.getTable("ServerData").scan(scanSpec);
+
+        if (!items.iterator().hasNext()) {
+            throw new IllegalStateException("Can not get any data from ServerData table !");
+        }
+
+        for (final Item item : items) {
+            if (StringUtils.equals(item.getString("name"), "Token")) {
+                TOKEN = item.getString("id");
+            } else if (StringUtils.equals(item.getString("name"), "BadWord")) {
+                BAD_WORD_SET.add(item.getString("id"));
+            }
+        }
+        dynamoDB.shutdown();
+    }
 
     public static Optional<Item> getMemberDataFromDB(final String searchValue) {
         final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
@@ -45,20 +63,21 @@ public class CommonUtil {
         return Optional.ofNullable(result);
     }
 
-    public static void replyByHe1pMETemplate(final MessageCreateEvent event, final String title, final String desc, final String thumb) {
-        event.getMessage().getChannel().subscribe(messageChannel -> {
-            final String thumbnail = Optional.ofNullable(thumb).orElse(StringUtils.EMPTY);
-            final Color color = Color.of(255, 192, 203);
-            final EmbedCreateSpec.Builder embedCreateSpec = EmbedCreateSpec.builder()
-                    .title(title).description(desc).thumbnail(thumbnail).color(color);
-            event.getMember().ifPresent(member -> {
-                final String name = member.getTag();
-                final String avatarUrl = member.getAvatarUrl();
-                final EmbedCreateFields.Author author = EmbedCreateFields.Author.of(name, null, avatarUrl);
-                embedCreateSpec.author(author);
-            });
-            messageChannel.createMessage(embedCreateSpec.build()).block();
-        });
+    public static void replyByHe1pMETemplate(final MessageChannel messageChannel, final Member member,
+                                             final String title, final String desc, final String thumb) {
+        final String thumbnail = Optional.ofNullable(thumb).orElse(StringUtils.EMPTY);
+        final Color color = Color.of(255, 192, 203);
+        final EmbedCreateSpec.Builder embedCreateSpec = EmbedCreateSpec.builder()
+                .title(title).description(desc).thumbnail(thumbnail).color(color);
+
+        if (Objects.nonNull(member)) {
+            final String name = member.getTag();
+            final String avatarUrl = member.getAvatarUrl();
+            final EmbedCreateFields.Author author = EmbedCreateFields.Author.of(name, null, avatarUrl);
+            embedCreateSpec.author(author);
+        }
+
+        messageChannel.createMessage(embedCreateSpec.build()).block();
     }
 
     public static String descFormat(final String desc) {

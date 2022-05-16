@@ -18,18 +18,20 @@ public class RemoveRoleAction implements Action {
     public void execute(final MessageCreateEvent event) {
         event.getMessage().getMemberMentions().stream().filter(Objects::nonNull).findFirst().ifPresent(partialMember ->
                 event.getMessage().getRoleMentions().toStream().filter(Objects::nonNull).findFirst().ifPresent(role ->
-                        event.getMember().ifPresent(member ->
-                                member.getHighestRole().subscribe(highestRole -> {
-                                    final Snowflake roleId = role.getId();
-                                    if (CommonUtil.isHigher(highestRole, role) && partialMember.getRoleIds().contains(roleId)) {
-                                        final String reason = "RemoveRoleAction : " + member.getDisplayName();
-                                        partialMember.removeRole(roleId, reason).block();
-                                        final String title = "移除身分組成功";
-                                        final String desc = "移除身分組 : " + role.getName();
-                                        final String thumb = partialMember.getAvatarUrl();
-                                        CommonUtil.replyByHe1pMETemplate(event, title, desc, thumb);
-                                    }
-                                })
+                        event.getMessage().getChannel().subscribe(messageChannel ->
+                                event.getMember().ifPresent(member ->
+                                        member.getHighestRole().subscribe(highestRole -> {
+                                            final Snowflake roleId = role.getId();
+                                            if (CommonUtil.isHigher(highestRole, role) && partialMember.getRoleIds().contains(roleId)) {
+                                                final String reason = "RemoveRoleAction : " + member.getDisplayName();
+                                                partialMember.removeRole(roleId, reason).block();
+                                                final String title = "移除身分組成功";
+                                                final String desc = "移除身分組 : " + role.getName();
+                                                final String thumb = partialMember.getAvatarUrl();
+                                                CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, thumb);
+                                            }
+                                        })
+                                )
                         )
                 )
         );

@@ -24,8 +24,12 @@ public class TimeAction implements Action {
         final ZoneId zoneId = StringUtils.isNotBlank(userZoneId) ? ZoneId.of(userZoneId) : ZoneId.systemDefault();
         final ZonedDateTime zonedDateTime = LocalDateTime.now().atZone(ZoneId.systemDefault()).withZoneSameInstant(zoneId);
 
-        final String title = "現在時間 (" + zoneId + ")";
-        final String desc = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(zonedDateTime);
-        CommonUtil.replyByHe1pMETemplate(event, title, desc, null);
+        event.getMessage().getChannel().subscribe(messageChannel ->
+                event.getMember().ifPresent(member -> {
+                    final String title = "現在時間 (" + zoneId + ")";
+                    final String desc = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(zonedDateTime);
+                    CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, null);
+                })
+        );
     }
 }
