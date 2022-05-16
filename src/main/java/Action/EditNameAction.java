@@ -17,18 +17,20 @@ public class EditNameAction implements Action {
 
     @Override
     public void execute(final MessageCreateEvent event) {
-        event.getMessage().getMemberMentions().stream().filter(Objects::nonNull).findFirst().ifPresent(partialMember ->
-                partialMember.asFullMember().subscribe(member -> {
-                    final String oldName = member.getDisplayName();
-                    final String regex = "\\" + CommonUtil.SIGN + getInstruction() + "\\p{Blank}<@\\d{18}>\\p{Blank}++";
-                    final String newName = event.getMessage().getContent().replaceAll(regex, StringUtils.EMPTY);
-                    final GuildMemberEditSpec guildMemberEditSpec = GuildMemberEditSpec.builder().build();
-                    member.edit(guildMemberEditSpec.withNicknameOrNull(newName)).block();
-                    final String title = "修改暱稱成功";
-                    final String desc = oldName + " -> " + newName;
-                    final String thumb = member.getAvatarUrl();
-                    CommonUtil.replyByHe1pMETemplate(event, title, desc, thumb);
-                })
+        event.getMessage().getChannel().subscribe(messageChannel ->
+                event.getMember().ifPresent(member ->
+                        event.getMessage().getMemberMentions().stream().filter(Objects::nonNull).findFirst().ifPresent(partialMember -> {
+                            final String oldName = partialMember.getDisplayName();
+                            final String regex = "\\" + CommonUtil.SIGN + getInstruction() + "\\p{Blank}<@\\d{18}>\\p{Blank}++";
+                            final String newName = event.getMessage().getContent().replaceAll(regex, StringUtils.EMPTY);
+                            final GuildMemberEditSpec guildMemberEditSpec = GuildMemberEditSpec.builder().build();
+                            partialMember.edit(guildMemberEditSpec.withNicknameOrNull(newName)).block();
+                            final String title = "修改暱稱成功";
+                            final String desc = oldName + " -> " + newName;
+                            final String thumb = partialMember.getAvatarUrl();
+                            CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, thumb);
+                        })
+                )
         );
     }
 }

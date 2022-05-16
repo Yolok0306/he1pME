@@ -3,17 +3,16 @@ package Service;
 import Action.Action;
 import Util.CommonUtil;
 import discord4j.core.event.domain.message.MessageCreateEvent;
+import discord4j.core.event.domain.message.MessageUpdateEvent;
+import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.object.entity.channel.TextChannel;
 import lombok.Getter;
 import lombok.Setter;
-import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.lang.reflect.Method;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class MessageEventService {
     @Setter
@@ -25,34 +24,51 @@ public class MessageEventService {
     private final CallActionService callActionService = new CallActionService();
 
     public void receiveEvent(final MessageCreateEvent event) {
-        final String content = Optional.of(event.getMessage().getContent()).orElse(StringUtils.EMPTY);
+        final String content = event.getMessage().getContent();
 
-        if (BooleanUtils.isFalse(isInstructionChannel(event))) {
-            goodBoyService.checkContent(event, content);
-        } else if (content.startsWith(CommonUtil.SIGN)) {
-            final String instruction = format(content);
-
-            if (musicActionSet.contains(instruction)) {
-                executeMusicAction(event, instruction);
-            } else if (actionMap.containsKey(instruction)) {
-                executeAction(event, instruction);
-            } else {
-                callActionService.callAction(event, instruction);
-            }
-        } else if (!content.startsWith("!") && event.getMember().isPresent() && !event.getMember().get().isBot()) {
-            event.getMessage().delete().block();
-        }
-    }
-
-    private boolean isInstructionChannel(final MessageCreateEvent event) {
-        final AtomicReference<String> channelName = new AtomicReference<>();
         event.getMessage().getChannel().subscribe(messageChannel -> {
-            if (messageChannel instanceof TextChannel) {
-                final TextChannel textChannel = (TextChannel) messageChannel;
-                channelName.set(textChannel.getName());
+            if (isNotInstructionChannel(messageChannel) && event.getMember().isPresent()) {
+                goodBoyService.checkContent(event.getMember().get(), event.getMessage(), content, messageChannel);
+            } else if (content.startsWith(CommonUtil.SIGN)) {
+                final String instruction = format(content);
+
+                if (musicActionSet.contains(instruction)) {
+                    executeMusicAction(event, instruction);
+                } else if (actionMap.containsKey(instruction)) {
+                    executeAction(event, instruction);
+                } else {
+                    callActionService.callAction(event, instruction);
+                }
+            } else if (!content.startsWith("!") && event.getMember().isPresent() && !event.getMember().get().isBot()) {
+                event.getMessage().delete().block();
             }
         });
-        return StringUtils.contains(channelName.get(), "指令");
+    }
+
+    public void receiveEvent(final MessageUpdateEvent event) {
+        if (event.getMessage().blockOptional().isEmpty()) {
+            return;
+        }
+
+        event.getMessage().subscribe(message -> message.getAuthorAsMember().subscribe(member -> {
+            final String content = message.getContent();
+
+            event.getChannel().subscribe(messageChannel -> {
+                if (isNotInstructionChannel(messageChannel)) {
+                    goodBoyService.checkContent(member, message, content, messageChannel);
+                } else if (!content.startsWith(CommonUtil.SIGN) && !content.startsWith("!") && !member.isBot()) {
+                    message.delete().block();
+                }
+            });
+        }));
+    }
+
+    private boolean isNotInstructionChannel(final MessageChannel messageChannel) {
+        if (messageChannel instanceof TextChannel) {
+            final TextChannel textChannel = (TextChannel) messageChannel;
+            return !StringUtils.contains(textChannel.getName(), "指令");
+        }
+        return Boolean.FALSE;
     }
 
     private String format(final String content) {

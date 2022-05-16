@@ -1,8 +1,9 @@
 package Service;
 
 import Util.CommonUtil;
-import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.Member;
+import discord4j.core.object.entity.Message;
+import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.rest.util.Permission;
 import discord4j.rest.util.PermissionSet;
 import lombok.extern.slf4j.Slf4j;
@@ -16,37 +17,32 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Date;
+import java.util.Optional;
+import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class GoodBoyService {
     private final int punishmentTime = 3;
-    private final Set<String> badWordSet = new HashSet<>();
 
-    public void addBadWordSet(final String badWord) {
-        badWordSet.add(badWord);
-    }
-
-    protected void checkContent(final MessageCreateEvent event, final String content) {
-        if (CollectionUtils.isEmpty(badWordSet)) {
+    protected void checkContent(final Member member, final Message message, final String content, final MessageChannel messageChannel) {
+        if (CollectionUtils.isEmpty(CommonUtil.BAD_WORD_SET)) {
             return;
         }
 
-        event.getMember().ifPresent(member -> {
-            if (member.isBot() || notNeedToCheck(member) || !isBadWord(content)) {
-                return;
-            }
+        if (member.isBot() || notNeedToCheck(member) || !isBadWord(content)) {
+            return;
+        }
 
-            event.getMessage().delete().block();
-            final int statusCode = callTimeOutApi(member.getGuildId().asString(), member.getId().asString());
-            final String title = "言論審查系統";
-            final String desc = 299 >= statusCode && statusCode >= 200 ?
-                    "◆ 不當言論 : " + content + StringUtils.LF + "◆ 懲處 : 禁言" + punishmentTime + "分鐘" :
-                    "◆ 不當言論 : " + content + StringUtils.LF + "◆ 懲處 : Time Out API失效了沒辦法禁言" +
-                            StringUtils.LF + "◆ Status Code : " + statusCode;
-            CommonUtil.replyByHe1pMETemplate(event, title, desc, null);
-        });
+        message.delete().block();
+        final int statusCode = callTimeOutApi(member.getGuildId().asString(), member.getId().asString());
+        final String title = "言論審查系統";
+        final String desc = 299 >= statusCode && statusCode >= 200 ?
+                "◆ 不當言論 : " + content + StringUtils.LF + "◆ 懲處 : 禁言" + punishmentTime + "分鐘" :
+                "◆ 不當言論 : " + content + StringUtils.LF + "◆ 懲處 : Time Out API失效了沒辦法禁言" +
+                        StringUtils.LF + "◆ Status Code : " + statusCode;
+        CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, null);
     }
 
     private boolean notNeedToCheck(final Member member) {
@@ -66,7 +62,7 @@ public class GoodBoyService {
             return false;
         }
 
-        for (final String badWord : badWordSet) {
+        for (final String badWord : CommonUtil.BAD_WORD_SET) {
             if (badWord.length() == 1 && StringUtils.containsOnly(content, badWord)) {
                 return true;
             } else if (badWord.length() > 1 && StringUtils.contains(content, badWord)) {

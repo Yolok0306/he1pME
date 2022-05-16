@@ -36,46 +36,51 @@ public class MusicService {
         AudioSourceManagers.registerLocalSource(PLAYER_MANAGER);
     }
 
-    @help(example = "play [musicURI]", description = "撥放音樂")
+    @help(example = "play [musicURI]", description = "播放音樂")
     protected void play(final MessageCreateEvent event) {
-        if (!checkChannelContainBot(event) && getVoiceChannel(event).isPresent()) {
-            final VoiceChannel voiceChannel = getVoiceChannel(event).get();
+        if (getVoiceChannel(event).isEmpty()) {
+            return;
+        }
+
+        final String regex = "\\" + CommonUtil.SIGN + "play\\p{Blank}*";
+        final String musicSource = event.getMessage().getContent().replaceAll(regex, StringUtils.EMPTY);
+        if (StringUtils.isBlank(musicSource)) {
+            return;
+        }
+
+        final VoiceChannel voiceChannel = getVoiceChannel(event).get();
+        if (!checkChannelContainBot(event)) {
             voiceChannel.join(VoiceChannelJoinSpec.builder().build()
                     .withProvider(GuildAudioManager.of(voiceChannel.getGuildId()).getProvider())).block();
         }
 
-        final String content = event.getMessage().getContent();
-        final String musicSource = content.replaceAll("\\" + CommonUtil.SIGN + "play\\p{Blank}++", StringUtils.EMPTY);
-        if (checkChannelContainBot(event) && getVoiceChannel(event).isPresent() && StringUtils.isNotBlank(musicSource)) {
-            final VoiceChannel voiceChannel = getVoiceChannel(event).get();
-            PLAYER_MANAGER.loadItem(musicSource, new AudioLoadResultHandler() {
-                @Override
-                public void trackLoaded(final AudioTrack track) {
-                    GuildAudioManager.of(voiceChannel.getGuildId()).getScheduler().play(track);
-                }
+        PLAYER_MANAGER.loadItem(musicSource, new AudioLoadResultHandler() {
+            @Override
+            public void trackLoaded(final AudioTrack track) {
+                GuildAudioManager.of(voiceChannel.getGuildId()).getScheduler().play(track);
+            }
 
-                @Override
-                public void playlistLoaded(final AudioPlaylist playlist) {
-                    final AtomicReference<AudioTrack> firstTrack = new AtomicReference<>(playlist.getSelectedTrack());
-                    firstTrack.set(playlist.getTracks().get(0));
-                }
+            @Override
+            public void playlistLoaded(final AudioPlaylist playlist) {
+                final AtomicReference<AudioTrack> firstTrack = new AtomicReference<>(playlist.getSelectedTrack());
+                firstTrack.set(playlist.getTracks().get(0));
+            }
 
-                @Override
-                public void noMatches() {
-                    event.getMessage().getChannel().subscribe(messageChannel ->
-                            messageChannel.createMessage("Could not play: " + musicSource).block());
-                }
+            @Override
+            public void noMatches() {
+                event.getMessage().getChannel().subscribe(messageChannel ->
+                        messageChannel.createMessage("Could not play: " + musicSource).block());
+            }
 
-                @Override
-                public void loadFailed(final FriendlyException exception) {
-                    event.getMessage().getChannel().subscribe(messageChannel ->
-                            messageChannel.createMessage(exception.getMessage()).block());
-                }
-            });
-        }
+            @Override
+            public void loadFailed(final FriendlyException exception) {
+                event.getMessage().getChannel().subscribe(messageChannel ->
+                        messageChannel.createMessage(exception.getMessage()).block());
+            }
+        });
     }
 
-    @help(example = "stop", description = "停止撥放音樂")
+    @help(example = "stop", description = "停止播放音樂")
     protected void stop(final MessageCreateEvent event) {
         if (checkChannelContainBot(event) && getVoiceChannel(event).isPresent()) {
             final VoiceChannel voiceChannel = getVoiceChannel(event).get();
@@ -88,14 +93,18 @@ public class MusicService {
         if (checkChannelContainBot(event) && getVoiceChannel(event).isPresent()) {
             final VoiceChannel voiceChannel = getVoiceChannel(event).get();
             final AudioPlayer audioPlayer = GuildAudioManager.of(voiceChannel.getGuildId()).getPlayer();
-            if (Objects.nonNull(audioPlayer.getPlayingTrack()) && audioPlayer.getPlayingTrack().isSeekable()) {
-                final AudioTrackInfo audioTrackInfo = audioPlayer.getPlayingTrack().getInfo();
-                final String title = "播放資訊";
-                final String desc = CommonUtil.descFormat("Title : " + audioTrackInfo.title) + StringUtils.LF +
-                        CommonUtil.descFormat("Author : " + audioTrackInfo.author) + StringUtils.LF +
-                        CommonUtil.descFormat("Time : " + timeFormat(audioTrackInfo.length));
-                CommonUtil.replyByHe1pMETemplate(event, title, desc, null);
-            }
+            event.getMessage().getChannel().subscribe(messageChannel ->
+                    event.getMember().ifPresent(member -> {
+                        if (Objects.nonNull(audioPlayer.getPlayingTrack()) && audioPlayer.getPlayingTrack().isSeekable()) {
+                            final AudioTrackInfo audioTrackInfo = audioPlayer.getPlayingTrack().getInfo();
+                            final String title = "播放資訊";
+                            final String desc = CommonUtil.descFormat("Title : " + audioTrackInfo.title) + StringUtils.LF +
+                                    CommonUtil.descFormat("Author : " + audioTrackInfo.author) + StringUtils.LF +
+                                    CommonUtil.descFormat("Time : " + timeFormat(audioTrackInfo.length));
+                            CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, null);
+                        }
+                    })
+            );
         }
     }
 
@@ -104,18 +113,22 @@ public class MusicService {
         if (checkChannelContainBot(event) && getVoiceChannel(event).isPresent()) {
             final VoiceChannel voiceChannel = getVoiceChannel(event).get();
             final List<AudioTrack> queue = GuildAudioManager.of(voiceChannel.getGuildId()).getScheduler().getQueue();
-            if (queue.isEmpty()) {
-                final String title = "播放清單有0首歌 :";
-                final String desc = "播放清單為空";
-                CommonUtil.replyByHe1pMETemplate(event, title, desc, null);
-            } else {
-                final String title = "播放清單有" + queue.size() + "首歌 :";
-                final String desc = queue.stream()
-                        .filter(Objects::nonNull)
-                        .map(audioTrack -> CommonUtil.descStartWithDiamondFormat("◆ " + audioTrack.getInfo().title))
-                        .collect(Collectors.joining(StringUtils.LF));
-                CommonUtil.replyByHe1pMETemplate(event, title, desc.toString(), null);
-            }
+            event.getMessage().getChannel().subscribe(messageChannel ->
+                    event.getMember().ifPresent(member -> {
+                        final String title;
+                        final String desc;
+                        if (queue.isEmpty()) {
+                            title = "播放清單有0首歌 :";
+                            desc = "播放清單為空";
+                        } else {
+                            title = "播放清單有" + queue.size() + "首歌 :";
+                            desc = queue.stream()
+                                    .filter(Objects::nonNull)
+                                    .map(audioTrack -> CommonUtil.descStartWithDiamondFormat("◆ " + audioTrack.getInfo().title))
+                                    .collect(Collectors.joining(StringUtils.LF));
+                        }
+                        CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, null);
+                    }));
         }
     }
 
@@ -129,7 +142,7 @@ public class MusicService {
         }
     }
 
-    @help(example = "pause", description = "暫停/撥放歌曲")
+    @help(example = "pause", description = "暫停/恢復播放歌曲")
     protected void pause(final MessageCreateEvent event) {
         if (checkChannelContainBot(event) && getVoiceChannel(event).isPresent()) {
             final VoiceChannel voiceChannel = getVoiceChannel(event).get();
@@ -148,15 +161,17 @@ public class MusicService {
 
     private Boolean checkChannelContainBot(final MessageCreateEvent event) {
         final AtomicReference<Boolean> result = new AtomicReference<>(false);
-        CommonUtil.BOT.getSelf().subscribe(user -> getVoiceChannel(event).ifPresent(voiceChannel ->
-                result.set(voiceChannel.isMemberConnected(user.getId()).block())));
+        CommonUtil.BOT.getSelf().subscribe(user ->
+                getVoiceChannel(event).ifPresent(voiceChannel ->
+                        result.set(voiceChannel.isMemberConnected(user.getId()).block())));
         return result.get();
     }
 
     private Optional<VoiceChannel> getVoiceChannel(final MessageCreateEvent event) {
         final AtomicReference<VoiceChannel> voiceChannel = new AtomicReference<>();
-        event.getMember().flatMap(member -> Optional.ofNullable(member.getVoiceState().block()))
-                .ifPresent(voiceState -> voiceChannel.set(voiceState.getChannel().block()));
+        event.getMember().ifPresent(member ->
+                member.getVoiceState().subscribe(voiceState ->
+                        voiceState.getChannel().subscribe(voiceChannel::set)));
         return Optional.ofNullable(voiceChannel.get());
     }
 
