@@ -26,11 +26,12 @@ import java.util.concurrent.TimeUnit;
 public class GoodBoyService {
     private final int punishmentTime = 3;
 
-    protected void checkContent(final Member member, final Message message, final String content, final MessageChannel messageChannel) {
+    protected void checkContent(final MessageChannel messageChannel, final Message message, final Member member) {
         if (CollectionUtils.isEmpty(CommonUtil.BAD_WORD_SET)) {
             return;
         }
 
+        final String content = message.getContent();
         if (member.isBot() || notNeedToCheck(member) || !isBadWord(content)) {
             return;
         }

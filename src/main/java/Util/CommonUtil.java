@@ -14,7 +14,10 @@ import discord4j.rest.util.Color;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.Set;
 
 @Slf4j
 public class CommonUtil {
@@ -67,17 +70,10 @@ public class CommonUtil {
                                              final String title, final String desc, final String thumb) {
         final String thumbnail = Optional.ofNullable(thumb).orElse(StringUtils.EMPTY);
         final Color color = Color.of(255, 192, 203);
-        final EmbedCreateSpec.Builder embedCreateSpec = EmbedCreateSpec.builder()
-                .title(title).description(desc).thumbnail(thumbnail).color(color);
-
-        if (Objects.nonNull(member)) {
-            final String name = member.getTag();
-            final String avatarUrl = member.getAvatarUrl();
-            final EmbedCreateFields.Author author = EmbedCreateFields.Author.of(name, null, avatarUrl);
-            embedCreateSpec.author(author);
-        }
-
-        messageChannel.createMessage(embedCreateSpec.build()).block();
+        final EmbedCreateFields.Author author = EmbedCreateFields.Author.of(member.getTag(), null, member.getAvatarUrl());
+        final EmbedCreateSpec embedCreateSpec = EmbedCreateSpec.builder()
+                .title(title).description(desc).thumbnail(thumbnail).color(color).author(author).build();
+        messageChannel.createMessage(embedCreateSpec).block();
     }
 
     public static String descFormat(final String desc) {
@@ -88,8 +84,8 @@ public class CommonUtil {
         return StringUtils.abbreviate(desc, 36);
     }
 
-    public static boolean isHigher(final Role role1, final Role role2) {
-        return role1.getPosition().blockOptional().isPresent() && role2.getPosition().blockOptional().isPresent() &&
-                role1.getPosition().blockOptional().get() > role2.getPosition().blockOptional().get();
+    public static boolean isNotHigher(final Role role1, final Role role2) {
+        return role1.getPosition().blockOptional().isEmpty() || role2.getPosition().blockOptional().isEmpty() ||
+                role1.getPosition().blockOptional().get() <= role2.getPosition().blockOptional().get();
     }
 }

@@ -7,7 +7,6 @@ import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackEndReason;
 import discord4j.common.util.Snowflake;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.BooleanUtils;
 
 import java.util.Collections;
 import java.util.LinkedList;
@@ -54,16 +53,11 @@ public final class AudioTrackScheduler extends AudioEventAdapter {
     public void onTrackEnd(final AudioPlayer player, final AudioTrack track, final AudioTrackEndReason endReason) {
         // Advance the player if the track completed naturally (FINISHED) or if the track cannot play (LOAD_FAILED)
         if (CollectionUtils.isEmpty(queue)) {
-            CommonUtil.BOT.getUserById(CommonUtil.BOT.getSelfId()).subscribe(user ->
-                    user.asMember(guild).subscribe(member ->
-                            member.getVoiceState().subscribe(voiceState ->
-                                    voiceState.getChannel().subscribe(voiceChannel ->
-                                            voiceChannel.sendDisconnectVoiceState().block()
-                                    )
-                            )
-                    )
-            );
-        } else if (BooleanUtils.isTrue(endReason.mayStartNext)) {
+            CommonUtil.BOT.getGuildMembers(guild).subscribe(member ->
+                    member.getVoiceState().subscribe(voiceState ->
+                            voiceState.getChannel().subscribe(voiceChannel ->
+                                    voiceChannel.sendDisconnectVoiceState().block())));
+        } else if (endReason.mayStartNext) {
             skip();
         }
     }
