@@ -8,7 +8,7 @@ import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.services.dynamodbv2.document.ItemCollection;
 import com.amazonaws.services.dynamodbv2.document.QueryOutcome;
 import com.amazonaws.services.dynamodbv2.document.spec.QuerySpec;
-import discord4j.core.event.domain.message.MessageCreateEvent;
+import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.rest.util.Color;
 import lombok.extern.slf4j.Slf4j;
@@ -21,8 +21,8 @@ import java.util.Optional;
 @Slf4j
 public class CallActionService {
 
-    protected void callAction(final MessageCreateEvent event, final String instruction) {
-        event.getMessage().getChannel().subscribe(messageChannel -> getDataFromDB(instruction).ifPresent(item -> {
+    protected void callAction(final MessageChannel messageChannel, final String instruction) {
+        getDataFromDB(instruction).ifPresent(item -> {
             final CallAction callAction = buildCallAction(item);
             if (StringUtils.isBlank(callAction.getId()) || Objects.isNull(callAction.getImage())) {
                 return;
@@ -31,7 +31,7 @@ public class CallActionService {
             messageChannel.createMessage("<@" + callAction.getId() + "> " + callAction.getMessage()).block();
             messageChannel.createMessage(EmbedCreateSpec.create().withColor(callAction.getColor())
                     .withImage(callAction.getImage())).block();
-        }));
+        });
     }
 
     private Optional<Item> getDataFromDB(final String searchValue) {

@@ -2,7 +2,9 @@ package Action;
 
 import Annotation.help;
 import Util.CommonUtil;
-import discord4j.core.event.domain.message.MessageCreateEvent;
+import discord4j.core.object.entity.Member;
+import discord4j.core.object.entity.Message;
+import discord4j.core.object.entity.channel.MessageChannel;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
@@ -19,14 +21,12 @@ public class ReloadAction implements Action {
     }
 
     @Override
-    public void execute(final MessageCreateEvent event) {
-        event.getMember().ifPresent(member -> {
-            CommonUtil.BAD_WORD_SET.clear();
-            CommonUtil.loadServerDataFromDB();
+    public void execute(final MessageChannel messageChannel, final Message message, final Member member) {
+        CommonUtil.BAD_WORD_SET.clear();
+        CommonUtil.loadServerDataFromDB();
 
-            final ZonedDateTime zonedDateTime = LocalDateTime.now().atZone(ZoneId.systemDefault());
-            final String now = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(zonedDateTime);
-            log.info("Reload BAD_WORD_SET by " + member.getUsername() + member.getTag() + " at " + now);
-        });
+        final ZonedDateTime zonedDateTime = LocalDateTime.now().atZone(ZoneId.systemDefault());
+        final String now = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(zonedDateTime);
+        log.info("Reload BAD_WORD_SET by " + member.getTag() + " at " + now);
     }
 }

@@ -2,7 +2,9 @@ package Action;
 
 import Annotation.help;
 import Util.CommonUtil;
-import discord4j.core.event.domain.message.MessageCreateEvent;
+import discord4j.core.object.entity.Member;
+import discord4j.core.object.entity.Message;
+import discord4j.core.object.entity.channel.MessageChannel;
 import org.apache.commons.lang3.StringUtils;
 
 import java.time.LocalDateTime;
@@ -18,18 +20,14 @@ public class TimeAction implements Action {
     }
 
     @Override
-    public void execute(final MessageCreateEvent event) {
+    public void execute(final MessageChannel messageChannel, final Message message, final Member member) {
         final String regex = "\\" + CommonUtil.SIGN + getInstruction() + "\\p{Blank}*";
-        final String userZoneId = event.getMessage().getContent().replaceAll(regex, StringUtils.EMPTY);
+        final String userZoneId = message.getContent().replaceAll(regex, StringUtils.EMPTY);
         final ZoneId zoneId = StringUtils.isNotBlank(userZoneId) ? ZoneId.of(userZoneId) : ZoneId.systemDefault();
         final ZonedDateTime zonedDateTime = LocalDateTime.now().atZone(ZoneId.systemDefault()).withZoneSameInstant(zoneId);
 
-        event.getMessage().getChannel().subscribe(messageChannel ->
-                event.getMember().ifPresent(member -> {
-                    final String title = "現在時間 (" + zoneId + ")";
-                    final String desc = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(zonedDateTime);
-                    CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, null);
-                })
-        );
+        final String title = "現在時間 (" + zoneId + ")";
+        final String desc = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(zonedDateTime);
+        CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, null);
     }
 }

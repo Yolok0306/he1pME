@@ -7,7 +7,9 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.ItemCollection;
 import com.amazonaws.services.dynamodbv2.document.ScanOutcome;
-import discord4j.core.event.domain.message.MessageCreateEvent;
+import discord4j.core.object.entity.Member;
+import discord4j.core.object.entity.Message;
+import discord4j.core.object.entity.channel.MessageChannel;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -26,55 +28,52 @@ public class HelpAction implements Action {
     }
 
     @Override
-    public void execute(final MessageCreateEvent event) {
-        event.getMessage().getChannel().subscribe(messageChannel ->
-                event.getMember().ifPresent(member -> {
-                    final Set<Class<? extends Action>> actionSet = new Reflections("Action").getSubTypesOf(Action.class);
-                    if (CollectionUtils.isNotEmpty(actionSet)) {
-                        final String title = "一般指令";
-                        final String desc = actionSet.stream()
-                                .filter(Objects::nonNull)
-                                .filter(action -> action.isAnnotationPresent(help.class))
-                                .sorted(Comparator.comparing(action -> {
-                                    try {
-                                        return action.getDeclaredConstructor().newInstance().getInstruction();
-                                    } catch (final Exception exception) {
-                                        exception.printStackTrace();
-                                    }
-                                    return StringUtils.EMPTY;
-                                }))
-                                .map(action -> action.getAnnotation(help.class))
-                                .map(help -> CommonUtil.SIGN + help.example() + StringUtils.SPACE + help.description())
-                                .collect(Collectors.joining(StringUtils.LF));
-                        CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, null);
-                    }
+    public void execute(final MessageChannel messageChannel, final Message message, final Member member) {
+        final Set<Class<? extends Action>> actionSet = new Reflections("Action").getSubTypesOf(Action.class);
+        if (CollectionUtils.isNotEmpty(actionSet)) {
+            final String title = "一般指令";
+            final String desc = actionSet.stream()
+                    .filter(Objects::nonNull)
+                    .filter(action -> action.isAnnotationPresent(help.class))
+                    .sorted(Comparator.comparing(action -> {
+                        try {
+                            return action.getDeclaredConstructor().newInstance().getInstruction();
+                        } catch (final Exception exception) {
+                            exception.printStackTrace();
+                        }
+                        return StringUtils.EMPTY;
+                    }))
+                    .map(action -> action.getAnnotation(help.class))
+                    .map(help -> CommonUtil.SIGN + help.example() + StringUtils.SPACE + help.description())
+                    .collect(Collectors.joining(StringUtils.LF));
+            CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, null);
+        }
 
-                    final Set<Method> musicMethodSet = Arrays.stream(MusicService.class.getDeclaredMethods())
-                            .filter(method -> method.isAnnotationPresent(help.class)).collect(Collectors.toSet());
-                    if (CollectionUtils.isNotEmpty(musicMethodSet)) {
-                        final String title = "音樂指令";
-                        final String desc = musicMethodSet.stream()
-                                .filter(Objects::nonNull)
-                                .filter(musicMethod -> musicMethod.isAnnotationPresent(help.class))
-                                .sorted(Comparator.comparing(Method::getName))
-                                .map(musicMethod -> musicMethod.getAnnotation(help.class))
-                                .map(help -> CommonUtil.SIGN + help.example() + StringUtils.SPACE + help.description())
-                                .collect(Collectors.joining(StringUtils.LF));
-                        CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, null);
-                    }
+        final Set<Method> musicMethodSet = Arrays.stream(MusicService.class.getDeclaredMethods())
+                .filter(method -> method.isAnnotationPresent(help.class)).collect(Collectors.toSet());
+        if (CollectionUtils.isNotEmpty(musicMethodSet)) {
+            final String title = "音樂指令";
+            final String desc = musicMethodSet.stream()
+                    .filter(Objects::nonNull)
+                    .filter(musicMethod -> musicMethod.isAnnotationPresent(help.class))
+                    .sorted(Comparator.comparing(Method::getName))
+                    .map(musicMethod -> musicMethod.getAnnotation(help.class))
+                    .map(help -> CommonUtil.SIGN + help.example() + StringUtils.SPACE + help.description())
+                    .collect(Collectors.joining(StringUtils.LF));
+            CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, null);
+        }
 
-                    final Map<String, String> callActionMap = getCallActionMap();
-                    if (CollectionUtils.isNotEmpty(callActionMap.entrySet())) {
-                        final String title = "客製化指令";
-                        final String desc = callActionMap.entrySet().stream()
-                                .filter(Objects::nonNull)
-                                .sorted(Map.Entry.comparingByKey())
-                                .map(entry -> CommonUtil.SIGN + entry.getKey() + StringUtils.SPACE + entry.getValue())
-                                .map(CommonUtil::descFormat)
-                                .collect(Collectors.joining(StringUtils.LF));
-                        CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, null);
-                    }
-                }));
+        final Map<String, String> callActionMap = getCallActionMap();
+        if (CollectionUtils.isNotEmpty(callActionMap.entrySet())) {
+            final String title = "客製化指令";
+            final String desc = callActionMap.entrySet().stream()
+                    .filter(Objects::nonNull)
+                    .sorted(Map.Entry.comparingByKey())
+                    .map(entry -> CommonUtil.SIGN + entry.getKey() + StringUtils.SPACE + entry.getValue())
+                    .map(CommonUtil::descFormat)
+                    .collect(Collectors.joining(StringUtils.LF));
+            CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, null);
+        }
     }
 
     private Map<String, String> getCallActionMap() {
