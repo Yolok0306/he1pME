@@ -1,9 +1,13 @@
-import Action.Action;
-import Annotation.help;
 import Service.MessageEventService;
-import Service.MusicService;
 import Service.VoiceStateService;
 import Util.CommonUtil;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import com.amazonaws.services.dynamodbv2.document.ItemCollection;
+import com.amazonaws.services.dynamodbv2.document.QueryOutcome;
+import com.amazonaws.services.dynamodbv2.document.spec.QuerySpec;
+import com.amazonaws.services.dynamodbv2.document.utils.NameMap;
+import com.amazonaws.services.dynamodbv2.document.utils.ValueMap;
 import discord4j.core.DiscordClient;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.VoiceStateUpdateEvent;
@@ -12,15 +16,8 @@ import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.event.domain.message.MessageUpdateEvent;
 import discord4j.gateway.intent.Intent;
 import discord4j.gateway.intent.IntentSet;
-import org.apache.commons.lang3.StringUtils;
-import org.reflections.Reflections;
 
-import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Objects;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 public class He1pME {
     private static final MessageEventService messageEventService = new MessageEventService();
@@ -29,15 +26,12 @@ public class He1pME {
 //    private static final Timer timer = new Timer();
 
     public static void main(final String[] args) {
-        init();
+        getTokenDB();
         final IntentSet intentSet = IntentSet.of(Intent.GUILDS, Intent.GUILD_MEMBERS, Intent.GUILD_MESSAGES, Intent.GUILD_VOICE_STATES);
         final GatewayDiscordClient bot = DiscordClient.create(CommonUtil.TOKEN).gateway().setEnabledIntents(intentSet).login().block();
 
-        if (Objects.isNull(bot)) {
-            throw new IllegalStateException("Bot token : \"" + CommonUtil.TOKEN + "\" is invalid !");
-        }
-
-        CommonUtil.BOT = bot;
+        CommonUtil.BOT = Optional.ofNullable(bot).orElseThrow(() -> new IllegalStateException("Bot token : " + CommonUtil.TOKEN + " is invalid !"));
+        CommonUtil.getBadWordFromDB();
 
         bot.getEventDispatcher().on(ReadyEvent.class).subscribe(event ->
                 System.out.printf("-----Logged in as %s #%s-----%n", event.getSelf().getUsername(), event.getSelf().getDiscriminator()));
@@ -48,25 +42,20 @@ public class He1pME {
         bot.onDisconnect().block();
     }
 
-    private static void init() {
-        CommonUtil.loadServerDataFromDB();
+    private static void getTokenDB() {
+        final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
+        final QuerySpec querySpec = new QuerySpec()
+                .withKeyConditionExpression("#key1 = :value1")
+                .withNameMap(new NameMap().with("#key1", "name"))
+                .withValueMap(new ValueMap().withString(":value1", "Token"));
+        final ItemCollection<QueryOutcome> items = dynamoDB.getTable("ServerData").query(querySpec);
 
-        messageEventService.setMusicActionSet(Arrays.stream(MusicService.class.getDeclaredMethods())
-                .filter(Objects::nonNull)
-                .filter(method -> method.isAnnotationPresent(help.class))
-                .map(Method::getName)
-                .collect(Collectors.toSet()));
+        if (items.iterator().hasNext()) {
+            CommonUtil.TOKEN = items.iterator().next().getString("id");
+        } else {
+            throw new IllegalStateException("Can not get Token from ServerData table!");
+        }
 
-        messageEventService.setActionMap(new Reflections("Action").getSubTypesOf(Action.class).stream()
-                .filter(Objects::nonNull)
-                .filter(action -> action.isAnnotationPresent(help.class))
-                .collect(Collectors.toMap(action -> {
-                    try {
-                        return action.getDeclaredConstructor().newInstance().getInstruction();
-                    } catch (final Exception exception) {
-                        exception.printStackTrace();
-                    }
-                    return StringUtils.EMPTY;
-                }, Function.identity(), (existing, replacement) -> existing, HashMap::new)));
+        dynamoDB.shutdown();
     }
 }

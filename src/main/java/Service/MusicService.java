@@ -102,7 +102,7 @@ public class MusicService {
             final String desc = CommonUtil.descFormat("Title : " + audioTrackInfo.title) + StringUtils.LF +
                     CommonUtil.descFormat("Author : " + audioTrackInfo.author) + StringUtils.LF +
                     CommonUtil.descFormat("Time : " + timeFormat(audioTrackInfo.length));
-            CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, null);
+            CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, StringUtils.EMPTY);
         }
     }
 
@@ -125,7 +125,7 @@ public class MusicService {
                     .map(audioTrack -> CommonUtil.descStartWithDiamondFormat("◆ " + audioTrack.getInfo().title))
                     .collect(Collectors.joining(StringUtils.LF));
         }
-        CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, null);
+        CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, StringUtils.EMPTY);
     }
 
     @help(example = "skip", description = "跳過這首歌曲")

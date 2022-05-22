@@ -22,8 +22,8 @@ public class ReloadAction implements Action {
 
     @Override
     public void execute(final MessageChannel messageChannel, final Message message, final Member member) {
-        CommonUtil.BAD_WORD_SET.clear();
-        CommonUtil.loadServerDataFromDB();
+        CommonUtil.BAD_WORD_MAP.clear();
+        CommonUtil.getBadWordFromDB();
 
         final ZonedDateTime zonedDateTime = LocalDateTime.now().atZone(ZoneId.systemDefault());
         final String now = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(zonedDateTime);

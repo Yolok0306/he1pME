@@ -10,6 +10,8 @@ import com.amazonaws.services.dynamodbv2.document.ScanOutcome;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.channel.MessageChannel;
+import discord4j.core.spec.EmbedCreateFields;
+import discord4j.core.spec.EmbedCreateSpec;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -29,10 +31,12 @@ public class HelpAction implements Action {
 
     @Override
     public void execute(final MessageChannel messageChannel, final Message message, final Member member) {
+        final EmbedCreateFields.Author author = EmbedCreateFields.Author.of(member.getTag(), StringUtils.EMPTY, member.getAvatarUrl());
+
         final Set<Class<? extends Action>> actionSet = new Reflections("Action").getSubTypesOf(Action.class);
         if (CollectionUtils.isNotEmpty(actionSet)) {
-            final String title = "一般指令";
-            final String desc = actionSet.stream()
+            final EmbedCreateSpec.Builder embedCreateSpecBuilder = EmbedCreateSpec.builder().title("一般指令");
+            actionSet.stream()
                     .filter(Objects::nonNull)
                     .filter(action -> action.isAnnotationPresent(help.class))
                     .sorted(Comparator.comparing(action -> {
@@ -44,35 +48,31 @@ public class HelpAction implements Action {
                         return StringUtils.EMPTY;
                     }))
                     .map(action -> action.getAnnotation(help.class))
-                    .map(help -> CommonUtil.SIGN + help.example() + StringUtils.SPACE + help.description())
-                    .collect(Collectors.joining(StringUtils.LF));
-            CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, null);
+                    .forEach(help -> embedCreateSpecBuilder.addField(CommonUtil.SIGN + help.example(), help.description(), Boolean.FALSE));
+            messageChannel.createMessage(embedCreateSpecBuilder.color(CommonUtil.HE1PME_COLOR).author(author).build()).block();
         }
 
         final Set<Method> musicMethodSet = Arrays.stream(MusicService.class.getDeclaredMethods())
                 .filter(method -> method.isAnnotationPresent(help.class)).collect(Collectors.toSet());
         if (CollectionUtils.isNotEmpty(musicMethodSet)) {
-            final String title = "音樂指令";
-            final String desc = musicMethodSet.stream()
+            final EmbedCreateSpec.Builder embedCreateSpecBuilder = EmbedCreateSpec.builder().title("音樂指令");
+            musicMethodSet.stream()
                     .filter(Objects::nonNull)
                     .filter(musicMethod -> musicMethod.isAnnotationPresent(help.class))
                     .sorted(Comparator.comparing(Method::getName))
                     .map(musicMethod -> musicMethod.getAnnotation(help.class))
-                    .map(help -> CommonUtil.SIGN + help.example() + StringUtils.SPACE + help.description())
-                    .collect(Collectors.joining(StringUtils.LF));
-            CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, null);
+                    .forEach(help -> embedCreateSpecBuilder.addField(CommonUtil.SIGN + help.example(), help.description(), Boolean.FALSE));
+            messageChannel.createMessage(embedCreateSpecBuilder.color(CommonUtil.HE1PME_COLOR).author(author).build()).block();
         }
 
         final Map<String, String> callActionMap = getCallActionMap();
         if (CollectionUtils.isNotEmpty(callActionMap.entrySet())) {
-            final String title = "客製化指令";
-            final String desc = callActionMap.entrySet().stream()
+            final EmbedCreateSpec.Builder embedCreateSpecBuilder = EmbedCreateSpec.builder().title("客製化指令");
+            callActionMap.entrySet().stream()
                     .filter(Objects::nonNull)
                     .sorted(Map.Entry.comparingByKey())
-                    .map(entry -> CommonUtil.SIGN + entry.getKey() + StringUtils.SPACE + entry.getValue())
-                    .map(CommonUtil::descFormat)
-                    .collect(Collectors.joining(StringUtils.LF));
-            CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, null);
+                    .forEach(entry -> embedCreateSpecBuilder.addField(CommonUtil.SIGN + entry.getKey(), entry.getValue(), Boolean.FALSE));
+            messageChannel.createMessage(embedCreateSpecBuilder.color(CommonUtil.HE1PME_COLOR).author(author).build()).block();
         }
     }
 

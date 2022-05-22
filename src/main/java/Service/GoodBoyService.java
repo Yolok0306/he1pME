@@ -7,7 +7,6 @@ import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.rest.util.Permission;
 import discord4j.rest.util.PermissionSet;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
@@ -19,6 +18,7 @@ import java.net.http.HttpResponse;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
@@ -27,12 +27,13 @@ public class GoodBoyService {
     private final int punishmentTime = 3;
 
     protected void checkContent(final MessageChannel messageChannel, final Message message, final Member member) {
-        if (CollectionUtils.isEmpty(CommonUtil.BAD_WORD_SET)) {
+        if (message.getGuildId().isEmpty() || !CommonUtil.BAD_WORD_MAP.containsKey(message.getGuildId().get().asString())) {
             return;
         }
 
+        final Set<String> badWordSet = CommonUtil.BAD_WORD_MAP.get(message.getGuildId().get().asString());
         final String content = message.getContent();
-        if (member.isBot() || notNeedToCheck(member) || !isBadWord(content)) {
+        if (member.isBot() || notNeedToCheck(member) || !isBadWord(content, badWordSet)) {
             return;
         }
 
@@ -43,7 +44,7 @@ public class GoodBoyService {
                 "◆ 不當言論 : " + content + StringUtils.LF + "◆ 懲處 : 禁言" + punishmentTime + "分鐘" :
                 "◆ 不當言論 : " + content + StringUtils.LF + "◆ 懲處 : Time Out API失效了沒辦法禁言" +
                         StringUtils.LF + "◆ Status Code : " + statusCode;
-        CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, null);
+        CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, StringUtils.EMPTY);
     }
 
     private boolean notNeedToCheck(final Member member) {
@@ -51,7 +52,7 @@ public class GoodBoyService {
         return permissionSet.contains(Permission.ADMINISTRATOR) || permissionSet.contains(Permission.MODERATE_MEMBERS);
     }
 
-    private boolean isBadWord(String content) {
+    private boolean isBadWord(String content, final Set<String> badWordSet) {
         content = content.replaceAll("@everyone|@here", StringUtils.EMPTY);
         content = content.replaceAll("<@[!&]\\d{18}>", StringUtils.EMPTY);
         content = content.replaceAll("<#\\d{18}>", StringUtils.EMPTY);
@@ -63,7 +64,7 @@ public class GoodBoyService {
             return false;
         }
 
-        for (final String badWord : CommonUtil.BAD_WORD_SET) {
+        for (final String badWord : badWordSet) {
             if (badWord.length() == 1 && StringUtils.containsOnly(content, badWord)) {
                 return true;
             } else if (badWord.length() > 1 && StringUtils.contains(content, badWord)) {
