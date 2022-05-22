@@ -10,7 +10,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.util.Objects;
 
-@help(example = "editName @member [new name]", description = "修改標記成員的名稱")
+@help(example = "editName @member [name]", description = "為被標記的成員修改名稱")
 public class EditNameAction implements Action {
     @Override
     public String getInstruction() {

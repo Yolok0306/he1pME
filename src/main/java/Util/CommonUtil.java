@@ -4,6 +4,8 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.document.*;
 import com.amazonaws.services.dynamodbv2.document.spec.QuerySpec;
 import com.amazonaws.services.dynamodbv2.document.spec.ScanSpec;
+import com.amazonaws.services.dynamodbv2.document.utils.NameMap;
+import com.amazonaws.services.dynamodbv2.document.utils.ValueMap;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Role;
@@ -14,44 +16,42 @@ import discord4j.rest.util.Color;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 @Slf4j
 public class CommonUtil {
     public static final String SIGN = "$";
     public static String TOKEN;
     public static GatewayDiscordClient BOT;
-    public static final Set<String> BAD_WORD_SET = new HashSet<>();
-    public static String BASE_URI = "https://discord.com/api/v9";
+    public static final Map<String, Set<String>> BAD_WORD_MAP = new HashMap<>();
+    public static final String BASE_URI = "https://discord.com/api/v9";
+    public static final Color HE1PME_COLOR = Color.of(255, 192, 203);
 
-    public static void loadServerDataFromDB() {
+    public static void getBadWordFromDB() {
         final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
         final ScanSpec scanSpec = new ScanSpec();
-        final ItemCollection<ScanOutcome> items = dynamoDB.getTable("ServerData").scan(scanSpec);
+        final ItemCollection<ScanOutcome> items = dynamoDB.getTable("BadWord").scan(scanSpec);
 
-        if (!items.iterator().hasNext()) {
-            throw new IllegalStateException("Can not get any data from ServerData table !");
-        }
-
-        for (final Item item : items) {
-            if (StringUtils.equals(item.getString("name"), "Token")) {
-                TOKEN = item.getString("id");
-            } else if (StringUtils.equals(item.getString("name"), "BadWord")) {
-                BAD_WORD_SET.add(item.getString("id"));
+        items.forEach(item -> BAD_WORD_MAP.compute(item.getString("guild_id"), (key, value) -> {
+            final Set<String> badWordSet;
+            if (Objects.isNull(value)) {
+                badWordSet = new HashSet<>();
+            } else {
+                badWordSet = value;
             }
-        }
+            badWordSet.add(item.getString("word"));
+            return badWordSet;
+        }));
+
         dynamoDB.shutdown();
     }
 
-    public static Optional<Item> getMemberDataFromDB(final String searchValue) {
+    public static Optional<Item> getMemberDataFromDB(final String name, final String guildId) {
         final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
         final QuerySpec querySpec = new QuerySpec()
-                .withKeyConditionExpression("#key = :value")
-                .withNameMap(Collections.singletonMap("#key", "name"))
-                .withValueMap(Collections.singletonMap(":value", searchValue));
+                .withKeyConditionExpression("#key1 = :value1 and #key2 = :value2")
+                .withNameMap(new NameMap().with("#key1", "name").with("#key2", "guild_id"))
+                .withValueMap(new ValueMap().withString(":value1", name).withString(":value2", guildId));
         final ItemCollection<QueryOutcome> items = dynamoDB.getTable("MemberData").query(querySpec);
 
         final Item result;
@@ -59,7 +59,7 @@ public class CommonUtil {
             result = items.iterator().next();
         } else {
             result = null;
-            log.error("Can not find data with name = \"" + searchValue + "\" in MemberData Table !");
+            log.error("Can not find data with name = \"" + name + "\" and guild_id = \"" + guildId + "\" in MemberData Table!");
         }
 
         dynamoDB.shutdown();
@@ -68,11 +68,13 @@ public class CommonUtil {
 
     public static void replyByHe1pMETemplate(final MessageChannel messageChannel, final Member member,
                                              final String title, final String desc, final String thumb) {
-        final String thumbnail = Optional.ofNullable(thumb).orElse(StringUtils.EMPTY);
-        final Color color = Color.of(255, 192, 203);
-        final EmbedCreateFields.Author author = EmbedCreateFields.Author.of(member.getTag(), null, member.getAvatarUrl());
-        final EmbedCreateSpec embedCreateSpec = EmbedCreateSpec.builder()
-                .title(title).description(desc).thumbnail(thumbnail).color(color).author(author).build();
+        final EmbedCreateFields.Author author = EmbedCreateFields.Author.of(member.getTag(), StringUtils.EMPTY, member.getAvatarUrl());
+        final EmbedCreateSpec embedCreateSpec;
+        if (StringUtils.isNotBlank(thumb)) {
+            embedCreateSpec = EmbedCreateSpec.builder().title(title).description(desc).thumbnail(thumb).color(HE1PME_COLOR).author(author).build();
+        } else {
+            embedCreateSpec = EmbedCreateSpec.builder().title(title).description(desc).color(HE1PME_COLOR).author(author).build();
+        }
         messageChannel.createMessage(embedCreateSpec).block();
     }
 

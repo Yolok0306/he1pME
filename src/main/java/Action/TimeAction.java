@@ -28,6 +28,6 @@ public class TimeAction implements Action {
 
         final String title = "現在時間 (" + zoneId + ")";
         final String desc = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(zonedDateTime);
-        CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, null);
+        CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, StringUtils.EMPTY);
     }
 }

@@ -1,6 +1,7 @@
 package Service;
 
 import Action.Action;
+import Annotation.help;
 import Util.CommonUtil;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.event.domain.message.MessageUpdateEvent;
@@ -8,25 +9,41 @@ import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.object.entity.channel.TextChannel;
-import lombok.Getter;
-import lombok.Setter;
 import org.apache.commons.lang3.StringUtils;
+import org.reflections.Reflections;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class MessageEventService {
-    @Setter
-    private Set<String> musicActionSet;
-    @Setter
-    private Map<String, Class<? extends Action>> actionMap;
-    @Getter
+    private final Set<String> musicActionSet;
+    private final Map<String, Class<? extends Action>> actionMap;
     private final GoodBoyService goodBoyService = new GoodBoyService();
     private final MusicService musicService = new MusicService();
     private final CallActionService callActionService = new CallActionService();
+
+    public MessageEventService() {
+        musicActionSet = Arrays.stream(MusicService.class.getDeclaredMethods())
+                .filter(Objects::nonNull)
+                .filter(method -> method.isAnnotationPresent(help.class))
+                .map(Method::getName)
+                .collect(Collectors.toSet());
+
+        actionMap = new Reflections("Action").getSubTypesOf(Action.class).stream()
+                .filter(Objects::nonNull)
+                .filter(action -> action.isAnnotationPresent(help.class))
+                .collect(Collectors.toMap(action -> {
+                    try {
+                        return action.getDeclaredConstructor().newInstance().getInstruction();
+                    } catch (final Exception exception) {
+                        exception.printStackTrace();
+                    }
+                    return StringUtils.EMPTY;
+                }, Function.identity(), (existing, replacement) -> existing, HashMap::new));
+    }
 
     public void receiveEvent(final MessageCreateEvent event) {
         final Optional<MessageChannel> messageChannelOpt = event.getMessage().getChannel().blockOptional();
@@ -66,7 +83,7 @@ public class MessageEventService {
             } else if (actionMap.containsKey(instruction)) {
                 executeAction(messageChannel, message, member, instruction);
             } else {
-                callActionService.callAction(messageChannel, instruction);
+                callActionService.callAction(messageChannel, message, instruction);
             }
         } else if (!content.startsWith("!") && !member.isBot()) {
             message.delete().block();
