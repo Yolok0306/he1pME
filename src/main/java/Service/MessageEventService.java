@@ -83,7 +83,7 @@ public class MessageEventService {
             } else if (actionMap.containsKey(instruction)) {
                 executeAction(messageChannel, message, member, instruction);
             } else {
-                callActionService.callAction(messageChannel, message, instruction);
+                callActionService.execute(messageChannel, message, instruction);
             }
         } else if (!content.startsWith("!") && !member.isBot()) {
             message.delete().block();

@@ -15,12 +15,10 @@ import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TimeZone;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class GoodBoyService {
@@ -85,14 +83,14 @@ public class GoodBoyService {
     }
 
     private int callTimeOutApi(final String guildId, final String memberId) {
-        final Date futureTime = new Date(System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(punishmentTime));
-        final SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.sssXXX");
-        simpleDateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-        final String body = "{\"communication_disabled_until\" : \"" + simpleDateFormat.format(futureTime) + "\"}";
+        final ZonedDateTime now = ZonedDateTime.now().withZoneSameInstant(ZoneId.of("UTC"));
+        final ZonedDateTime futureTime = now.plusMinutes(punishmentTime);
+        final String body = "{\"communication_disabled_until\" : \"" + futureTime.toLocalDateTime() + "\"}";
         try {
             final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).build();
+            final URI uri = new URI(CommonUtil.DISCORD_BASE_URI + "/guilds/" + guildId + "/members/" + memberId);
             final HttpRequest httpRequest = HttpRequest.newBuilder()
-                    .uri(new URI(CommonUtil.BASE_URI + "/guilds/" + guildId + "/members/" + memberId))
+                    .uri(uri)
                     .header("Content-Type", "application/json")
                     .header("Authorization", "Bot " + CommonUtil.TOKEN)
                     .method("PATCH", HttpRequest.BodyPublishers.ofString(body))

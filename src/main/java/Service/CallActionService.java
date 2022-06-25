@@ -22,7 +22,7 @@ import java.util.Optional;
 @Slf4j
 public class CallActionService {
 
-    protected void callAction(final MessageChannel messageChannel, final Message message, final String instruction) {
+    protected void execute(final MessageChannel messageChannel, final Message message, final String instruction) {
         if (message.getGuildId().isEmpty()) {
             log.error(CommonUtil.SIGN + instruction + "can not execute because GuildId is null!");
             return;
