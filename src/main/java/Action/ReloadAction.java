@@ -7,7 +7,6 @@ import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.channel.MessageChannel;
 import lombok.extern.slf4j.Slf4j;
 
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -30,8 +29,8 @@ public class ReloadAction implements Action {
         CommonUtil.TWITCH_NOTIFICATION_MAP.clear();
         CommonUtil.getTwitchNotificationFromDB();
 
-        final ZonedDateTime zonedDateTime = LocalDateTime.now().atZone(ZoneId.systemDefault());
-        final String now = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(zonedDateTime);
-        log.info("Reload BAD_WORD_SET by " + member.getTag() + " at " + now);
+        final ZonedDateTime zonedDateTime = ZonedDateTime.now().withZoneSameInstant(ZoneId.of("Asia/Taipei"));
+        final String now = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(ZonedDateTime.now());
+        log.info("Reload Cache by " + member.getTag() + " at " + now);
     }
 }
