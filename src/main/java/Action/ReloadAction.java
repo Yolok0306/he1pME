@@ -22,8 +22,13 @@ public class ReloadAction implements Action {
 
     @Override
     public void execute(final MessageChannel messageChannel, final Message message, final Member member) {
+        CommonUtil.getServerDataFromDB();
+
         CommonUtil.BAD_WORD_MAP.clear();
         CommonUtil.getBadWordFromDB();
+
+        CommonUtil.TWITCH_NOTIFICATION_MAP.clear();
+        CommonUtil.getTwitchNotificationFromDB();
 
         final ZonedDateTime zonedDateTime = LocalDateTime.now().atZone(ZoneId.systemDefault());
         final String now = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(zonedDateTime);
