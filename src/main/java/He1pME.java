@@ -23,11 +23,12 @@ public class He1pME {
     public static void main(final String[] args) {
         CommonUtil.getServerDataFromDB();
         final IntentSet intentSet = IntentSet.of(Intent.GUILDS, Intent.GUILD_MEMBERS, Intent.GUILD_MESSAGES, Intent.GUILD_VOICE_STATES);
-        final GatewayDiscordClient bot = DiscordClient.create(CommonUtil.TOKEN).gateway().setEnabledIntents(intentSet).login().block();
+        final GatewayDiscordClient bot = DiscordClient.create(CommonUtil.DISCORD_API_TOKEN).gateway().setEnabledIntents(intentSet).login().block();
 
-        CommonUtil.BOT = Optional.ofNullable(bot).orElseThrow(() -> new IllegalStateException("Bot token : " + CommonUtil.TOKEN + " is invalid !"));
+        CommonUtil.BOT = Optional.ofNullable(bot).orElseThrow(() -> new IllegalStateException("Bot token : " + CommonUtil.DISCORD_API_TOKEN + " is invalid !"));
         CommonUtil.getBadWordFromDB();
         CommonUtil.getTwitchNotificationFromDB();
+        CommonUtil.getYouTubeNotificationFromDB();
 
         bot.getEventDispatcher().on(ReadyEvent.class).subscribe(event ->
                 System.out.printf("-----Logged in as %s #%s-----%n", event.getSelf().getUsername(), event.getSelf().getDiscriminator()));
