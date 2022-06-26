@@ -12,7 +12,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
 @Slf4j
-@help(example = "reload", description = "重新載入禁言資料")
+@help(example = "reload", description = "重新載入資料庫資料")
 public class ReloadAction implements Action {
     @Override
     public String getInstruction() {
@@ -28,6 +28,9 @@ public class ReloadAction implements Action {
 
         CommonUtil.TWITCH_NOTIFICATION_MAP.clear();
         CommonUtil.getTwitchNotificationFromDB();
+
+        CommonUtil.YOUTUBE_NOTIFICATION_MAP.clear();
+        CommonUtil.getYouTubeNotificationFromDB();
 
         final ZonedDateTime zonedDateTime = ZonedDateTime.now().withZoneSameInstant(ZoneId.of("Asia/Taipei"));
         final String now = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(ZonedDateTime.now());

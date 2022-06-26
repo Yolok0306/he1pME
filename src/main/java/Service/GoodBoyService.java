@@ -88,11 +88,11 @@ public class GoodBoyService {
         final String body = "{\"communication_disabled_until\" : \"" + futureTime.toLocalDateTime() + "\"}";
         try {
             final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).build();
-            final URI uri = new URI(CommonUtil.DISCORD_BASE_URI + "/guilds/" + guildId + "/members/" + memberId);
+            final URI uri = new URI(CommonUtil.DISCORD_API_BASE_URI + "/guilds/" + guildId + "/members/" + memberId);
             final HttpRequest httpRequest = HttpRequest.newBuilder()
                     .uri(uri)
                     .header("Content-Type", "application/json")
-                    .header("Authorization", "Bot " + CommonUtil.TOKEN)
+                    .header("Authorization", "Bot " + CommonUtil.DISCORD_API_TOKEN)
                     .method("PATCH", HttpRequest.BodyPublishers.ofString(body))
                     .build();
             final HttpResponse<String> httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
