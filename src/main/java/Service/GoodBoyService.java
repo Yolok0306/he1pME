@@ -92,7 +92,7 @@ public class GoodBoyService {
             final HttpRequest httpRequest = HttpRequest.newBuilder()
                     .uri(uri)
                     .header("Content-Type", "application/json")
-                    .header("Authorization", "Bot " + CommonUtil.DISCORD_API_TOKEN)
+                    .header("Authorization", CommonUtil.DISCORD_API_TOKEN_TYPE + StringUtils.SPACE + CommonUtil.DISCORD_API_TOKEN)
                     .method("PATCH", HttpRequest.BodyPublishers.ofString(body))
                     .build();
             final HttpResponse<String> httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());

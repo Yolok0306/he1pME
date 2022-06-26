@@ -26,6 +26,7 @@ public class CommonUtil {
     public static final String SIGN = "$";
     public static final long FREQUENCY = 300000;
     public static String DISCORD_API_TOKEN;
+    public static String DISCORD_API_TOKEN_TYPE;
     public static String DISCORD_API_BASE_URI;
     public static String TWITCH_API_CLIENT_ID;
     public static String TWITCH_API_TOKEN_TYPE;
@@ -54,6 +55,10 @@ public class CommonUtil {
             switch (item.getString("name")) {
                 case "Discord Api Token":
                     DISCORD_API_TOKEN = item.getString("id");
+                    break;
+
+                case "Discord Api Token Type":
+                    DISCORD_API_TOKEN_TYPE = item.getString("id");
                     break;
 
                 case "Discord Api Base Uri":
@@ -116,7 +121,7 @@ public class CommonUtil {
         final ScanSpec scanSpec = new ScanSpec();
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("TwitchNotification").scan(scanSpec);
 
-        items.forEach(item -> TWITCH_NOTIFICATION_MAP.compute(item.getString("twitch_channel"), (key, value) -> {
+        items.forEach(item -> TWITCH_NOTIFICATION_MAP.compute(item.getString("twitch_channel_id"), (key, value) -> {
             final Set<String> innerSet = Objects.nonNull(value) ? value : new HashSet<>();
             innerSet.add(item.getString("message_channel_id"));
             return innerSet;
