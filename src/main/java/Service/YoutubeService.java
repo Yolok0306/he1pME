@@ -14,6 +14,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -21,6 +22,7 @@ import java.net.http.HttpResponse;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class YoutubeService {
@@ -29,14 +31,11 @@ public class YoutubeService {
             return;
         }
 
-        final String playListItemResponseString = callPlayListItemApi();
-        if (StringUtils.isBlank(playListItemResponseString)) {
-            return;
-        }
+        final Set<String> playlistItemResponseSet = CommonUtil.YOUTUBE_NOTIFICATION_MAP.keySet().stream()
+                .map(this::callPlayListItemApi).collect(Collectors.toSet());
 
         try {
-            final JSONArray playListItemJsonArray = new JSONObject(playListItemResponseString).getJSONArray("items");
-            final Map<String, Set<String>> videoIdMap = constructVideoIdMap(playListItemJsonArray);
+            final Map<String, Set<String>> videoIdMap = constructVideoIdMap(playlistItemResponseSet);
             if (videoIdMap.isEmpty()) {
                 return;
             }
@@ -47,25 +46,25 @@ public class YoutubeService {
             }
 
             final JSONArray itemJsonArray = new JSONObject(videoResponseString).getJSONArray("items");
-            for (final Object itemObject : itemJsonArray) {
-                final JSONObject itemJsonObject = (JSONObject) itemObject;
-                notification(itemJsonObject, videoIdMap);
+            for (int i = 0; i < itemJsonArray.length(); i++) {
+                notification(itemJsonArray.getJSONObject(i), videoIdMap);
             }
         } catch (final JSONException exception) {
             exception.printStackTrace();
         }
     }
 
-    private String callPlayListItemApi() {
+    private String callPlayListItemApi(final String playlistId) {
         try {
             final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).build();
-            final URIBuilder uriBuilder = new URIBuilder(CommonUtil.YOUTUBE_API_BASE_URI + "/playlistItems")
-                    .addParameter("part", "contentDetails")
+            final URI uri = new URIBuilder(CommonUtil.YOUTUBE_API_BASE_URI + "/playlistItems")
+                    .addParameter("part", "snippet")
                     .addParameter("maxResults", "1")
-                    .addParameter("key", CommonUtil.YOUTUBE_API_KEY);
-            CommonUtil.YOUTUBE_NOTIFICATION_MAP.keySet().forEach(id -> uriBuilder.addParameter("id", id));
+                    .addParameter("key", CommonUtil.YOUTUBE_API_KEY)
+                    .addParameter("playlistId", playlistId)
+                    .build();
             final HttpRequest httpRequest = HttpRequest.newBuilder()
-                    .uri(uriBuilder.build())
+                    .uri(uri)
                     .method("GET", HttpRequest.BodyPublishers.noBody())
                     .build();
             final HttpResponse<String> httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
@@ -74,25 +73,19 @@ public class YoutubeService {
         } catch (final URISyntaxException | IOException | InterruptedException e) {
             e.printStackTrace();
         }
-        return null;
+        return StringUtils.EMPTY;
     }
 
-    private Map<String, Set<String>> constructVideoIdMap(final JSONArray playListItemJsonArray) {
-        if (playListItemJsonArray.isEmpty()) {
-            return new HashMap<>();
-        }
-
-        final Map<String, Set<String>> videoIdMap = new HashMap<>();
-        for (final Object playListItemObject : playListItemJsonArray) {
-            final JSONObject playListItemJsonObject = (JSONObject) playListItemObject;
-            final String startAtTime = playListItemJsonObject.getJSONObject("contentDetails").getString("videoPublishedAt");
-            if (CommonUtil.checkStartAtTime(startAtTime)) {
-                final String key = playListItemJsonObject.getJSONObject("contentDetails").getString("videoId");
-                final Set<String> valueSet = CommonUtil.YOUTUBE_NOTIFICATION_MAP.get(playListItemJsonObject.getString("id"));
-                videoIdMap.put(key, valueSet);
-            }
-        }
-        return videoIdMap;
+    private Map<String, Set<String>> constructVideoIdMap(final Set<String> playlistItemResponseSet) {
+        return playlistItemResponseSet.stream()
+                .map(JSONObject::new)
+                .map(playlistJsonObject -> playlistJsonObject.getJSONArray("items"))
+                .map(playlistItemJsonArray -> playlistItemJsonArray.getJSONObject(0))
+                .map(firstPlaylistItemJsonObject -> firstPlaylistItemJsonObject.getJSONObject("snippet"))
+                .filter(snippetJsonObject -> CommonUtil.checkStartTime(snippetJsonObject.getString("publishedAt")))
+                .collect(Collectors.toMap(snippetJsonObject -> snippetJsonObject.getJSONObject("resourceId").getString("videoId"),
+                        snippetJsonObject -> CommonUtil.YOUTUBE_NOTIFICATION_MAP.get(snippetJsonObject.getString("playlistId")),
+                        (existing, replacement) -> existing, HashMap::new));
     }
 
     private String callVideoApi(final Set<String> videoIdSet) {
@@ -112,10 +105,14 @@ public class YoutubeService {
         } catch (final URISyntaxException | IOException | InterruptedException e) {
             e.printStackTrace();
         }
-        return null;
+        return StringUtils.EMPTY;
     }
 
     private void notification(final JSONObject videoJsonObject, final Map<String, Set<String>> videoIdMap) {
+        if (videoJsonObject.has("liveStreamingDetails") && videoJsonObject.getJSONObject("liveStreamingDetails").has("actualEndTime")) {
+            return;
+        }
+
         final JSONObject snippetJsonObject = videoJsonObject.getJSONObject("snippet");
         final String videoId = videoJsonObject.getString("id");
         final String title = videoJsonObject.has("liveStreamingDetails") ? "開台通知" : "上片通知";

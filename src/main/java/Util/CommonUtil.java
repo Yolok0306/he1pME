@@ -176,10 +176,10 @@ public class CommonUtil {
         messageChannel.createMessage(embedCreateSpec).block();
     }
 
-    public static boolean checkStartAtTime(final String startAtString) {
-        final ZonedDateTime startedAt = ZonedDateTime.parse(startAtString);
+    public static boolean checkStartTime(final String startTimeString) {
+        final ZonedDateTime startTime = ZonedDateTime.parse(startTimeString);
         final ZonedDateTime now = ZonedDateTime.now().withZoneSameInstant(ZoneId.of("UTC"));
-        return Duration.between(startedAt, now).toMillis() < FREQUENCY;
+        return Duration.between(startTime, now).toMillis() < FREQUENCY;
     }
 
     public static String descFormat(final String desc) {

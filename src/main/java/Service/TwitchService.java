@@ -56,7 +56,7 @@ public class TwitchService {
         } catch (final URISyntaxException | IOException | InterruptedException e) {
             e.printStackTrace();
         }
-        return null;
+        return StringUtils.EMPTY;
     }
 
     private void checkAndNotification(final JSONArray dataJsonArray) {
@@ -64,12 +64,11 @@ public class TwitchService {
             return;
         }
 
-        for (final Object dataObject : dataJsonArray) {
-            final JSONObject dataJsonObject = (JSONObject) dataObject;
-            final String type = dataJsonObject.getString("type");
-            final String startAt = dataJsonObject.getString("started_at");
-            if (StringUtils.equals(type, "live") && CommonUtil.checkStartAtTime(startAt)) {
-                notification(dataJsonObject);
+        for (int i = 0; i < dataJsonArray.length(); i++) {
+            final String type = dataJsonArray.getJSONObject(i).getString("type");
+            final String startedAt = dataJsonArray.getJSONObject(i).getString("started_at");
+            if (StringUtils.equals(type, "live") && CommonUtil.checkStartTime(startedAt)) {
+                notification(dataJsonArray.getJSONObject(i));
             }
         }
     }
