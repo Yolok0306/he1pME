@@ -78,7 +78,7 @@ public class TwitchService {
         final String title = "開台通知";
         final String desc = dataJsonObject.getString("user_name") + " - " + dataJsonObject.getString("title");
         final String thumb = dataJsonObject.getString("thumbnail_url").replaceAll("-\\{width}x\\{height}", StringUtils.EMPTY);
-        final Color color = Color.of(96, 0, 192);
+        final Color color = Color.of(144, 0, 255);
         final EmbedCreateFields.Author author = EmbedCreateFields.Author.of("Twitch", StringUtils.EMPTY, CommonUtil.TWITCH_LOGO_URI);
 
         for (final String messageChannelId : CommonUtil.TWITCH_NOTIFICATION_MAP.get(userLogin)) {

@@ -118,7 +118,7 @@ public class YoutubeService {
         final String title = videoJsonObject.has("liveStreamingDetails") ? "開台通知" : "上片通知";
         final String desc = snippetJsonObject.getString("channelTitle") + " - " + snippetJsonObject.getString("title");
         final String thumb = snippetJsonObject.getJSONObject("thumbnails").getJSONObject("default").getString("url");
-        final Color color = Color.of(192, 0, 0);
+        final Color color = Color.of(255, 0, 0);
         final EmbedCreateFields.Author author = EmbedCreateFields.Author.of("Youtube", StringUtils.EMPTY, CommonUtil.YOUTUBE_LOGO_URI);
 
         for (final String messageChannelId : videoIdMap.get(videoId)) {
