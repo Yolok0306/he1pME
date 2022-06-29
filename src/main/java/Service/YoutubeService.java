@@ -58,15 +58,12 @@ public class YoutubeService {
         try {
             final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).build();
             final URI uri = new URIBuilder(CommonUtil.YOUTUBE_API_BASE_URI + "/playlistItems")
+                    .addParameter("playlistId", playlistId)
                     .addParameter("part", "snippet")
                     .addParameter("maxResults", "1")
                     .addParameter("key", CommonUtil.YOUTUBE_API_KEY)
-                    .addParameter("playlistId", playlistId)
                     .build();
-            final HttpRequest httpRequest = HttpRequest.newBuilder()
-                    .uri(uri)
-                    .method("GET", HttpRequest.BodyPublishers.noBody())
-                    .build();
+            final HttpRequest httpRequest = HttpRequest.newBuilder().GET().uri(uri).build();
             final HttpResponse<String> httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             log.info(httpResponse.statusCode() + StringUtils.SPACE + httpResponse.body());
             return httpResponse.body();
@@ -80,6 +77,7 @@ public class YoutubeService {
         return playlistItemResponseSet.stream()
                 .map(JSONObject::new)
                 .map(playlistJsonObject -> playlistJsonObject.getJSONArray("items"))
+                .filter(playlistItemJsonArray -> !playlistItemJsonArray.isEmpty())
                 .map(playlistItemJsonArray -> playlistItemJsonArray.getJSONObject(0))
                 .map(firstPlaylistItemJsonObject -> firstPlaylistItemJsonObject.getJSONObject("snippet"))
                 .filter(snippetJsonObject -> CommonUtil.checkStartTime(snippetJsonObject.getString("publishedAt")))
@@ -95,10 +93,7 @@ public class YoutubeService {
                     .addParameter("part", "snippet,liveStreamingDetails")
                     .addParameter("key", CommonUtil.YOUTUBE_API_KEY);
             videoIdSet.forEach(videoId -> uriBuilder.addParameter("id", videoId));
-            final HttpRequest httpRequest = HttpRequest.newBuilder()
-                    .uri(uriBuilder.build())
-                    .method("GET", HttpRequest.BodyPublishers.noBody())
-                    .build();
+            final HttpRequest httpRequest = HttpRequest.newBuilder().GET().uri(uriBuilder.build()).build();
             final HttpResponse<String> httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             log.info(httpResponse.statusCode() + StringUtils.SPACE + httpResponse.body());
             return httpResponse.body();

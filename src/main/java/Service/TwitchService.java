@@ -33,7 +33,17 @@ public class TwitchService {
 
         try {
             final JSONArray dataJsonArray = new JSONObject(responseString).getJSONArray("data");
-            checkAndNotification(dataJsonArray);
+            if (dataJsonArray.isEmpty()) {
+                return;
+            }
+
+            for (int i = 0; i < dataJsonArray.length(); i++) {
+                final String type = dataJsonArray.getJSONObject(i).getString("type");
+                final String startedAt = dataJsonArray.getJSONObject(i).getString("started_at");
+                if (StringUtils.equals(type, "live") && CommonUtil.checkStartTime(startedAt)) {
+                    notification(dataJsonArray.getJSONObject(i));
+                }
+            }
         } catch (final JSONException exception) {
             exception.printStackTrace();
         }
@@ -45,10 +55,10 @@ public class TwitchService {
             final URIBuilder uriBuilder = new URIBuilder(CommonUtil.TWITCH_API_BASE_URI + "/streams");
             CommonUtil.TWITCH_NOTIFICATION_MAP.keySet().forEach(key -> uriBuilder.addParameter("user_login", key));
             final HttpRequest httpRequest = HttpRequest.newBuilder()
+                    .GET()
                     .uri(uriBuilder.build())
                     .header("Client-Id", CommonUtil.TWITCH_API_CLIENT_ID)
                     .header("Authorization", CommonUtil.TWITCH_API_TOKEN_TYPE + StringUtils.SPACE + CommonUtil.TWITCH_API_ACCESS_TOKEN)
-                    .method("GET", HttpRequest.BodyPublishers.noBody())
                     .build();
             final HttpResponse<String> httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             log.info(httpResponse.statusCode() + StringUtils.SPACE + httpResponse.body());
@@ -57,20 +67,6 @@ public class TwitchService {
             e.printStackTrace();
         }
         return StringUtils.EMPTY;
-    }
-
-    private void checkAndNotification(final JSONArray dataJsonArray) {
-        if (dataJsonArray.isEmpty()) {
-            return;
-        }
-
-        for (int i = 0; i < dataJsonArray.length(); i++) {
-            final String type = dataJsonArray.getJSONObject(i).getString("type");
-            final String startedAt = dataJsonArray.getJSONObject(i).getString("started_at");
-            if (StringUtils.equals(type, "live") && CommonUtil.checkStartTime(startedAt)) {
-                notification(dataJsonArray.getJSONObject(i));
-            }
-        }
     }
 
     private void notification(final JSONObject dataJsonObject) {
