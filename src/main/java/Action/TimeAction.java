@@ -23,10 +23,9 @@ public class TimeAction implements Action {
         final String regex = "\\" + CommonUtil.SIGN + getInstruction() + "\\p{Blank}*";
         final String userZoneId = message.getContent().replaceAll(regex, StringUtils.EMPTY);
         final ZoneId zoneId = StringUtils.isNotBlank(userZoneId) ? ZoneId.of(userZoneId) : ZoneId.systemDefault();
-        final ZonedDateTime zonedDateTime = ZonedDateTime.now().withZoneSameInstant(zoneId);
 
         final String title = "現在時間 (" + zoneId + ")";
-        final String desc = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(zonedDateTime);
+        final String desc = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(ZonedDateTime.now(zoneId));
         CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, StringUtils.EMPTY);
     }
 }

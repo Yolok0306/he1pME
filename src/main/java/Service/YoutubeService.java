@@ -19,6 +19,7 @@ import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -56,7 +57,7 @@ public class YoutubeService {
 
     private String callPlayListItemApi(final String playlistId) {
         try {
-            final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).build();
+            final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).connectTimeout(Duration.ofMillis(1000)).build();
             final URI uri = new URIBuilder(CommonUtil.YOUTUBE_API_BASE_URI + "/playlistItems")
                     .addParameter("playlistId", playlistId)
                     .addParameter("part", "snippet")
@@ -88,7 +89,7 @@ public class YoutubeService {
 
     private String callVideoApi(final Set<String> videoIdSet) {
         try {
-            final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).build();
+            final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).connectTimeout(Duration.ofMillis(1000)).build();
             final URIBuilder uriBuilder = new URIBuilder(CommonUtil.YOUTUBE_API_BASE_URI + "/videos")
                     .addParameter("part", "snippet,liveStreamingDetails")
                     .addParameter("key", CommonUtil.YOUTUBE_API_KEY);
@@ -112,7 +113,7 @@ public class YoutubeService {
         final String videoId = videoJsonObject.getString("id");
         final String title = videoJsonObject.has("liveStreamingDetails") ? "開台通知" : "上片通知";
         final String desc = snippetJsonObject.getString("channelTitle") + " - " + snippetJsonObject.getString("title");
-        final String thumb = snippetJsonObject.getJSONObject("thumbnails").getJSONObject("default").getString("url");
+        final String thumb = getThumbnail(snippetJsonObject.getJSONObject("thumbnails"));
         final Color color = Color.of(255, 0, 0);
         final EmbedCreateFields.Author author = EmbedCreateFields.Author.of("Youtube", StringUtils.EMPTY, CommonUtil.YOUTUBE_LOGO_URI);
 
@@ -126,6 +127,20 @@ public class YoutubeService {
                     messageChannel.createMessage("https://www.youtube.com/watch?v=" + videoId).block();
                 }
             });
+        }
+    }
+
+    private String getThumbnail(final JSONObject thumbnailJsonObject) {
+        if (thumbnailJsonObject.has("maxres")) {
+            return thumbnailJsonObject.getJSONObject("maxres").getString("url");
+        } else if (thumbnailJsonObject.has("standard")) {
+            return thumbnailJsonObject.getJSONObject("standard").getString("url");
+        } else if (thumbnailJsonObject.has("high")) {
+            return thumbnailJsonObject.getJSONObject("high").getString("url");
+        } else if (thumbnailJsonObject.has("medium")) {
+            return thumbnailJsonObject.getJSONObject("medium").getString("url");
+        } else {
+            return thumbnailJsonObject.getJSONObject("default").getString("url");
         }
     }
 }

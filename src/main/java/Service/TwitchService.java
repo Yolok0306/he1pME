@@ -18,6 +18,7 @@ import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 
 @Slf4j
 public class TwitchService {
@@ -51,7 +52,7 @@ public class TwitchService {
 
     private String callStreamApi() {
         try {
-            final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).build();
+            final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).connectTimeout(Duration.ofMillis(1000)).build();
             final URIBuilder uriBuilder = new URIBuilder(CommonUtil.TWITCH_API_BASE_URI + "/streams");
             CommonUtil.TWITCH_NOTIFICATION_MAP.keySet().forEach(key -> uriBuilder.addParameter("user_login", key));
             final HttpRequest httpRequest = HttpRequest.newBuilder()
@@ -73,7 +74,7 @@ public class TwitchService {
         final String userLogin = dataJsonObject.getString("user_login");
         final String title = "開台通知";
         final String desc = dataJsonObject.getString("user_name") + " - " + dataJsonObject.getString("title");
-        final String thumb = dataJsonObject.getString("thumbnail_url").replaceAll("-\\{width}x\\{height}", StringUtils.EMPTY);
+        final String thumb = dataJsonObject.getString("thumbnail_url").replace("-{width}x{height}", StringUtils.EMPTY);
         final Color color = Color.of(144, 0, 255);
         final EmbedCreateFields.Author author = EmbedCreateFields.Author.of("Twitch", StringUtils.EMPTY, CommonUtil.TWITCH_LOGO_URI);
 
