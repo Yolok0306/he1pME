@@ -81,7 +81,7 @@ public class YoutubeService {
                 .filter(playlistItemJsonArray -> !playlistItemJsonArray.isEmpty())
                 .map(playlistItemJsonArray -> playlistItemJsonArray.getJSONObject(0))
                 .map(firstPlaylistItemJsonObject -> firstPlaylistItemJsonObject.getJSONObject("snippet"))
-                .filter(snippetJsonObject -> CommonUtil.checkStartTime(snippetJsonObject.getString("publishedAt")))
+                .filter(snippetJsonObject -> TimerTaskService.checkStartTime(snippetJsonObject.getString("publishedAt")))
                 .collect(Collectors.toMap(snippetJsonObject -> snippetJsonObject.getJSONObject("resourceId").getString("videoId"),
                         snippetJsonObject -> CommonUtil.YOUTUBE_NOTIFICATION_MAP.get(snippetJsonObject.getString("playlistId")),
                         (existing, replacement) -> existing, HashMap::new));

@@ -16,7 +16,6 @@ import discord4j.rest.util.Color;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
-import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.*;
 
@@ -174,11 +173,6 @@ public class CommonUtil {
             embedCreateSpec = EmbedCreateSpec.builder().title(title).description(desc).color(HE1PME_COLOR).author(author).build();
         }
         messageChannel.createMessage(embedCreateSpec).block();
-    }
-
-    public static boolean checkStartTime(final String startTimeString) {
-        final ZonedDateTime startTime = ZonedDateTime.parse(startTimeString);
-        return Duration.between(startTime, now).toMillis() < CommonUtil.FREQUENCY + 50;
     }
 
     public static String descFormat(final String desc) {

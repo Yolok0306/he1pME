@@ -41,7 +41,7 @@ public class TwitchService {
             for (int i = 0; i < dataJsonArray.length(); i++) {
                 final String type = dataJsonArray.getJSONObject(i).getString("type");
                 final String startedAt = dataJsonArray.getJSONObject(i).getString("started_at");
-                if (StringUtils.equals(type, "live") && CommonUtil.checkStartTime(startedAt)) {
+                if (StringUtils.equals(type, "live") && TimerTaskService.checkStartTime(startedAt)) {
                     notification(dataJsonArray.getJSONObject(i));
                 }
             }
