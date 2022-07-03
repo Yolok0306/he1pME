@@ -23,8 +23,8 @@ public class TimerTaskService extends TimerTask {
 
     public static boolean checkStartTime(final String startTimeString) {
         final ZonedDateTime startTime = ZonedDateTime.parse(startTimeString);
-        final long interval = Duration.between(startTime, now).toMillis();
+        final long interval = Duration.between(startTime, now).toSeconds();
         log.info("interval : {}, now : {}, startTime : {}", interval, now, startTime);
-        return interval < CommonUtil.FREQUENCY + 50;
+        return interval < Duration.ofMillis(CommonUtil.FREQUENCY).toSeconds();
     }
 }

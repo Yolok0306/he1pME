@@ -56,8 +56,8 @@ public class YoutubeService {
     }
 
     private String callPlayListItemApi(final String playlistId) {
+        final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).connectTimeout(Duration.ofMillis(1000)).build();
         try {
-            final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).connectTimeout(Duration.ofMillis(1000)).build();
             final URI uri = new URIBuilder(CommonUtil.YOUTUBE_API_BASE_URI + "/playlistItems")
                     .addParameter("playlistId", playlistId)
                     .addParameter("part", "snippet")
@@ -88,8 +88,8 @@ public class YoutubeService {
     }
 
     private String callVideoApi(final Set<String> videoIdSet) {
+        final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).connectTimeout(Duration.ofMillis(1000)).build();
         try {
-            final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).connectTimeout(Duration.ofMillis(1000)).build();
             final URIBuilder uriBuilder = new URIBuilder(CommonUtil.YOUTUBE_API_BASE_URI + "/videos")
                     .addParameter("part", "snippet,liveStreamingDetails")
                     .addParameter("key", CommonUtil.YOUTUBE_API_KEY);

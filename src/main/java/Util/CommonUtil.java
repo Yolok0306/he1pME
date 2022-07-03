@@ -16,14 +16,12 @@ import discord4j.rest.util.Color;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
-import java.time.ZonedDateTime;
 import java.util.*;
 
 @Slf4j
 public class CommonUtil {
     public static final String SIGN = "$";
     public static final long FREQUENCY = 300000;
-    public static ZonedDateTime now;
     public static String DISCORD_API_TOKEN;
     public static String DISCORD_API_TOKEN_TYPE;
     public static String DISCORD_API_BASE_URI;

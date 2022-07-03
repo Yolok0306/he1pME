@@ -15,6 +15,7 @@ import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Optional;
@@ -63,9 +64,9 @@ public class GoodBoyService {
         }
 
         for (final String badWord : badWordSet) {
-            if (badWord.length() == 1 && StringUtils.containsOnly(content, badWord)) {
+            if (badWord.length() == 1 && StringUtils.containsOnly(content.toLowerCase(), badWord.toLowerCase())) {
                 return true;
-            } else if (badWord.length() > 1 && StringUtils.contains(content, badWord)) {
+            } else if (badWord.length() > 1 && StringUtils.contains(content.toLowerCase(), badWord.toLowerCase())) {
                 return true;
             }
         }
@@ -83,11 +84,10 @@ public class GoodBoyService {
     }
 
     private int callTimeOutApi(final String guildId, final String memberId) {
-        final ZonedDateTime now = ZonedDateTime.now().withZoneSameInstant(ZoneId.of("UTC"));
-        final ZonedDateTime futureTime = now.plusMinutes(punishmentTime);
+        final ZonedDateTime futureTime = ZonedDateTime.now(ZoneId.of("UTC")).plusMinutes(punishmentTime);
         final String body = "{\"communication_disabled_until\" : \"" + futureTime.toLocalDateTime() + "\"}";
+        final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).connectTimeout(Duration.ofMillis(1000)).build();
         try {
-            final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).build();
             final URI uri = new URI(CommonUtil.DISCORD_API_BASE_URI + "/guilds/" + guildId + "/members/" + memberId);
             final HttpRequest httpRequest = HttpRequest.newBuilder()
                     .uri(uri)
