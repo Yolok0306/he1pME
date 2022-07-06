@@ -19,10 +19,11 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.ZonedDateTime;
 
 @Slf4j
 public class TwitchService {
-    protected void execute() {
+    protected void execute(final ZonedDateTime now) {
         if (CommonUtil.TWITCH_NOTIFICATION_MAP.isEmpty()) {
             return;
         }
@@ -41,7 +42,7 @@ public class TwitchService {
             for (int i = 0; i < dataJsonArray.length(); i++) {
                 final String type = dataJsonArray.getJSONObject(i).getString("type");
                 final String startedAt = dataJsonArray.getJSONObject(i).getString("started_at");
-                if (StringUtils.equals(type, "live") && TimerTaskService.checkStartTime(startedAt)) {
+                if (StringUtils.equals(type, "live") && CommonUtil.checkStartTime(startedAt, now)) {
                     notification(dataJsonArray.getJSONObject(i));
                 }
             }

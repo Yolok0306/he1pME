@@ -33,8 +33,7 @@ public class YoutubeService {
         }
 
         final Set<String> playlistItemResponseSet = CommonUtil.YOUTUBE_NOTIFICATION_MAP.keySet().stream()
-                .map(this::callPlayListItemApi).collect(Collectors.toSet());
-
+                .map(YoutubeService::callPlayListItemApi).collect(Collectors.toSet());
         try {
             final Map<String, Set<String>> videoIdMap = constructVideoIdMap(playlistItemResponseSet);
             if (videoIdMap.isEmpty()) {
@@ -55,7 +54,7 @@ public class YoutubeService {
         }
     }
 
-    private String callPlayListItemApi(final String playlistId) {
+    public static String callPlayListItemApi(final String playlistId) {
         final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).connectTimeout(Duration.ofMillis(1000)).build();
         try {
             final URI uri = new URIBuilder(CommonUtil.YOUTUBE_API_BASE_URI + "/playlistItems")
@@ -75,16 +74,24 @@ public class YoutubeService {
     }
 
     private Map<String, Set<String>> constructVideoIdMap(final Set<String> playlistItemResponseSet) {
-        return playlistItemResponseSet.stream()
-                .map(JSONObject::new)
-                .map(playlistJsonObject -> playlistJsonObject.getJSONArray("items"))
-                .filter(playlistItemJsonArray -> !playlistItemJsonArray.isEmpty())
-                .map(playlistItemJsonArray -> playlistItemJsonArray.getJSONObject(0))
-                .map(firstPlaylistItemJsonObject -> firstPlaylistItemJsonObject.getJSONObject("snippet"))
-                .filter(snippetJsonObject -> TimerTaskService.checkStartTime(snippetJsonObject.getString("publishedAt")))
-                .collect(Collectors.toMap(snippetJsonObject -> snippetJsonObject.getJSONObject("resourceId").getString("videoId"),
-                        snippetJsonObject -> CommonUtil.YOUTUBE_NOTIFICATION_MAP.get(snippetJsonObject.getString("playlistId")),
-                        (existing, replacement) -> existing, HashMap::new));
+        final Map<String, Set<String>> videoIdMap = new HashMap<>();
+        playlistItemResponseSet.forEach(playlistItemResponseString -> {
+            final JSONArray playlistItemJsonArray = new JSONObject(playlistItemResponseString).getJSONArray("items");
+            if (playlistItemJsonArray.isEmpty()) {
+                return;
+            }
+
+            final JSONObject snippetJsonObject = playlistItemJsonArray.getJSONObject(0).getJSONObject("snippet");
+            final String playlistId = snippetJsonObject.getString("playlistId");
+            final String videoId = snippetJsonObject.getJSONObject("resourceId").getString("videoId");
+            if (StringUtils.equals(CommonUtil.YT_PLAYLIST_ID_VIDEO_ID_MAP.get(playlistId), videoId)) {
+                return;
+            }
+
+            CommonUtil.YT_PLAYLIST_ID_VIDEO_ID_MAP.put(playlistId, videoId);
+            videoIdMap.put(videoId, CommonUtil.YOUTUBE_NOTIFICATION_MAP.get(playlistId));
+        });
+        return videoIdMap;
     }
 
     private String callVideoApi(final Set<String> videoIdSet) {
