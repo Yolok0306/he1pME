@@ -14,6 +14,7 @@ import org.reflections.Reflections;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -29,6 +30,7 @@ public class MessageEventService {
         musicActionSet = Arrays.stream(MusicService.class.getDeclaredMethods())
                 .filter(Objects::nonNull)
                 .filter(method -> method.isAnnotationPresent(help.class))
+                .filter(method -> Modifier.isProtected(method.getModifiers()))
                 .map(Method::getName)
                 .collect(Collectors.toSet());
 

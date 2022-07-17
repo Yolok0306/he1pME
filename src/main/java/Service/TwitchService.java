@@ -19,10 +19,11 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.ZonedDateTime;
 
 @Slf4j
 public class TwitchService {
-    protected void execute() {
+    protected void execute(final ZonedDateTime now) {
         if (CommonUtil.TWITCH_NOTIFICATION_MAP.isEmpty()) {
             return;
         }
@@ -41,7 +42,7 @@ public class TwitchService {
             for (int i = 0; i < dataJsonArray.length(); i++) {
                 final String type = dataJsonArray.getJSONObject(i).getString("type");
                 final String startedAt = dataJsonArray.getJSONObject(i).getString("started_at");
-                if (StringUtils.equals(type, "live") && CommonUtil.checkStartTime(startedAt)) {
+                if (StringUtils.equals(type, "live") && CommonUtil.checkStartTime(startedAt, now)) {
                     notification(dataJsonArray.getJSONObject(i));
                 }
             }
@@ -51,8 +52,8 @@ public class TwitchService {
     }
 
     private String callStreamApi() {
+        final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).connectTimeout(Duration.ofMillis(1000)).build();
         try {
-            final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).connectTimeout(Duration.ofMillis(1000)).build();
             final URIBuilder uriBuilder = new URIBuilder(CommonUtil.TWITCH_API_BASE_URI + "/streams");
             CommonUtil.TWITCH_NOTIFICATION_MAP.keySet().forEach(key -> uriBuilder.addParameter("user_login", key));
             final HttpRequest httpRequest = HttpRequest.newBuilder()
