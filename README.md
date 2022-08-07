@@ -9,3 +9,5 @@ to store relevant data.
 * Editing a guild member's role
 * Special instructions to mark guild members
 * Get current time
+* Notifications for Twitch Live Streams
+* Notifications for new Youtube videos and Youtube Live Streams
