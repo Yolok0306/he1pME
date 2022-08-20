@@ -97,38 +97,6 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <groupId>com.google.cloud.tools</groupId>
-                <artifactId>jib-maven-plugin</artifactId>
-                <version>3.2.1</version>
-                <configuration>
-                    <from>
-                        <image>maven:3.8.6-jdk-11</image>
-                    </from>
-                    <to>
-                        <image>he1pme:${project.version}</image>
-                    </to>
-                    <container>
-                        <creationTime>${maven.build.timestamp}</creationTime>
-                    </container>
-                    <extraDirectories>
-                        <paths>
-                            <path>
-                                <from>src/resources</from>
-                                <into>/src/resources</into>
-                            </path>
-                        </paths>
-                    </extraDirectories>
-                </configuration>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>dockerBuild</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
         </plugins>
     </build>
 
