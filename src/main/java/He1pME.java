@@ -3,6 +3,8 @@ import Service.TimerTaskService;
 import Service.VoiceStateService;
 import Service.YoutubeService;
 import Util.CommonUtil;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.regions.Regions;
 import discord4j.core.DiscordClient;
 import discord4j.core.event.domain.VoiceStateUpdateEvent;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
@@ -12,10 +14,9 @@ import discord4j.gateway.intent.Intent;
 import discord4j.gateway.intent.IntentSet;
 import org.json.JSONObject;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.Timer;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class He1pME {
@@ -27,6 +28,7 @@ public class He1pME {
     private static final Timer timer = new Timer();
 
     public static void main(final String[] args) {
+        setDynamoDBConfig();
         CommonUtil.getServerDataFromDB();
         CommonUtil.getBadWordFromDB();
         CommonUtil.getTwitchNotificationFromDB();
@@ -44,6 +46,20 @@ public class He1pME {
         CommonUtil.BOT.getEventDispatcher().on(MessageUpdateEvent.class).subscribe(messageEventService::receiveEvent);
         CommonUtil.BOT.getEventDispatcher().on(VoiceStateUpdateEvent.class).subscribe(voiceStateService::receiveEvent);
         CommonUtil.BOT.onDisconnect().block();
+    }
+
+    public static void setDynamoDBConfig() {
+        final Properties properties = new Properties();
+        try {
+            properties.load(new FileInputStream("src/resources/DynamoDB.Properties"));
+        } catch (final IOException e) {
+            throw new RuntimeException(e.getMessage());
+        }
+
+        CommonUtil.REGIONS = Regions.fromName(properties.getProperty("AWS_DEFAULT_REGION"));
+        CommonUtil.BASIC_AWS_CREDENTIALS = new BasicAWSCredentials(
+                properties.getProperty("AWS_ACCESS_KEY_ID"), properties.getProperty("AWS_SECRET_ACCESS_KEY")
+        );
     }
 
     private static Map<String, String> constructYTPlaylistIdVideoIdMap() {

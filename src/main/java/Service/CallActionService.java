@@ -2,6 +2,8 @@ package Service;
 
 import Entity.CallAction;
 import Util.CommonUtil;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.Item;
@@ -37,7 +39,9 @@ public class CallActionService {
     }
 
     private Optional<Item> getCallActionFromDB(final String action, final String guildId) {
-        final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
+        final AmazonDynamoDB amazonDynamoDB = AmazonDynamoDBClientBuilder.standard().withRegion(CommonUtil.REGIONS)
+                .withCredentials(new AWSStaticCredentialsProvider(CommonUtil.BASIC_AWS_CREDENTIALS)).build();
+        final DynamoDB dynamoDB = new DynamoDB(amazonDynamoDB);
         final QuerySpec querySpec = new QuerySpec()
                 .withKeyConditionExpression("#key1 = :value1 and #key2 = :value2")
                 .withNameMap(new NameMap().with("#key1", "action").with("#key2", "guild_id"))

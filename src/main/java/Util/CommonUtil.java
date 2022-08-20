@@ -1,5 +1,9 @@
 package Util;
 
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.regions.Regions;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.document.*;
 import com.amazonaws.services.dynamodbv2.document.spec.QuerySpec;
@@ -25,6 +29,8 @@ import java.util.*;
 public class CommonUtil {
     public static final String SIGN = "$";
     public static final long FREQUENCY = 300000;
+    public static Regions REGIONS;
+    public static BasicAWSCredentials BASIC_AWS_CREDENTIALS;
     public static String DISCORD_API_TOKEN;
     public static String DISCORD_API_TOKEN_TYPE;
     public static String DISCORD_API_BASE_URI;
@@ -44,7 +50,9 @@ public class CommonUtil {
     public static Map<String, String> YT_PLAYLIST_ID_VIDEO_ID_MAP;
 
     public static void getServerDataFromDB() {
-        final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
+        final AmazonDynamoDB amazonDynamoDB = AmazonDynamoDBClientBuilder.standard().withRegion(REGIONS)
+                .withCredentials(new AWSStaticCredentialsProvider(BASIC_AWS_CREDENTIALS)).build();
+        final DynamoDB dynamoDB = new DynamoDB(amazonDynamoDB);
         final ScanSpec scanSpec = new ScanSpec();
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("ServerData").scan(scanSpec);
 
@@ -104,7 +112,9 @@ public class CommonUtil {
     }
 
     public static void getBadWordFromDB() {
-        final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
+        final AmazonDynamoDB amazonDynamoDB = AmazonDynamoDBClientBuilder.standard().withRegion(REGIONS)
+                .withCredentials(new AWSStaticCredentialsProvider(BASIC_AWS_CREDENTIALS)).build();
+        final DynamoDB dynamoDB = new DynamoDB(amazonDynamoDB);
         final ScanSpec scanSpec = new ScanSpec();
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("BadWord").scan(scanSpec);
 
@@ -118,7 +128,9 @@ public class CommonUtil {
     }
 
     public static void getTwitchNotificationFromDB() {
-        final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
+        final AmazonDynamoDB amazonDynamoDB = AmazonDynamoDBClientBuilder.standard().withRegion(REGIONS)
+                .withCredentials(new AWSStaticCredentialsProvider(BASIC_AWS_CREDENTIALS)).build();
+        final DynamoDB dynamoDB = new DynamoDB(amazonDynamoDB);
         final ScanSpec scanSpec = new ScanSpec();
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("TwitchNotification").scan(scanSpec);
 
@@ -132,7 +144,9 @@ public class CommonUtil {
     }
 
     public static void getYouTubeNotificationFromDB() {
-        final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
+        final AmazonDynamoDB amazonDynamoDB = AmazonDynamoDBClientBuilder.standard().withRegion(REGIONS)
+                .withCredentials(new AWSStaticCredentialsProvider(BASIC_AWS_CREDENTIALS)).build();
+        final DynamoDB dynamoDB = new DynamoDB(amazonDynamoDB);
         final ScanSpec scanSpec = new ScanSpec();
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("YouTubeNotification").scan(scanSpec);
 
@@ -152,7 +166,9 @@ public class CommonUtil {
     }
 
     public static Optional<Item> getMemberDataFromDB(final String name, final String guildId) {
-        final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
+        final AmazonDynamoDB amazonDynamoDB = AmazonDynamoDBClientBuilder.standard().withRegion(REGIONS)
+                .withCredentials(new AWSStaticCredentialsProvider(BASIC_AWS_CREDENTIALS)).build();
+        final DynamoDB dynamoDB = new DynamoDB(amazonDynamoDB);
         final QuerySpec querySpec = new QuerySpec()
                 .withKeyConditionExpression("#key1 = :value1 and #key2 = :value2")
                 .withNameMap(new NameMap().with("#key1", "name").with("#key2", "guild_id"))
