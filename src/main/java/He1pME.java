@@ -51,7 +51,7 @@ public class He1pME {
     public static void setDynamoDBConfig() {
         final Properties properties = new Properties();
         try {
-            properties.load(new FileInputStream("src/resources/DynamoDB.Properties"));
+            properties.load(new FileInputStream("src/resources/DynamoDB.properties"));
         } catch (final IOException e) {
             throw new RuntimeException(e.getMessage());
         }
