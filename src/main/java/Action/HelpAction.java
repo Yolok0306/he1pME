@@ -3,6 +3,8 @@ package Action;
 import Annotation.help;
 import Service.MusicService;
 import Util.CommonUtil;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.ItemCollection;
@@ -77,7 +79,9 @@ public class HelpAction implements Action {
     }
 
     private Map<String, String> getCallActionMap() {
-        final DynamoDB dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.standard().build());
+        final AmazonDynamoDB amazonDynamoDB = AmazonDynamoDBClientBuilder.standard().withRegion(CommonUtil.REGIONS)
+                .withCredentials(new AWSStaticCredentialsProvider(CommonUtil.BASIC_AWS_CREDENTIALS)).build();
+        final DynamoDB dynamoDB = new DynamoDB(amazonDynamoDB);
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("CallAction").scan();
 
         final Map<String, String> callActionNameMap = new HashMap<>();
