@@ -35,7 +35,7 @@
         <dependency>
             <groupId>com.amazonaws</groupId>
             <artifactId>aws-java-sdk-dynamodb</artifactId>
-            <version>1.12.196</version>
+            <version>1.12.272</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -60,7 +60,7 @@
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
-            <version>20200518</version>
+            <version>20220320</version>
         </dependency>
 
     </dependencies>
@@ -106,7 +106,7 @@
                         <image>maven:3.8.6-jdk-11</image>
                     </from>
                     <to>
-                        <image>docker.io/yolok0306/he1pme:${project.version}</image>
+                        <image>he1pme:${project.version}</image>
                     </to>
                     <container>
                         <creationTime>${maven.build.timestamp}</creationTime>
@@ -120,6 +120,14 @@
                         </paths>
                     </extraDirectories>
                 </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>dockerBuild</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
