@@ -29,6 +29,7 @@ import java.util.*;
 public class CommonUtil {
     public static final String SIGN = "$";
     public static final long FREQUENCY = 300000;
+    public static GatewayDiscordClient BOT;
     public static Regions REGIONS;
     public static BasicAWSCredentials BASIC_AWS_CREDENTIALS;
     public static String DISCORD_API_TOKEN;
@@ -46,14 +47,21 @@ public class CommonUtil {
     public static final Map<String, Set<String>> BAD_WORD_MAP = new HashMap<>();
     public static final Map<String, Set<String>> TWITCH_NOTIFICATION_MAP = new HashMap<>();
     public static final Map<String, Set<String>> YOUTUBE_NOTIFICATION_MAP = new HashMap<>();
-    public static GatewayDiscordClient BOT;
     public static Map<String, String> YT_PLAYLIST_ID_VIDEO_ID_MAP;
 
-    public static void getServerDataFromDB() {
+    public static void loadAllDataFromDB() {
         final AmazonDynamoDB amazonDynamoDB = AmazonDynamoDBClientBuilder.standard().withRegion(REGIONS)
                 .withCredentials(new AWSStaticCredentialsProvider(BASIC_AWS_CREDENTIALS)).build();
         final DynamoDB dynamoDB = new DynamoDB(amazonDynamoDB);
         final ScanSpec scanSpec = new ScanSpec();
+        getServerDataFromDB(dynamoDB, scanSpec);
+        getBadWordFromDB(dynamoDB, scanSpec);
+        getTwitchNotificationFromDB(dynamoDB, scanSpec);
+        getYouTubeNotificationFromDB(dynamoDB, scanSpec);
+        dynamoDB.shutdown();
+    }
+
+    private static void getServerDataFromDB(final DynamoDB dynamoDB, final ScanSpec scanSpec) {
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("ServerData").scan(scanSpec);
 
         if (!items.iterator().hasNext()) {
@@ -107,15 +115,9 @@ public class CommonUtil {
                     break;
             }
         });
-
-        dynamoDB.shutdown();
     }
 
-    public static void getBadWordFromDB() {
-        final AmazonDynamoDB amazonDynamoDB = AmazonDynamoDBClientBuilder.standard().withRegion(REGIONS)
-                .withCredentials(new AWSStaticCredentialsProvider(BASIC_AWS_CREDENTIALS)).build();
-        final DynamoDB dynamoDB = new DynamoDB(amazonDynamoDB);
-        final ScanSpec scanSpec = new ScanSpec();
+    private static void getBadWordFromDB(final DynamoDB dynamoDB, final ScanSpec scanSpec) {
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("BadWord").scan(scanSpec);
 
         items.forEach(item -> BAD_WORD_MAP.compute(item.getString("guild_id"), (key, value) -> {
@@ -123,15 +125,9 @@ public class CommonUtil {
             innerSet.add(item.getString("word"));
             return innerSet;
         }));
-
-        dynamoDB.shutdown();
     }
 
-    public static void getTwitchNotificationFromDB() {
-        final AmazonDynamoDB amazonDynamoDB = AmazonDynamoDBClientBuilder.standard().withRegion(REGIONS)
-                .withCredentials(new AWSStaticCredentialsProvider(BASIC_AWS_CREDENTIALS)).build();
-        final DynamoDB dynamoDB = new DynamoDB(amazonDynamoDB);
-        final ScanSpec scanSpec = new ScanSpec();
+    private static void getTwitchNotificationFromDB(final DynamoDB dynamoDB, final ScanSpec scanSpec) {
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("TwitchNotification").scan(scanSpec);
 
         items.forEach(item -> TWITCH_NOTIFICATION_MAP.compute(item.getString("twitch_channel_id"), (key, value) -> {
@@ -139,15 +135,9 @@ public class CommonUtil {
             innerSet.add(item.getString("message_channel_id"));
             return innerSet;
         }));
-
-        dynamoDB.shutdown();
     }
 
-    public static void getYouTubeNotificationFromDB() {
-        final AmazonDynamoDB amazonDynamoDB = AmazonDynamoDBClientBuilder.standard().withRegion(REGIONS)
-                .withCredentials(new AWSStaticCredentialsProvider(BASIC_AWS_CREDENTIALS)).build();
-        final DynamoDB dynamoDB = new DynamoDB(amazonDynamoDB);
-        final ScanSpec scanSpec = new ScanSpec();
+    private static void getYouTubeNotificationFromDB(final DynamoDB dynamoDB, final ScanSpec scanSpec) {
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("YouTubeNotification").scan(scanSpec);
 
         items.forEach(item -> YOUTUBE_NOTIFICATION_MAP.compute(item.getString("youtube_channel_playlist_id"), (key, value) -> {
@@ -155,8 +145,6 @@ public class CommonUtil {
             innerSet.add(item.getString("message_channel_id"));
             return innerSet;
         }));
-
-        dynamoDB.shutdown();
     }
 
     public static boolean checkStartTime(final String startTimeString, final ZonedDateTime now) {
