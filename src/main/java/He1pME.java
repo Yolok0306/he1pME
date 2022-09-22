@@ -28,32 +28,30 @@ public class He1pME {
     private static final Timer timer = new Timer();
 
     public static void main(final String[] args) {
-        setDynamoDBConfig();
-        CommonUtil.getServerDataFromDB();
-        CommonUtil.getBadWordFromDB();
-        CommonUtil.getTwitchNotificationFromDB();
-        CommonUtil.getYouTubeNotificationFromDB();
-
-        CommonUtil.BOT = DiscordClient.create(CommonUtil.DISCORD_API_TOKEN).gateway().setEnabledIntents(intentSet).login()
-                .blockOptional().orElseThrow(() -> new IllegalStateException("Bot token : " + CommonUtil.DISCORD_API_TOKEN + " is invalid !"));
-        CommonUtil.YT_PLAYLIST_ID_VIDEO_ID_MAP = constructYTPlaylistIdVideoIdMap();
-
+        init();
+        timer.schedule(timerTaskService, 0, CommonUtil.FREQUENCY);
         CommonUtil.BOT.getEventDispatcher().on(ReadyEvent.class).subscribe(event ->
                 System.out.printf("-----Logged in as %s #%s-----%n", event.getSelf().getUsername(), event.getSelf().getDiscriminator()));
-
-        timer.schedule(timerTaskService, 0, CommonUtil.FREQUENCY);
         CommonUtil.BOT.getEventDispatcher().on(MessageCreateEvent.class).subscribe(messageEventService::receiveEvent);
         CommonUtil.BOT.getEventDispatcher().on(MessageUpdateEvent.class).subscribe(messageEventService::receiveEvent);
         CommonUtil.BOT.getEventDispatcher().on(VoiceStateUpdateEvent.class).subscribe(voiceStateService::receiveEvent);
         CommonUtil.BOT.onDisconnect().block();
     }
 
-    public static void setDynamoDBConfig() {
+    private static void init() {
+        setDynamoDBConfig();
+        CommonUtil.loadAllDataFromDB();
+        CommonUtil.YT_PLAYLIST_ID_VIDEO_ID_MAP = constructYTPlaylistIdVideoIdMap();
+        CommonUtil.BOT = DiscordClient.create(CommonUtil.DISCORD_API_TOKEN).gateway().setEnabledIntents(intentSet).login()
+                .blockOptional().orElseThrow(() -> new IllegalStateException("Bot token : " + CommonUtil.DISCORD_API_TOKEN + " is invalid !"));
+    }
+
+    private static void setDynamoDBConfig() {
         final Properties properties = new Properties();
         try {
-            properties.load(new FileInputStream("src/resources/DynamoDB.properties"));
+            properties.load(new FileInputStream("src/main/resources/DynamoDB.properties"));
         } catch (final IOException e) {
-            throw new RuntimeException(e.getMessage());
+            throw new RuntimeException(e);
         }
 
         CommonUtil.REGIONS = Regions.fromName(properties.getProperty("AWS_DEFAULT_REGION"));
