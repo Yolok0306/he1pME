@@ -1,13 +1,13 @@
-package Action;
+package action;
 
-import Annotation.help;
-import Service.YoutubeService;
-import Util.CommonUtil;
-import discord4j.core.object.entity.Member;
-import discord4j.core.object.entity.Message;
-import discord4j.core.object.entity.channel.MessageChannel;
+import annotation.help;
 import lombok.extern.slf4j.Slf4j;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.json.JSONObject;
+import service.YoutubeService;
+import util.CommonUtil;
 
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -34,7 +34,7 @@ public class ReloadAction implements Action {
         CommonUtil.YT_PLAYLIST_ID_VIDEO_ID_MAP = reconstructYTPlaylistIdVideoIdMap();
 
         final String now = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(ZonedDateTime.now(ZoneId.systemDefault()));
-        log.info("Reload Cache by " + member.getTag() + " at " + now);
+        log.info("Reload Cache by " + member.getUser().getAsTag() + " at " + now);
     }
 
     private Map<String, String> reconstructYTPlaylistIdVideoIdMap() {

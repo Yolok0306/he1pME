@@ -1,23 +1,23 @@
-package Action;
+package action;
 
-import Annotation.help;
-import Service.MusicService;
-import Util.CommonUtil;
+import annotation.help;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.ItemCollection;
 import com.amazonaws.services.dynamodbv2.document.ScanOutcome;
-import discord4j.core.object.entity.Member;
-import discord4j.core.object.entity.Message;
-import discord4j.core.object.entity.channel.MessageChannel;
-import discord4j.core.spec.EmbedCreateFields;
-import discord4j.core.spec.EmbedCreateSpec;
 import lombok.extern.slf4j.Slf4j;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.reflections.Reflections;
+import service.MusicService;
+import util.CommonUtil;
 
 import java.lang.reflect.Method;
 import java.util.*;
@@ -33,11 +33,10 @@ public class HelpAction implements Action {
 
     @Override
     public void execute(final MessageChannel messageChannel, final Message message, final Member member) {
-        final EmbedCreateFields.Author author = EmbedCreateFields.Author.of(member.getTag(), StringUtils.EMPTY, member.getAvatarUrl());
-
-        final Set<Class<? extends Action>> actionSet = new Reflections("Action").getSubTypesOf(Action.class);
+        final Set<MessageEmbed> messageEmbedSet = new HashSet<>();
+        final Set<Class<? extends Action>> actionSet = new Reflections("action").getSubTypesOf(Action.class);
         if (CollectionUtils.isNotEmpty(actionSet)) {
-            final EmbedCreateSpec.Builder embedCreateSpecBuilder = EmbedCreateSpec.builder().title("一般指令");
+            final EmbedBuilder embedBuilder = new EmbedBuilder().setTitle("一般指令");
             actionSet.stream()
                     .filter(Objects::nonNull)
                     .filter(action -> action.isAnnotationPresent(help.class))
@@ -50,32 +49,36 @@ public class HelpAction implements Action {
                         return StringUtils.EMPTY;
                     }))
                     .map(action -> action.getAnnotation(help.class))
-                    .forEach(help -> embedCreateSpecBuilder.addField(CommonUtil.SIGN + help.example(), help.description(), Boolean.FALSE));
-            messageChannel.createMessage(embedCreateSpecBuilder.color(CommonUtil.HE1PME_COLOR).author(author).build()).block();
+                    .forEach(help -> embedBuilder.addField(CommonUtil.SIGN + help.example(), help.description(), Boolean.FALSE));
+            embedBuilder.setColor(CommonUtil.HE1PME_COLOR).setAuthor(member.getUser().getAsTag(), null, CommonUtil.getRealAvatarUrl(member));
+            messageEmbedSet.add(embedBuilder.build());
         }
 
         final Set<Method> musicMethodSet = Arrays.stream(MusicService.class.getDeclaredMethods())
                 .filter(method -> method.isAnnotationPresent(help.class)).collect(Collectors.toSet());
         if (CollectionUtils.isNotEmpty(musicMethodSet)) {
-            final EmbedCreateSpec.Builder embedCreateSpecBuilder = EmbedCreateSpec.builder().title("音樂指令");
+            final EmbedBuilder embedBuilder = new EmbedBuilder().setTitle("音樂指令");
             musicMethodSet.stream()
                     .filter(Objects::nonNull)
                     .filter(musicMethod -> musicMethod.isAnnotationPresent(help.class))
                     .sorted(Comparator.comparing(Method::getName))
                     .map(musicMethod -> musicMethod.getAnnotation(help.class))
-                    .forEach(help -> embedCreateSpecBuilder.addField(CommonUtil.SIGN + help.example(), help.description(), Boolean.FALSE));
-            messageChannel.createMessage(embedCreateSpecBuilder.color(CommonUtil.HE1PME_COLOR).author(author).build()).block();
+                    .forEach(help -> embedBuilder.addField(CommonUtil.SIGN + help.example(), help.description(), Boolean.FALSE));
+            embedBuilder.setColor(CommonUtil.HE1PME_COLOR).setAuthor(member.getUser().getAsTag(), null, CommonUtil.getRealAvatarUrl(member));
+            messageEmbedSet.add(embedBuilder.build());
         }
 
         final Map<String, String> callActionMap = getCallActionMap();
         if (CollectionUtils.isNotEmpty(callActionMap.entrySet())) {
-            final EmbedCreateSpec.Builder embedCreateSpecBuilder = EmbedCreateSpec.builder().title("客製化指令");
+            final EmbedBuilder embedBuilder = new EmbedBuilder().setTitle("客製化指令");
             callActionMap.entrySet().stream()
                     .filter(Objects::nonNull)
                     .sorted(Map.Entry.comparingByKey())
-                    .forEach(entry -> embedCreateSpecBuilder.addField(CommonUtil.SIGN + entry.getKey(), entry.getValue(), Boolean.FALSE));
-            messageChannel.createMessage(embedCreateSpecBuilder.color(CommonUtil.HE1PME_COLOR).author(author).build()).block();
+                    .forEach(entry -> embedBuilder.addField(CommonUtil.SIGN + entry.getKey(), entry.getValue(), Boolean.FALSE));
+            embedBuilder.setColor(CommonUtil.HE1PME_COLOR).setAuthor(member.getUser().getAsTag(), null, CommonUtil.getRealAvatarUrl(member));
+            messageEmbedSet.add(embedBuilder.build());
         }
+        messageChannel.sendMessageEmbeds(messageEmbedSet).queue();
     }
 
     private Map<String, String> getCallActionMap() {

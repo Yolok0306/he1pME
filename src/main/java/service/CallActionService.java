@@ -1,7 +1,5 @@
-package Service;
+package service;
 
-import Entity.CallAction;
-import Util.CommonUtil;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
@@ -12,33 +10,34 @@ import com.amazonaws.services.dynamodbv2.document.QueryOutcome;
 import com.amazonaws.services.dynamodbv2.document.spec.QuerySpec;
 import com.amazonaws.services.dynamodbv2.document.utils.NameMap;
 import com.amazonaws.services.dynamodbv2.document.utils.ValueMap;
-import discord4j.core.object.entity.Message;
-import discord4j.core.object.entity.channel.MessageChannel;
-import discord4j.core.spec.EmbedCreateSpec;
-import discord4j.rest.util.Color;
+import entity.CallAction;
 import lombok.extern.slf4j.Slf4j;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.apache.commons.lang3.StringUtils;
+import util.CommonUtil;
 
+import java.awt.*;
 import java.util.Optional;
 
 @Slf4j
 public class CallActionService {
 
     protected void execute(final MessageChannel messageChannel, final Message message, final String instruction) {
-        if (message.getGuildId().isEmpty()) {
-            log.error(CommonUtil.SIGN + instruction + "can not execute because GuildId is null!");
+        final CallAction callAction = getCallActionFromDB(instruction, message.getGuild().getId());
+        if (callAction == null) {
             return;
         }
 
-        final String guildId = message.getGuildId().get().asString();
-        getCallActionFromDB(instruction, guildId).flatMap(item -> buildCallAction(item, guildId)).ifPresent(callAction -> {
-            final String content = "<@" + callAction.getId() + ">" + StringUtils.SPACE + callAction.getMessage();
-            final EmbedCreateSpec embed = EmbedCreateSpec.create().withColor(callAction.getColor()).withImage(callAction.getImage());
-            messageChannel.createMessage(content).withEmbeds(embed).block();
-        });
+        final String content = "<@" + callAction.getId() + ">" + StringUtils.SPACE + callAction.getMessage();
+        final MessageEmbed messageEmbed = new EmbedBuilder().setColor(callAction.getColor())
+                .setImage(callAction.getImage()).build();
+        messageChannel.sendMessage(content).addEmbeds(messageEmbed).queue();
     }
 
-    private Optional<Item> getCallActionFromDB(final String action, final String guildId) {
+    private CallAction getCallActionFromDB(final String action, final String guildId) {
         final AmazonDynamoDB amazonDynamoDB = AmazonDynamoDBClientBuilder.standard().withRegion(CommonUtil.REGIONS)
                 .withCredentials(new AWSStaticCredentialsProvider(CommonUtil.BASIC_AWS_CREDENTIALS)).build();
         final DynamoDB dynamoDB = new DynamoDB(amazonDynamoDB);
@@ -48,34 +47,30 @@ public class CallActionService {
                 .withValueMap(new ValueMap().withString(":value1", action).withString(":value2", guildId));
         final ItemCollection<QueryOutcome> items = dynamoDB.getTable("CallAction").query(querySpec);
 
-        final Item result;
+        final CallAction result;
         if (items.iterator().hasNext()) {
-            result = items.iterator().next();
+            final Item item = items.iterator().next();
+            result = buildCallAction(item, guildId);
         } else {
-            result = null;
             log.error("Can not find data with name = \"" + action + "\" and guild_id = \"" + guildId + "\" in CallAction Table!");
+            return null;
         }
 
         dynamoDB.shutdown();
-        return Optional.ofNullable(result);
+        return result;
     }
 
-    private Optional<CallAction> buildCallAction(final Item item, final String guildId) {
-        final Optional<Item> itemOpt = CommonUtil.getMemberDataFromDB(item.getString("name"), guildId);
-        if (itemOpt.isEmpty()) {
-            return Optional.empty();
+    private CallAction buildCallAction(final Item item, final String guildId) {
+        final Optional<Item> memberDataOpt = CommonUtil.getMemberDataFromDB(item.getString("name"), guildId);
+        if (memberDataOpt.isEmpty()) {
+            return null;
         }
 
-        final Item memberData = itemOpt.get();
+        final Item memberData = memberDataOpt.get();
         final int red = memberData.getNumber("red").intValue();
         final int green = memberData.getNumber("green").intValue();
         final int blue = memberData.getNumber("blue").intValue();
-        final CallAction result = CallAction.builder()
-                .id(memberData.getString("member_id"))
-                .color(Color.of(red, green, blue))
-                .message(item.getString("message"))
-                .image(item.getString("image"))
-                .build();
-        return Optional.ofNullable(result);
+        return CallAction.builder().id(memberData.getString("member_id")).color(new Color(red, green, blue))
+                .message(item.getString("message")).image(item.getString("image")).build();
     }
 }

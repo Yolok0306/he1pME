@@ -1,4 +1,4 @@
-package Util;
+package util;
 
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
@@ -10,16 +10,18 @@ import com.amazonaws.services.dynamodbv2.document.spec.QuerySpec;
 import com.amazonaws.services.dynamodbv2.document.spec.ScanSpec;
 import com.amazonaws.services.dynamodbv2.document.utils.NameMap;
 import com.amazonaws.services.dynamodbv2.document.utils.ValueMap;
-import discord4j.core.GatewayDiscordClient;
-import discord4j.core.object.entity.Member;
-import discord4j.core.object.entity.Role;
-import discord4j.core.object.entity.channel.MessageChannel;
-import discord4j.core.spec.EmbedCreateFields;
-import discord4j.core.spec.EmbedCreateSpec;
-import discord4j.rest.util.Color;
+import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
 import lombok.extern.slf4j.Slf4j;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.apache.commons.lang3.StringUtils;
+import plugin.GuildAudioManager;
 
+import java.awt.*;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -27,14 +29,11 @@ import java.util.*;
 
 @Slf4j
 public class CommonUtil {
-    public static final String SIGN = "$";
-    public static final long FREQUENCY = 300000;
-    public static GatewayDiscordClient BOT;
+    public static JDA JDA;
+    public static String SIGN;
+    public static long FREQUENCY;
     public static Regions REGIONS;
     public static BasicAWSCredentials BASIC_AWS_CREDENTIALS;
-    public static String DISCORD_API_TOKEN;
-    public static String DISCORD_API_TOKEN_TYPE;
-    public static String DISCORD_API_BASE_URI;
     public static String TWITCH_API_CLIENT_ID;
     public static String TWITCH_API_TOKEN_TYPE;
     public static String TWITCH_API_ACCESS_TOKEN;
@@ -43,7 +42,8 @@ public class CommonUtil {
     public static String YOUTUBE_API_KEY;
     public static String YOUTUBE_API_BASE_URI;
     public static String YOUTUBE_LOGO_URI;
-    public static final Color HE1PME_COLOR = Color.of(255, 192, 203);
+    public static final Color HE1PME_COLOR = new Color(255, 192, 203);
+    public static final Map<Long, GuildAudioManager> AUDIO_MANAGER_MAP = new HashMap<>();
     public static final Map<String, Set<String>> BAD_WORD_MAP = new HashMap<>();
     public static final Map<String, Set<String>> TWITCH_NOTIFICATION_MAP = new HashMap<>();
     public static final Map<String, Set<String>> YOUTUBE_NOTIFICATION_MAP = new HashMap<>();
@@ -70,16 +70,8 @@ public class CommonUtil {
 
         items.forEach(item -> {
             switch (item.getString("name")) {
-                case "Discord Api Token":
-                    DISCORD_API_TOKEN = item.getString("id");
-                    break;
-
-                case "Discord Api Token Type":
-                    DISCORD_API_TOKEN_TYPE = item.getString("id");
-                    break;
-
-                case "Discord Api Base Uri":
-                    DISCORD_API_BASE_URI = item.getString("id");
+                case "Sign":
+                    SIGN = item.getString("id");
                     break;
 
                 case "Twitch Api Client Id":
@@ -121,7 +113,7 @@ public class CommonUtil {
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("BadWord").scan(scanSpec);
 
         items.forEach(item -> BAD_WORD_MAP.compute(item.getString("guild_id"), (key, value) -> {
-            final Set<String> innerSet = Objects.nonNull(value) ? value : new HashSet<>();
+            final Set<String> innerSet = value != null ? value : new HashSet<>();
             innerSet.add(item.getString("word"));
             return innerSet;
         }));
@@ -131,7 +123,7 @@ public class CommonUtil {
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("TwitchNotification").scan(scanSpec);
 
         items.forEach(item -> TWITCH_NOTIFICATION_MAP.compute(item.getString("twitch_channel_id"), (key, value) -> {
-            final Set<String> innerSet = Objects.nonNull(value) ? value : new HashSet<>();
+            final Set<String> innerSet = value != null ? value : new HashSet<>();
             innerSet.add(item.getString("message_channel_id"));
             return innerSet;
         }));
@@ -141,10 +133,18 @@ public class CommonUtil {
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("YouTubeNotification").scan(scanSpec);
 
         items.forEach(item -> YOUTUBE_NOTIFICATION_MAP.compute(item.getString("youtube_channel_playlist_id"), (key, value) -> {
-            final Set<String> innerSet = Objects.nonNull(value) ? value : new HashSet<>();
+            final Set<String> innerSet = value != null ? value : new HashSet<>();
             innerSet.add(item.getString("message_channel_id"));
             return innerSet;
         }));
+    }
+
+    public static synchronized GuildAudioManager getGuildAudioPlayer(final Guild guild, final AudioPlayerManager playerManager) {
+        final long guildId = Long.parseLong(guild.getId());
+        AUDIO_MANAGER_MAP.computeIfAbsent(guildId, (key) -> new GuildAudioManager(playerManager, guild));
+        final GuildAudioManager audioManager = AUDIO_MANAGER_MAP.get(guildId);
+        guild.getAudioManager().setSendingHandler(audioManager.getSendHandler());
+        return audioManager;
     }
 
     public static boolean checkStartTime(final String startTimeString, final ZonedDateTime now) {
@@ -177,14 +177,15 @@ public class CommonUtil {
 
     public static void replyByHe1pMETemplate(final MessageChannel messageChannel, final Member member,
                                              final String title, final String desc, final String thumb) {
-        final EmbedCreateFields.Author author = EmbedCreateFields.Author.of(member.getTag(), StringUtils.EMPTY, member.getAvatarUrl());
-        final EmbedCreateSpec embedCreateSpec;
+        final MessageEmbed messageEmbed;
         if (StringUtils.isNotBlank(thumb)) {
-            embedCreateSpec = EmbedCreateSpec.builder().title(title).description(desc).thumbnail(thumb).color(HE1PME_COLOR).author(author).build();
+            messageEmbed = new EmbedBuilder().setTitle(title).setDescription(desc).setThumbnail(thumb).setColor(HE1PME_COLOR)
+                    .setAuthor(member.getUser().getAsTag(), null, getRealAvatarUrl(member)).build();
         } else {
-            embedCreateSpec = EmbedCreateSpec.builder().title(title).description(desc).color(HE1PME_COLOR).author(author).build();
+            messageEmbed = new EmbedBuilder().setTitle(title).setDescription(desc).setColor(HE1PME_COLOR)
+                    .setAuthor(member.getUser().getAsTag(), null, getRealAvatarUrl(member)).build();
         }
-        messageChannel.createMessage(embedCreateSpec).block();
+        messageChannel.sendMessageEmbeds(messageEmbed).queue();
     }
 
     public static String descFormat(final String desc) {
@@ -195,8 +196,7 @@ public class CommonUtil {
         return StringUtils.abbreviate(desc, 36);
     }
 
-    public static boolean isNotHigher(final Role role1, final Role role2) {
-        return role1.getPosition().blockOptional().isEmpty() || role2.getPosition().blockOptional().isEmpty() ||
-                role1.getPosition().blockOptional().get() <= role2.getPosition().blockOptional().get();
+    public static String getRealAvatarUrl(final Member member) {
+        return Optional.ofNullable(member.getUser().getAvatarUrl()).orElse(member.getUser().getDefaultAvatarUrl());
     }
 }

@@ -1,18 +1,17 @@
-package Service;
+package service;
 
-import Util.CommonUtil;
-import discord4j.common.util.Snowflake;
-import discord4j.core.object.entity.channel.MessageChannel;
-import discord4j.core.spec.EmbedCreateFields;
-import discord4j.core.spec.EmbedCreateSpec;
-import discord4j.rest.util.Color;
 import lombok.extern.slf4j.Slf4j;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.utils.URIBuilder;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import util.CommonUtil;
 
+import java.awt.*;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -65,7 +64,7 @@ public class YoutubeService {
                     .build();
             final HttpRequest httpRequest = HttpRequest.newBuilder().GET().uri(uri).build();
             final HttpResponse<String> httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
-            log.info(httpResponse.statusCode() + StringUtils.SPACE + httpResponse.body());
+            log.info(httpResponse.statusCode() + StringUtils.SPACE + httpResponse.body().replaceAll(StringUtils.LF, StringUtils.EMPTY));
             return httpResponse.body();
         } catch (final URISyntaxException | IOException | InterruptedException e) {
             e.printStackTrace();
@@ -103,7 +102,7 @@ public class YoutubeService {
             videoIdSet.forEach(videoId -> uriBuilder.addParameter("id", videoId));
             final HttpRequest httpRequest = HttpRequest.newBuilder().GET().uri(uriBuilder.build()).build();
             final HttpResponse<String> httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
-            log.info(httpResponse.statusCode() + StringUtils.SPACE + httpResponse.body());
+            log.info(httpResponse.statusCode() + StringUtils.SPACE + httpResponse.body().replaceAll(StringUtils.LF, StringUtils.EMPTY));
             return httpResponse.body();
         } catch (final URISyntaxException | IOException | InterruptedException e) {
             e.printStackTrace();
@@ -121,19 +120,17 @@ public class YoutubeService {
         final String title = videoJsonObject.has("liveStreamingDetails") ? "開台通知" : "上片通知";
         final String desc = snippetJsonObject.getString("channelTitle") + " - " + snippetJsonObject.getString("title");
         final String thumb = getThumbnail(snippetJsonObject.getJSONObject("thumbnails"));
-        final Color color = Color.of(255, 0, 0);
-        final EmbedCreateFields.Author author = EmbedCreateFields.Author.of("Youtube", StringUtils.EMPTY, CommonUtil.YOUTUBE_LOGO_URI);
+        final Color color = new Color(255, 0, 0);
 
         for (final String messageChannelId : videoIdMap.get(videoId)) {
-            CommonUtil.BOT.getChannelById(Snowflake.of(messageChannelId)).subscribe(channel -> {
-                if (channel instanceof MessageChannel) {
-                    final MessageChannel messageChannel = (MessageChannel) channel;
-                    final EmbedCreateSpec embedCreateSpec = EmbedCreateSpec.builder().title(title).description(desc)
-                            .thumbnail(thumb).color(color).author(author).build();
-                    messageChannel.createMessage(embedCreateSpec).block();
-                    messageChannel.createMessage("https://www.youtube.com/watch?v=" + videoId).block();
-                }
-            });
+            final MessageChannel messageChannel = CommonUtil.JDA.getChannelById(MessageChannel.class, messageChannelId);
+            if (messageChannel == null) {
+                continue;
+            }
+
+            final MessageEmbed messageEmbed = new EmbedBuilder().setTitle(title).setDescription(desc).setThumbnail(thumb)
+                    .setColor(color).setAuthor("Youtube", null, CommonUtil.YOUTUBE_LOGO_URI).build();
+            messageChannel.sendMessageEmbeds(messageEmbed).addContent("https://www.youtube.com/watch?v=" + videoId).queue();
         }
     }
 

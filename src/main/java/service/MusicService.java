@@ -1,8 +1,6 @@
-package Service;
+package service;
 
-import Annotation.help;
-import Plugin.GuildAudioManager;
-import Util.CommonUtil;
+import annotation.help;
 import com.sedmelluq.discord.lavaplayer.player.AudioLoadResultHandler;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
@@ -12,19 +10,20 @@ import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
 import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackInfo;
-import com.sedmelluq.discord.lavaplayer.track.playback.NonAllocatingAudioFrameBuffer;
-import discord4j.core.object.entity.Member;
-import discord4j.core.object.entity.Message;
-import discord4j.core.object.entity.channel.MessageChannel;
-import discord4j.core.object.entity.channel.VoiceChannel;
-import discord4j.core.spec.VoiceChannelJoinSpec;
+import net.dv8tion.jda.api.entities.ISnowflake;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.channel.concrete.VoiceChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.apache.commons.lang3.StringUtils;
+import plugin.AudioPlayerSendHandler;
+import plugin.AudioTrackScheduler;
+import util.CommonUtil;
 
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 public class MusicService {
@@ -32,71 +31,73 @@ public class MusicService {
 
     static {
         PLAYER_MANAGER = new DefaultAudioPlayerManager();
-        // This is an optimization strategy that Discord4J can utilize to minimize allocations
-        PLAYER_MANAGER.getConfiguration().setFrameBufferFactory(NonAllocatingAudioFrameBuffer::new);
         AudioSourceManagers.registerRemoteSources(PLAYER_MANAGER);
         AudioSourceManagers.registerLocalSource(PLAYER_MANAGER);
     }
 
     @help(example = "play [musicURI]", description = "播放音樂")
     protected void play(final MessageChannel messageChannel, final Message message, final Member member) {
-        final VoiceChannel voiceChannel = getVoiceChannel(member).orElse(null);
-        if (Objects.isNull(voiceChannel)) {
+        final Optional<VoiceChannel> voiceChannelOpt = getVoiceChannel(member);
+        if (voiceChannelOpt.isEmpty()) {
             return;
         }
 
         final String regex = "\\" + CommonUtil.SIGN + "play\\p{Blank}*";
-        final String musicSource = message.getContent().replaceAll(regex, StringUtils.EMPTY);
+        final String musicSource = message.getContentRaw().replaceAll(regex, StringUtils.EMPTY);
         if (StringUtils.isBlank(musicSource)) {
             return;
         }
 
+        final VoiceChannel voiceChannel = voiceChannelOpt.get();
         if (!isChannelContainBot(voiceChannel)) {
-            voiceChannel.join(VoiceChannelJoinSpec.builder().build()
-                    .withProvider(GuildAudioManager.of(voiceChannel.getGuildId()).getProvider())).block();
+            final AudioPlayerSendHandler handler = new AudioPlayerSendHandler(PLAYER_MANAGER.createPlayer());
+            message.getGuild().getAudioManager().setSendingHandler(handler);
+            message.getGuild().getAudioManager().openAudioConnection(voiceChannel);
         }
-
         PLAYER_MANAGER.loadItem(musicSource, new AudioLoadResultHandler() {
+            final AudioTrackScheduler audioTrackScheduler = CommonUtil.getGuildAudioPlayer(message.getGuild(), PLAYER_MANAGER).scheduler;
+
             @Override
             public void trackLoaded(final AudioTrack track) {
-                GuildAudioManager.of(voiceChannel.getGuildId()).getScheduler().play(track);
+                audioTrackScheduler.queue(track);
             }
 
             @Override
             public void playlistLoaded(final AudioPlaylist playlist) {
-                final AtomicReference<AudioTrack> firstTrack = new AtomicReference<>(playlist.getSelectedTrack());
-                firstTrack.set(playlist.getTracks().get(0));
+                final AudioTrack firstTrack = Optional.ofNullable(playlist.getSelectedTrack())
+                        .orElse(playlist.getTracks().get(0));
+                audioTrackScheduler.queue(firstTrack);
             }
 
             @Override
             public void noMatches() {
-                messageChannel.createMessage("Could not play: " + musicSource).block();
+                messageChannel.sendMessage("Could not play: " + musicSource).queue();
             }
 
             @Override
             public void loadFailed(final FriendlyException exception) {
-                messageChannel.createMessage(exception.getMessage()).block();
+                messageChannel.sendMessage(exception.getMessage()).queue();
             }
         });
     }
 
     @help(example = "stop", description = "停止播放音樂")
     protected void stop(final MessageChannel messageChannel, final Message message, final Member member) {
-        final VoiceChannel voiceChannel = getVoiceChannel(member).orElse(null);
-        if (Objects.nonNull(voiceChannel) && isChannelContainBot(voiceChannel)) {
-            voiceChannel.sendDisconnectVoiceState().block();
+        final Optional<VoiceChannel> voiceChannelOpt = getVoiceChannel(member);
+        if (voiceChannelOpt.isPresent() && isChannelContainBot(voiceChannelOpt.get())) {
+            message.getGuild().getAudioManager().closeAudioConnection();
         }
     }
 
     @help(example = "np", description = "顯示歌曲的播放資訊")
     protected void np(final MessageChannel messageChannel, final Message message, final Member member) {
-        final VoiceChannel voiceChannel = getVoiceChannel(member).orElse(null);
-        if (Objects.isNull(voiceChannel) || !isChannelContainBot(voiceChannel)) {
+        final Optional<VoiceChannel> voiceChannelOpt = getVoiceChannel(member);
+        if (voiceChannelOpt.isEmpty() || !isChannelContainBot(voiceChannelOpt.get())) {
             return;
         }
 
-        final AudioPlayer audioPlayer = GuildAudioManager.of(voiceChannel.getGuildId()).getPlayer();
-        if (Objects.nonNull(audioPlayer.getPlayingTrack()) && audioPlayer.getPlayingTrack().isSeekable()) {
+        final AudioPlayer audioPlayer = CommonUtil.getGuildAudioPlayer(message.getGuild(), null).scheduler.getPlayer();
+        if (audioPlayer.getPlayingTrack() != null && audioPlayer.getPlayingTrack().isSeekable()) {
             final AudioTrackInfo audioTrackInfo = audioPlayer.getPlayingTrack().getInfo();
             final String title = "播放資訊";
             final String desc = CommonUtil.descFormat("Title : " + audioTrackInfo.title) + StringUtils.LF +
@@ -108,12 +109,13 @@ public class MusicService {
 
     @help(example = "list", description = "顯示播放清單")
     protected void list(final MessageChannel messageChannel, final Message message, final Member member) {
-        final VoiceChannel voiceChannel = getVoiceChannel(member).orElse(null);
-        if (Objects.isNull(voiceChannel) || !isChannelContainBot(voiceChannel)) {
+        final Optional<VoiceChannel> voiceChannelOpt = getVoiceChannel(member);
+        if (voiceChannelOpt.isEmpty() || !isChannelContainBot(voiceChannelOpt.get())) {
             return;
         }
 
-        final List<AudioTrack> queue = GuildAudioManager.of(voiceChannel.getGuildId()).getScheduler().getQueue();
+
+        final BlockingQueue<AudioTrack> queue = CommonUtil.getGuildAudioPlayer(message.getGuild(), null).scheduler.getQueue();
         final String title, desc;
         if (queue.isEmpty()) {
             title = "播放清單有0首歌 :";
@@ -130,38 +132,39 @@ public class MusicService {
 
     @help(example = "skip", description = "跳過這首歌曲")
     protected void skip(final MessageChannel messageChannel, final Message message, final Member member) {
-        final VoiceChannel voiceChannel = getVoiceChannel(member).orElse(null);
-        if (Objects.nonNull(voiceChannel) && isChannelContainBot(voiceChannel)) {
-            GuildAudioManager.of(voiceChannel.getGuildId()).getScheduler().skip();
+        final Optional<VoiceChannel> voiceChannelOpt = getVoiceChannel(member);
+        if (voiceChannelOpt.isPresent() && isChannelContainBot(voiceChannelOpt.get())) {
+            CommonUtil.getGuildAudioPlayer(message.getGuild(), null).scheduler.nextTrack();
         }
     }
 
 
     @help(example = "pause", description = "暫停/恢復播放歌曲")
     protected void pause(final MessageChannel messageChannel, final Message message, final Member member) {
-        final VoiceChannel voiceChannel = getVoiceChannel(member).orElse(null);
-        if (Objects.nonNull(voiceChannel) && isChannelContainBot(voiceChannel)) {
-            final boolean isPaused = GuildAudioManager.of(voiceChannel.getGuildId()).getPlayer().isPaused();
-            GuildAudioManager.of(voiceChannel.getGuildId()).getPlayer().setPaused(!isPaused);
+        final Optional<VoiceChannel> voiceChannelOpt = getVoiceChannel(member);
+        if (voiceChannelOpt.isPresent() && isChannelContainBot(voiceChannelOpt.get())) {
+            final AudioPlayer audioPlayer = CommonUtil.getGuildAudioPlayer(message.getGuild(), null).scheduler.getPlayer();
+            audioPlayer.setPaused(!audioPlayer.isPaused());
         }
     }
 
     @help(example = "clear", description = "清空播放清單")
     protected void clear(final MessageChannel messageChannel, final Message message, final Member member) {
-        final VoiceChannel voiceChannel = getVoiceChannel(member).orElse(null);
-        if (Objects.nonNull(voiceChannel) && isChannelContainBot(voiceChannel)) {
-            GuildAudioManager.of(voiceChannel.getGuildId()).getQueue().clear();
+        final Optional<VoiceChannel> voiceChannelOpt = getVoiceChannel(member);
+        if (voiceChannelOpt.isPresent() && isChannelContainBot(voiceChannelOpt.get())) {
+            CommonUtil.getGuildAudioPlayer(message.getGuild(), null).scheduler.getQueue().clear();
         }
     }
 
     private boolean isChannelContainBot(final VoiceChannel voiceChannel) {
-        return Boolean.TRUE.equals(voiceChannel.isMemberConnected(CommonUtil.BOT.getSelfId()).block());
+        return voiceChannel.getMembers().stream()
+                .map(ISnowflake::getId)
+                .anyMatch(id -> StringUtils.equals(id, voiceChannel.getJDA().getSelfUser().getId()));
     }
 
     private Optional<VoiceChannel> getVoiceChannel(final Member member) {
-        final AtomicReference<VoiceChannel> voiceChannel = new AtomicReference<>();
-        member.getVoiceState().subscribe(voiceState -> voiceState.getChannel().subscribe(voiceChannel::set));
-        return Optional.ofNullable(voiceChannel.get());
+        return member.getVoiceState() == null || member.getVoiceState().getChannel() == null ?
+                Optional.empty() : Optional.of(member.getVoiceState().getChannel().asVoiceChannel());
     }
 
     private String timeFormat(final long milliseconds) {

@@ -1,18 +1,17 @@
-package Service;
+package service;
 
-import Util.CommonUtil;
-import discord4j.common.util.Snowflake;
-import discord4j.core.object.entity.channel.MessageChannel;
-import discord4j.core.spec.EmbedCreateFields;
-import discord4j.core.spec.EmbedCreateSpec;
-import discord4j.rest.util.Color;
 import lombok.extern.slf4j.Slf4j;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.utils.URIBuilder;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import util.CommonUtil;
 
+import java.awt.*;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.http.HttpClient;
@@ -76,19 +75,17 @@ public class TwitchService {
         final String title = "開台通知";
         final String desc = dataJsonObject.getString("user_name") + " - " + dataJsonObject.getString("title");
         final String thumb = dataJsonObject.getString("thumbnail_url").replace("-{width}x{height}", StringUtils.EMPTY);
-        final Color color = Color.of(144, 0, 255);
-        final EmbedCreateFields.Author author = EmbedCreateFields.Author.of("Twitch", StringUtils.EMPTY, CommonUtil.TWITCH_LOGO_URI);
+        final Color color = new Color(144, 0, 255);
 
         for (final String messageChannelId : CommonUtil.TWITCH_NOTIFICATION_MAP.get(userLogin)) {
-            CommonUtil.BOT.getChannelById(Snowflake.of(messageChannelId)).subscribe(channel -> {
-                if (channel instanceof MessageChannel) {
-                    final MessageChannel messageChannel = (MessageChannel) channel;
-                    final EmbedCreateSpec embedCreateSpec = EmbedCreateSpec.builder().title(title).description(desc)
-                            .thumbnail(thumb).color(color).author(author).build();
-                    messageChannel.createMessage(embedCreateSpec).block();
-                    messageChannel.createMessage("https://www.twitch.tv/" + userLogin).block();
-                }
-            });
+            final MessageChannel messageChannel = CommonUtil.JDA.getChannelById(MessageChannel.class, messageChannelId);
+            if (messageChannel == null) {
+                continue;
+            }
+
+            final MessageEmbed messageEmbed = new EmbedBuilder().setTitle(title).setDescription(desc).setThumbnail(thumb)
+                    .setColor(color).setAuthor("Twitch", null, CommonUtil.TWITCH_LOGO_URI).build();
+            messageChannel.sendMessageEmbeds(messageEmbed).addContent("https://www.twitch.tv/" + userLogin).queue();
         }
     }
 }
