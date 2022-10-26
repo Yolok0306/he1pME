@@ -4,7 +4,6 @@ import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import net.dv8tion.jda.api.events.guild.voice.GuildVoiceUpdateEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.MessageUpdateEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
@@ -13,8 +12,7 @@ import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 import service.MessageEventService;
 import service.TimerTaskService;
-import service.VoiceStateService;
-import service.YoutubeService;
+import service.YouTubeService;
 import util.CommonUtil;
 
 import java.io.FileInputStream;
@@ -26,7 +24,6 @@ public class He1pME extends ListenerAdapter {
     private static final Set<GatewayIntent> gatewayIntentSet = Set.of(GatewayIntent.GUILD_MEMBERS,
             GatewayIntent.GUILD_VOICE_STATES, GatewayIntent.GUILD_MESSAGES, GatewayIntent.MESSAGE_CONTENT);
     private static final MessageEventService messageEventService = new MessageEventService();
-    private static final VoiceStateService voiceStateService = new VoiceStateService();
     private static final TimerTaskService timerTaskService = new TimerTaskService();
     private static final Timer timer = new Timer();
 
@@ -38,7 +35,7 @@ public class He1pME extends ListenerAdapter {
                 properties.getProperty("AWS_ACCESS_KEY_ID"), properties.getProperty("AWS_SECRET_ACCESS_KEY")
         );
         CommonUtil.loadAllDataFromDB();
-        CommonUtil.YT_PLAYLIST_ID_VIDEO_ID_MAP = constructYTPlaylistIdVideoIdMap();
+        YouTubeService.YT_PLAYLIST_ID_VIDEO_ID_MAP = constructYTPlaylistIdVideoIdMap();
         CommonUtil.JDA = JDABuilder.createDefault(properties.getProperty("DISCORD_BOT_TOKEN"))
                 .enableIntents(gatewayIntentSet).addEventListeners(new He1pME()).build();
         timer.schedule(timerTaskService, 0, CommonUtil.FREQUENCY);
@@ -60,11 +57,6 @@ public class He1pME extends ListenerAdapter {
         messageEventService.execute(messageChannel, member, message);
     }
 
-    @Override
-    public void onGuildVoiceUpdate(@NotNull final GuildVoiceUpdateEvent event) {
-        voiceStateService.execute(event);
-    }
-
     private static Properties getProperties() {
         final Properties properties = new Properties();
         try {
@@ -76,12 +68,12 @@ public class He1pME extends ListenerAdapter {
     }
 
     private static Map<String, String> constructYTPlaylistIdVideoIdMap() {
-        if (CommonUtil.YOUTUBE_NOTIFICATION_MAP.isEmpty()) {
+        if (YouTubeService.YOUTUBE_NOTIFICATION_MAP.isEmpty()) {
             return new HashMap<>();
         }
 
-        final Set<String> playlistItemResponseSet = CommonUtil.YOUTUBE_NOTIFICATION_MAP.keySet().stream()
-                .map(YoutubeService::callPlayListItemApi).collect(Collectors.toSet());
+        final Set<String> playlistItemResponseSet = YouTubeService.YOUTUBE_NOTIFICATION_MAP.keySet().stream()
+                .map(YouTubeService::callPlayListItemApi).collect(Collectors.toSet());
         return playlistItemResponseSet.stream()
                 .map(JSONObject::new)
                 .map(playlistJsonObject -> playlistJsonObject.getJSONArray("items"))

@@ -19,11 +19,16 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.ZonedDateTime;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 public class TwitchService {
+    public static final Map<String, Set<String>> TWITCH_NOTIFICATION_MAP = new HashMap<>();
+
     protected void execute(final ZonedDateTime now) {
-        if (CommonUtil.TWITCH_NOTIFICATION_MAP.isEmpty()) {
+        if (TWITCH_NOTIFICATION_MAP.isEmpty()) {
             return;
         }
 
@@ -54,7 +59,7 @@ public class TwitchService {
         final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).connectTimeout(Duration.ofMillis(1000)).build();
         try {
             final URIBuilder uriBuilder = new URIBuilder(CommonUtil.TWITCH_API_BASE_URI + "/streams");
-            CommonUtil.TWITCH_NOTIFICATION_MAP.keySet().forEach(key -> uriBuilder.addParameter("user_login", key));
+            TWITCH_NOTIFICATION_MAP.keySet().forEach(key -> uriBuilder.addParameter("user_login", key));
             final HttpRequest httpRequest = HttpRequest.newBuilder()
                     .GET()
                     .uri(uriBuilder.build())
@@ -77,7 +82,7 @@ public class TwitchService {
         final String thumb = dataJsonObject.getString("thumbnail_url").replace("-{width}x{height}", StringUtils.EMPTY);
         final Color color = new Color(144, 0, 255);
 
-        for (final String messageChannelId : CommonUtil.TWITCH_NOTIFICATION_MAP.get(userLogin)) {
+        for (final String messageChannelId : TWITCH_NOTIFICATION_MAP.get(userLogin)) {
             final MessageChannel messageChannel = CommonUtil.JDA.getChannelById(MessageChannel.class, messageChannelId);
             if (messageChannel == null) {
                 continue;
@@ -85,7 +90,7 @@ public class TwitchService {
 
             final MessageEmbed messageEmbed = new EmbedBuilder().setTitle(title).setDescription(desc).setThumbnail(thumb)
                     .setColor(color).setAuthor("Twitch", null, CommonUtil.TWITCH_LOGO_URI).build();
-            messageChannel.sendMessageEmbeds(messageEmbed).addContent("https://www.twitch.tv/" + userLogin).queue();
+            messageChannel.sendMessage("https://www.twitch.tv/" + userLogin).addEmbeds(messageEmbed).queue();
         }
     }
 }

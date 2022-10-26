@@ -6,7 +6,7 @@ import java.util.TimerTask;
 
 public class TimerTaskService extends TimerTask {
     private final TwitchService twitchService = new TwitchService();
-    private final YoutubeService youtubeService = new YoutubeService();
+    private final YouTubeService youtubeService = new YouTubeService();
 
     @Override
     public void run() {

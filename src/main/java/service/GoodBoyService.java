@@ -9,18 +9,21 @@ import org.apache.commons.lang3.StringUtils;
 import util.CommonUtil;
 
 import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class GoodBoyService {
+    public static final Map<String, Set<String>> BAD_WORD_MAP = new HashMap<>();
 
     protected void checkContent(final MessageChannel messageChannel, final Message message, final Member member) {
-        if (!CommonUtil.BAD_WORD_MAP.containsKey(message.getGuild().getId())) {
+        if (!BAD_WORD_MAP.containsKey(message.getGuild().getId())) {
             return;
         }
 
-        final Set<String> badWordSet = CommonUtil.BAD_WORD_MAP.get(message.getGuild().getId());
+        final Set<String> badWordSet = BAD_WORD_MAP.get(message.getGuild().getId());
         final String content = message.getContentRaw();
         if (member.getUser().isBot() || notNeedToCheck(member) || !isBadWord(content, badWordSet)) {
             return;

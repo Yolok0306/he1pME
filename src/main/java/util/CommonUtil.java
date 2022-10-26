@@ -10,22 +10,23 @@ import com.amazonaws.services.dynamodbv2.document.spec.QuerySpec;
 import com.amazonaws.services.dynamodbv2.document.spec.ScanSpec;
 import com.amazonaws.services.dynamodbv2.document.utils.NameMap;
 import com.amazonaws.services.dynamodbv2.document.utils.ValueMap;
-import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
 import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.apache.commons.lang3.StringUtils;
-import plugin.GuildAudioManager;
+import service.GoodBoyService;
+import service.TwitchService;
+import service.YouTubeService;
 
 import java.awt.*;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.Set;
 
 @Slf4j
 public class CommonUtil {
@@ -43,11 +44,6 @@ public class CommonUtil {
     public static String YOUTUBE_API_BASE_URI;
     public static String YOUTUBE_LOGO_URI;
     public static final Color HE1PME_COLOR = new Color(255, 192, 203);
-    public static final Map<Long, GuildAudioManager> AUDIO_MANAGER_MAP = new HashMap<>();
-    public static final Map<String, Set<String>> BAD_WORD_MAP = new HashMap<>();
-    public static final Map<String, Set<String>> TWITCH_NOTIFICATION_MAP = new HashMap<>();
-    public static final Map<String, Set<String>> YOUTUBE_NOTIFICATION_MAP = new HashMap<>();
-    public static Map<String, String> YT_PLAYLIST_ID_VIDEO_ID_MAP;
 
     public static void loadAllDataFromDB() {
         final AmazonDynamoDB amazonDynamoDB = AmazonDynamoDBClientBuilder.standard().withRegion(REGIONS)
@@ -63,7 +59,6 @@ public class CommonUtil {
 
     private static void getServerDataFromDB(final DynamoDB dynamoDB, final ScanSpec scanSpec) {
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("ServerData").scan(scanSpec);
-
         if (!items.iterator().hasNext()) {
             throw new IllegalStateException("Can not get Token from ServerData table!");
         }
@@ -111,46 +106,32 @@ public class CommonUtil {
 
     private static void getBadWordFromDB(final DynamoDB dynamoDB, final ScanSpec scanSpec) {
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("BadWord").scan(scanSpec);
-
-        items.forEach(item -> BAD_WORD_MAP.compute(item.getString("guild_id"), (key, value) -> {
-            final Set<String> innerSet = value != null ? value : new HashSet<>();
-            innerSet.add(item.getString("word"));
-            return innerSet;
-        }));
+        items.forEach(item -> {
+            final String key = item.getString("guild_id");
+            GoodBoyService.BAD_WORD_MAP.computeIfAbsent(key, (k) -> new HashSet<>());
+            final Set<String> value = GoodBoyService.BAD_WORD_MAP.get(key);
+            value.add(item.getString("word"));
+        });
     }
 
     private static void getTwitchNotificationFromDB(final DynamoDB dynamoDB, final ScanSpec scanSpec) {
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("TwitchNotification").scan(scanSpec);
-
-        items.forEach(item -> TWITCH_NOTIFICATION_MAP.compute(item.getString("twitch_channel_id"), (key, value) -> {
-            final Set<String> innerSet = value != null ? value : new HashSet<>();
-            innerSet.add(item.getString("message_channel_id"));
-            return innerSet;
-        }));
+        items.forEach(item -> {
+            final String key = item.getString("twitch_channel_id");
+            TwitchService.TWITCH_NOTIFICATION_MAP.computeIfAbsent(key, (k) -> new HashSet<>());
+            final Set<String> value = TwitchService.TWITCH_NOTIFICATION_MAP.get(key);
+            value.add(item.getString("message_channel_id"));
+        });
     }
 
     private static void getYouTubeNotificationFromDB(final DynamoDB dynamoDB, final ScanSpec scanSpec) {
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("YouTubeNotification").scan(scanSpec);
-
-        items.forEach(item -> YOUTUBE_NOTIFICATION_MAP.compute(item.getString("youtube_channel_playlist_id"), (key, value) -> {
-            final Set<String> innerSet = value != null ? value : new HashSet<>();
-            innerSet.add(item.getString("message_channel_id"));
-            return innerSet;
-        }));
-    }
-
-    public static synchronized GuildAudioManager getGuildAudioPlayer(final Guild guild, final AudioPlayerManager playerManager) {
-        final long guildId = Long.parseLong(guild.getId());
-        AUDIO_MANAGER_MAP.computeIfAbsent(guildId, (key) -> new GuildAudioManager(playerManager, guild));
-        final GuildAudioManager audioManager = AUDIO_MANAGER_MAP.get(guildId);
-        guild.getAudioManager().setSendingHandler(audioManager.getSendHandler());
-        return audioManager;
-    }
-
-    public static boolean checkStartTime(final String startTimeString, final ZonedDateTime now) {
-        final ZonedDateTime startTime = ZonedDateTime.parse(startTimeString);
-        final ZonedDateTime nowAfterCheck = Optional.ofNullable(now).orElse(ZonedDateTime.now(ZoneId.of("UTC")));
-        return Duration.between(startTime, nowAfterCheck).toSeconds() < Duration.ofMillis(FREQUENCY).toSeconds();
+        items.forEach(item -> {
+            final String key = item.getString("youtube_channel_playlist_id");
+            YouTubeService.YOUTUBE_NOTIFICATION_MAP.computeIfAbsent(key, (k) -> new HashSet<>());
+            final Set<String> value = YouTubeService.YOUTUBE_NOTIFICATION_MAP.get(key);
+            value.add(item.getString("message_channel_id"));
+        });
     }
 
     public static Optional<Item> getMemberDataFromDB(final String name, final String guildId) {
@@ -177,15 +158,18 @@ public class CommonUtil {
 
     public static void replyByHe1pMETemplate(final MessageChannel messageChannel, final Member member,
                                              final String title, final String desc, final String thumb) {
-        final MessageEmbed messageEmbed;
+        final EmbedBuilder embedBuilder = new EmbedBuilder().setTitle(title).setDescription(desc).setColor(HE1PME_COLOR)
+                .setAuthor(member.getUser().getAsTag(), null, getRealAvatarUrl(member));
         if (StringUtils.isNotBlank(thumb)) {
-            messageEmbed = new EmbedBuilder().setTitle(title).setDescription(desc).setThumbnail(thumb).setColor(HE1PME_COLOR)
-                    .setAuthor(member.getUser().getAsTag(), null, getRealAvatarUrl(member)).build();
-        } else {
-            messageEmbed = new EmbedBuilder().setTitle(title).setDescription(desc).setColor(HE1PME_COLOR)
-                    .setAuthor(member.getUser().getAsTag(), null, getRealAvatarUrl(member)).build();
+            embedBuilder.setThumbnail(thumb);
         }
-        messageChannel.sendMessageEmbeds(messageEmbed).queue();
+        messageChannel.sendMessageEmbeds(embedBuilder.build()).queue();
+    }
+
+    public static boolean checkStartTime(final String startTimeString, final ZonedDateTime now) {
+        final ZonedDateTime startTime = ZonedDateTime.parse(startTimeString);
+        final ZonedDateTime nowAfterCheck = Optional.ofNullable(now).orElse(ZonedDateTime.now(ZoneId.of("UTC")));
+        return Duration.between(startTime, nowAfterCheck).toSeconds() < Duration.ofMillis(FREQUENCY).toSeconds();
     }
 
     public static String descFormat(final String desc) {

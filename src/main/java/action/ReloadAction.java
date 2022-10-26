@@ -6,7 +6,9 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.json.JSONObject;
-import service.YoutubeService;
+import service.GoodBoyService;
+import service.TwitchService;
+import service.YouTubeService;
 import util.CommonUtil;
 
 import java.time.ZoneId;
@@ -27,24 +29,24 @@ public class ReloadAction implements Action {
 
     @Override
     public void execute(final MessageChannel messageChannel, final Message message, final Member member) {
-        CommonUtil.BAD_WORD_MAP.clear();
-        CommonUtil.TWITCH_NOTIFICATION_MAP.clear();
-        CommonUtil.YOUTUBE_NOTIFICATION_MAP.clear();
+        GoodBoyService.BAD_WORD_MAP.clear();
+        TwitchService.TWITCH_NOTIFICATION_MAP.clear();
+        YouTubeService.YOUTUBE_NOTIFICATION_MAP.clear();
         CommonUtil.loadAllDataFromDB();
-        CommonUtil.YT_PLAYLIST_ID_VIDEO_ID_MAP = reconstructYTPlaylistIdVideoIdMap();
+        YouTubeService.YT_PLAYLIST_ID_VIDEO_ID_MAP = reconstructYTPlaylistIdVideoIdMap();
 
         final String now = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(ZonedDateTime.now(ZoneId.systemDefault()));
         log.info("Reload Cache by " + member.getUser().getAsTag() + " at " + now);
     }
 
     private Map<String, String> reconstructYTPlaylistIdVideoIdMap() {
-        final Map<String, String> resultMap = CommonUtil.YT_PLAYLIST_ID_VIDEO_ID_MAP.entrySet().stream()
-                .filter(entry -> CommonUtil.YOUTUBE_NOTIFICATION_MAP.containsKey(entry.getKey()))
+        final Map<String, String> resultMap = YouTubeService.YT_PLAYLIST_ID_VIDEO_ID_MAP.entrySet().stream()
+                .filter(entry -> YouTubeService.YOUTUBE_NOTIFICATION_MAP.containsKey(entry.getKey()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-        final Set<String> playlistItemResponseSet = CommonUtil.YT_PLAYLIST_ID_VIDEO_ID_MAP.keySet().stream()
+        final Set<String> playlistItemResponseSet = YouTubeService.YT_PLAYLIST_ID_VIDEO_ID_MAP.keySet().stream()
                 .filter(key -> !resultMap.containsKey(key))
-                .map(YoutubeService::callPlayListItemApi)
+                .map(YouTubeService::callPlayListItemApi)
                 .collect(Collectors.toSet());
         final Map<String, String> newYTPlaylistIdVideoIdMap = playlistItemResponseSet.stream()
                 .map(JSONObject::new)

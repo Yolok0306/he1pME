@@ -25,14 +25,17 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class YoutubeService {
+public class YouTubeService {
+    public static Map<String, String> YT_PLAYLIST_ID_VIDEO_ID_MAP;
+    public static final Map<String, Set<String>> YOUTUBE_NOTIFICATION_MAP = new HashMap<>();
+
     protected void execute() {
-        if (CommonUtil.YOUTUBE_NOTIFICATION_MAP.isEmpty()) {
+        if (YOUTUBE_NOTIFICATION_MAP.isEmpty()) {
             return;
         }
 
-        final Set<String> playlistItemResponseSet = CommonUtil.YOUTUBE_NOTIFICATION_MAP.keySet().stream()
-                .map(YoutubeService::callPlayListItemApi).collect(Collectors.toSet());
+        final Set<String> playlistItemResponseSet = YOUTUBE_NOTIFICATION_MAP.keySet().stream()
+                .map(YouTubeService::callPlayListItemApi).collect(Collectors.toSet());
         try {
             final Map<String, Set<String>> videoIdMap = constructVideoIdMap(playlistItemResponseSet);
             if (videoIdMap.isEmpty()) {
@@ -83,12 +86,12 @@ public class YoutubeService {
             final JSONObject snippetJsonObject = playlistItemJsonArray.getJSONObject(0).getJSONObject("snippet");
             final String playlistId = snippetJsonObject.getString("playlistId");
             final String videoId = snippetJsonObject.getJSONObject("resourceId").getString("videoId");
-            if (StringUtils.equals(CommonUtil.YT_PLAYLIST_ID_VIDEO_ID_MAP.get(playlistId), videoId)) {
+            if (StringUtils.equals(YT_PLAYLIST_ID_VIDEO_ID_MAP.get(playlistId), videoId)) {
                 return;
             }
 
-            CommonUtil.YT_PLAYLIST_ID_VIDEO_ID_MAP.put(playlistId, videoId);
-            videoIdMap.put(videoId, CommonUtil.YOUTUBE_NOTIFICATION_MAP.get(playlistId));
+            YT_PLAYLIST_ID_VIDEO_ID_MAP.put(playlistId, videoId);
+            videoIdMap.put(videoId, YOUTUBE_NOTIFICATION_MAP.get(playlistId));
         });
         return videoIdMap;
     }
@@ -130,7 +133,7 @@ public class YoutubeService {
 
             final MessageEmbed messageEmbed = new EmbedBuilder().setTitle(title).setDescription(desc).setThumbnail(thumb)
                     .setColor(color).setAuthor("Youtube", null, CommonUtil.YOUTUBE_LOGO_URI).build();
-            messageChannel.sendMessageEmbeds(messageEmbed).addContent("https://www.youtube.com/watch?v=" + videoId).queue();
+            messageChannel.sendMessage("https://www.youtube.com/watch?v=" + videoId).addEmbeds(messageEmbed).queue();
         }
     }
 
