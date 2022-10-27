@@ -68,7 +68,6 @@ public class MusicService {
             message.getGuild().getAudioManager().openAudioConnection(voiceChannel);
         }
 
-
         AUDIO_PLAYER_MANAGER.loadItem(musicSource, new AudioLoadResultHandler() {
             @Override
             public void trackLoaded(final AudioTrack track) {

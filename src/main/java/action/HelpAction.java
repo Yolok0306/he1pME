@@ -20,6 +20,7 @@ import service.MusicService;
 import util.CommonUtil;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -33,66 +34,87 @@ public class HelpAction implements Action {
 
     @Override
     public void execute(final MessageChannel messageChannel, final Message message, final Member member) {
-        final Set<MessageEmbed> messageEmbedSet = new HashSet<>();
-        final Set<Class<? extends Action>> actionSet = new Reflections("action").getSubTypesOf(Action.class);
-        if (CollectionUtils.isNotEmpty(actionSet)) {
-            final EmbedBuilder embedBuilder = new EmbedBuilder().setTitle("一般指令");
-            actionSet.stream()
-                    .filter(Objects::nonNull)
-                    .filter(action -> action.isAnnotationPresent(help.class))
-                    .sorted(Comparator.comparing(action -> {
-                        try {
-                            return action.getDeclaredConstructor().newInstance().getInstruction();
-                        } catch (final Exception exception) {
-                            exception.printStackTrace();
-                        }
-                        return StringUtils.EMPTY;
-                    }))
-                    .map(action -> action.getAnnotation(help.class))
-                    .forEach(help -> embedBuilder.addField(CommonUtil.SIGN + help.example(), help.description(), Boolean.FALSE));
-            embedBuilder.setColor(CommonUtil.HE1PME_COLOR).setAuthor(member.getUser().getAsTag(), null, CommonUtil.getRealAvatarUrl(member));
-            messageEmbedSet.add(embedBuilder.build());
-        }
-
-        final Set<Method> musicMethodSet = Arrays.stream(MusicService.class.getDeclaredMethods())
-                .filter(method -> method.isAnnotationPresent(help.class)).collect(Collectors.toSet());
-        if (CollectionUtils.isNotEmpty(musicMethodSet)) {
-            final EmbedBuilder embedBuilder = new EmbedBuilder().setTitle("音樂指令");
-            musicMethodSet.stream()
-                    .filter(Objects::nonNull)
-                    .filter(musicMethod -> musicMethod.isAnnotationPresent(help.class))
-                    .sorted(Comparator.comparing(Method::getName))
-                    .map(musicMethod -> musicMethod.getAnnotation(help.class))
-                    .forEach(help -> embedBuilder.addField(CommonUtil.SIGN + help.example(), help.description(), Boolean.FALSE));
-            embedBuilder.setColor(CommonUtil.HE1PME_COLOR).setAuthor(member.getUser().getAsTag(), null, CommonUtil.getRealAvatarUrl(member));
-            messageEmbedSet.add(embedBuilder.build());
-        }
-
-        final Map<String, String> callActionMap = getCallActionMap();
-        if (CollectionUtils.isNotEmpty(callActionMap.entrySet())) {
-            final EmbedBuilder embedBuilder = new EmbedBuilder().setTitle("客製化指令");
-            callActionMap.entrySet().stream()
-                    .filter(Objects::nonNull)
-                    .sorted(Map.Entry.comparingByKey())
-                    .forEach(entry -> embedBuilder.addField(CommonUtil.SIGN + entry.getKey(), entry.getValue(), Boolean.FALSE));
-            embedBuilder.setColor(CommonUtil.HE1PME_COLOR).setAuthor(member.getUser().getAsTag(), null, CommonUtil.getRealAvatarUrl(member));
-            messageEmbedSet.add(embedBuilder.build());
-        }
-        messageChannel.sendMessageEmbeds(messageEmbedSet).queue();
+        final List<MessageEmbed> messageEmbedList = new ArrayList<>();
+        addActionEmbed(messageEmbedList, member);
+        addMusicEmbed(messageEmbedList, member);
+        addCallActionEmbed(messageEmbedList, member);
+        messageChannel.sendMessageEmbeds(messageEmbedList).queue();
     }
 
-    private Map<String, String> getCallActionMap() {
+    private void addActionEmbed(final List<MessageEmbed> messageEmbedList, final Member member) {
+        final Set<Class<? extends Action>> actionSet = new Reflections("action").getSubTypesOf(Action.class).stream()
+                .filter(Objects::nonNull)
+                .filter(action -> action.isAnnotationPresent(help.class))
+                .collect(Collectors.toSet());
+        if (CollectionUtils.isEmpty(actionSet)) {
+            return;
+        }
+
+        final EmbedBuilder embedBuilder = new EmbedBuilder().setTitle("一般指令");
+        actionSet.stream()
+                .filter(Objects::nonNull)
+                .filter(action -> action.isAnnotationPresent(help.class))
+                .sorted(Comparator.comparing(action -> {
+                    try {
+                        return action.getDeclaredConstructor().newInstance().getInstruction();
+                    } catch (final Exception exception) {
+                        exception.printStackTrace();
+                    }
+                    return StringUtils.EMPTY;
+                }))
+                .map(action -> action.getAnnotation(help.class))
+                .forEach(help -> embedBuilder.addField(CommonUtil.SIGN + help.example(), help.description(), Boolean.FALSE));
+        embedBuilder.setColor(CommonUtil.HE1PME_COLOR).setAuthor(member.getUser().getAsTag(), null, CommonUtil.getRealAvatarUrl(member));
+        messageEmbedList.add(embedBuilder.build());
+    }
+
+    private void addMusicEmbed(final List<MessageEmbed> messageEmbedList, final Member member) {
+        final Set<Method> musicMethodSet = Arrays.stream(MusicService.class.getDeclaredMethods())
+                .filter(method -> method.isAnnotationPresent(help.class))
+                .filter(method -> Modifier.isProtected(method.getModifiers()))
+                .collect(Collectors.toSet());
+        if (CollectionUtils.isEmpty(musicMethodSet)) {
+            return;
+        }
+
+        final EmbedBuilder embedBuilder = new EmbedBuilder().setTitle("音樂指令");
+        musicMethodSet.stream()
+                .filter(Objects::nonNull)
+                .filter(musicMethod -> musicMethod.isAnnotationPresent(help.class))
+                .sorted(Comparator.comparing(Method::getName))
+                .map(musicMethod -> musicMethod.getAnnotation(help.class))
+                .forEach(help -> embedBuilder.addField(CommonUtil.SIGN + help.example(), help.description(), Boolean.FALSE));
+        embedBuilder.setColor(CommonUtil.HE1PME_COLOR).setAuthor(member.getUser().getAsTag(), null, CommonUtil.getRealAvatarUrl(member));
+        messageEmbedList.add(embedBuilder.build());
+    }
+
+    private void addCallActionEmbed(final List<MessageEmbed> messageEmbedList, final Member member) {
+        final Map<String, String> callActionMap = getCallActionMap(member.getGuild().getId());
+        if (CollectionUtils.isEmpty(callActionMap.entrySet())) {
+            return;
+        }
+
+        final EmbedBuilder embedBuilder = new EmbedBuilder().setTitle("客製化指令");
+        callActionMap.entrySet().stream()
+                .filter(Objects::nonNull)
+                .sorted(Map.Entry.comparingByKey())
+                .forEach(entry -> embedBuilder.addField(CommonUtil.SIGN + entry.getKey(), entry.getValue(), Boolean.FALSE));
+        embedBuilder.setColor(CommonUtil.HE1PME_COLOR).setAuthor(member.getUser().getAsTag(), null, CommonUtil.getRealAvatarUrl(member));
+        messageEmbedList.add(embedBuilder.build());
+    }
+
+    private Map<String, String> getCallActionMap(final String guildId) {
         final AmazonDynamoDB amazonDynamoDB = AmazonDynamoDBClientBuilder.standard().withRegion(CommonUtil.REGIONS)
                 .withCredentials(new AWSStaticCredentialsProvider(CommonUtil.BASIC_AWS_CREDENTIALS)).build();
         final DynamoDB dynamoDB = new DynamoDB(amazonDynamoDB);
-        final ItemCollection<ScanOutcome> items = dynamoDB.getTable("CallAction").scan();
+        final ItemCollection<ScanOutcome> items = dynamoDB.getTable("CallAction")
+                .scan("guild_id = :guildId", null, Collections.singletonMap(":guildId", guildId));
 
         final Map<String, String> callActionNameMap = new HashMap<>();
         if (items.iterator().hasNext()) {
-            items.iterator().forEachRemaining(item ->
-                    callActionNameMap.put(item.getString("action"), item.getString("description")));
+            items.forEach(item -> callActionNameMap.put(item.getString("action"), item.getString("description")));
         } else {
-            log.info("There is no data in the CallAction table");
+            log.error("Unable to get data for guild_id = \"" + guildId + "\" in CallAction table!");
         }
 
         dynamoDB.shutdown();

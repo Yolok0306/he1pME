@@ -60,7 +60,7 @@ public class CommonUtil {
     private static void getServerDataFromDB(final DynamoDB dynamoDB, final ScanSpec scanSpec) {
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("ServerData").scan(scanSpec);
         if (!items.iterator().hasNext()) {
-            throw new IllegalStateException("Can not get Token from ServerData table!");
+            throw new IllegalStateException("Could not get any data in ServerData Table!");
         }
 
         items.forEach(item -> {
@@ -106,6 +106,11 @@ public class CommonUtil {
 
     private static void getBadWordFromDB(final DynamoDB dynamoDB, final ScanSpec scanSpec) {
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("BadWord").scan(scanSpec);
+        if (!items.iterator().hasNext()) {
+            log.error("Could not get any data in BadWord Table!");
+            return;
+        }
+
         items.forEach(item -> {
             final String key = item.getString("guild_id");
             GoodBoyService.BAD_WORD_MAP.computeIfAbsent(key, (k) -> new HashSet<>());
@@ -116,6 +121,11 @@ public class CommonUtil {
 
     private static void getTwitchNotificationFromDB(final DynamoDB dynamoDB, final ScanSpec scanSpec) {
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("TwitchNotification").scan(scanSpec);
+        if (!items.iterator().hasNext()) {
+            log.error("Could not get any data in TwitchNotification Table!");
+            return;
+        }
+
         items.forEach(item -> {
             final String key = item.getString("twitch_channel_id");
             TwitchService.TWITCH_NOTIFICATION_MAP.computeIfAbsent(key, (k) -> new HashSet<>());
@@ -126,6 +136,11 @@ public class CommonUtil {
 
     private static void getYouTubeNotificationFromDB(final DynamoDB dynamoDB, final ScanSpec scanSpec) {
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("YouTubeNotification").scan(scanSpec);
+        if (!items.iterator().hasNext()) {
+            log.error("Could not get any data in YouTubeNotification Table!");
+            return;
+        }
+
         items.forEach(item -> {
             final String key = item.getString("youtube_channel_playlist_id");
             YouTubeService.YOUTUBE_NOTIFICATION_MAP.computeIfAbsent(key, (k) -> new HashSet<>());

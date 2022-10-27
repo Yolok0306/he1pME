@@ -52,7 +52,7 @@ public class CallActionService {
             final Item item = items.iterator().next();
             result = buildCallAction(item, guildId);
         } else {
-            log.error("Can not find data with name = \"" + action + "\" and guild_id = \"" + guildId + "\" in CallAction Table!");
+            log.error("Unable to get data for name = \"" + action + "\" and guild_id = \"" + guildId + "\" in CallAction table!");
             return null;
         }
 
