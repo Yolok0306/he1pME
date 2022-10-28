@@ -17,17 +17,17 @@ import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.time.Duration;
-import java.time.ZonedDateTime;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
 @Slf4j
 public class TwitchService {
+    public static final Set<String> TWITCH_CHANNEL_SET = new HashSet<>();
     public static final Map<String, Set<String>> TWITCH_NOTIFICATION_MAP = new HashMap<>();
 
-    protected void execute(final ZonedDateTime now) {
+    protected void execute() {
         if (TWITCH_NOTIFICATION_MAP.isEmpty()) {
             return;
         }
@@ -44,10 +44,12 @@ public class TwitchService {
             }
 
             for (int i = 0; i < dataJsonArray.length(); i++) {
-                final String type = dataJsonArray.getJSONObject(i).getString("type");
-                final String startedAt = dataJsonArray.getJSONObject(i).getString("started_at");
-                if (StringUtils.equals(type, "live") && CommonUtil.checkStartTime(startedAt, now)) {
-                    notification(dataJsonArray.getJSONObject(i));
+                final JSONObject jsonObject = dataJsonArray.getJSONObject(i);
+                final String type = jsonObject.getString("type");
+                final String userLogin = jsonObject.getString("user_login");
+                if (StringUtils.equals(type, "live") && !TWITCH_CHANNEL_SET.contains(userLogin)) {
+                    TWITCH_CHANNEL_SET.add(userLogin);
+                    notification(jsonObject);
                 }
             }
         } catch (final JSONException exception) {
@@ -55,8 +57,8 @@ public class TwitchService {
         }
     }
 
-    private String callStreamApi() {
-        final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).connectTimeout(Duration.ofMillis(1000)).build();
+    private static String callStreamApi() {
+        final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).build();
         try {
             final URIBuilder uriBuilder = new URIBuilder(CommonUtil.TWITCH_API_BASE_URI + "/streams");
             TWITCH_NOTIFICATION_MAP.keySet().forEach(key -> uriBuilder.addParameter("user_login", key));
@@ -91,6 +93,31 @@ public class TwitchService {
             final MessageEmbed messageEmbed = new EmbedBuilder().setTitle(title).setDescription(desc).setThumbnail(thumb)
                     .setColor(color).setAuthor("Twitch", null, CommonUtil.TWITCH_LOGO_URI).build();
             messageChannel.sendMessage("https://www.twitch.tv/" + userLogin).addEmbeds(messageEmbed).queue();
+        }
+    }
+
+    public static void addDataToTwitchChannelSet() {
+        final String responseString = TwitchService.callStreamApi();
+        if (StringUtils.isBlank(responseString)) {
+            return;
+        }
+
+        try {
+            final JSONArray dataJsonArray = new JSONObject(responseString).getJSONArray("data");
+            if (dataJsonArray.isEmpty()) {
+                return;
+            }
+
+            for (int i = 0; i < dataJsonArray.length(); i++) {
+                final String type = dataJsonArray.getJSONObject(i).getString("type");
+                final String startedAt = dataJsonArray.getJSONObject(i).getString("started_at");
+                if (StringUtils.equals(type, "live") && CommonUtil.checkStartTime(startedAt)) {
+                    final String userLogin = dataJsonArray.getJSONObject(i).getString("user_login");
+                    TWITCH_CHANNEL_SET.add(userLogin);
+                }
+            }
+        } catch (final JSONException exception) {
+            exception.printStackTrace();
         }
     }
 }

@@ -114,7 +114,7 @@ public class HelpAction implements Action {
         if (items.iterator().hasNext()) {
             items.forEach(item -> callActionNameMap.put(item.getString("action"), item.getString("description")));
         } else {
-            log.error("Unable to get data for guild_id = \"" + guildId + "\" in CallAction table!");
+            log.error("Unable to get data for guild_id = {} in CallAction table!", guildId);
         }
 
         dynamoDB.shutdown();

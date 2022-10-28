@@ -68,9 +68,9 @@ public class MessageEventService {
     }
 
     private String format(final String content) {
+        final int indexAfterSIGN = CommonUtil.SIGN.length();
         final int spaceIndex = content.indexOf(StringUtils.SPACE);
-        final String instruction = spaceIndex == -1 ? content : content.substring(0, spaceIndex);
-        return instruction.substring(CommonUtil.SIGN.length());
+        return spaceIndex == -1 ? content.substring(indexAfterSIGN) : content.substring(indexAfterSIGN, spaceIndex);
     }
 
     private void executeMusicAction(final MessageChannel messageChannel, final Message message, final Member member, final String instruction) {

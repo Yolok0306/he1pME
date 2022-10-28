@@ -29,7 +29,7 @@ public class GoodBoyService {
             return;
         }
 
-        messageChannel.deleteMessageById(message.getId()).queue();
+        message.delete().queue();
 
         final int punishmentTime = 3;
         member.timeoutFor(punishmentTime, TimeUnit.MINUTES).queue();

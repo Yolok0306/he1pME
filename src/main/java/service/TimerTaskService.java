@@ -1,7 +1,5 @@
 package service;
 
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.TimerTask;
 
 public class TimerTaskService extends TimerTask {
@@ -10,7 +8,7 @@ public class TimerTaskService extends TimerTask {
 
     @Override
     public void run() {
-        twitchService.execute(ZonedDateTime.now(ZoneId.of("UTC")));
+        twitchService.execute();
         youtubeService.execute();
     }
 }

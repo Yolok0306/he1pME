@@ -164,7 +164,7 @@ public class CommonUtil {
             result = items.iterator().next();
         } else {
             result = null;
-            log.error("Can not find data with name = \"" + name + "\" and guild_id = \"" + guildId + "\" in MemberData Table!");
+            log.error("Unable to get data for name = {} and guild_id = {} in MemberData Table!", name, guildId);
         }
 
         dynamoDB.shutdown();
@@ -181,10 +181,10 @@ public class CommonUtil {
         messageChannel.sendMessageEmbeds(embedBuilder.build()).queue();
     }
 
-    public static boolean checkStartTime(final String startTimeString, final ZonedDateTime now) {
+    public static boolean checkStartTime(final String startTimeString) {
         final ZonedDateTime startTime = ZonedDateTime.parse(startTimeString);
-        final ZonedDateTime nowAfterCheck = Optional.ofNullable(now).orElse(ZonedDateTime.now(ZoneId.of("UTC")));
-        return Duration.between(startTime, nowAfterCheck).toSeconds() < Duration.ofMillis(FREQUENCY).toSeconds();
+        final ZonedDateTime now = ZonedDateTime.now(ZoneId.of("UTC"));
+        return Duration.between(startTime, now).toSeconds() >= Duration.ofMillis(FREQUENCY).toSeconds();
     }
 
     public static String descFormat(final String desc) {

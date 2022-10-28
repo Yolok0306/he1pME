@@ -18,7 +18,6 @@ import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -26,7 +25,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class YouTubeService {
-    public static Map<String, String> YT_PLAYLIST_ID_VIDEO_ID_MAP;
+    public static Map<String, String> YT_PLAYLIST_ID_VIDEO_ID_MAP = new HashMap<>();
     public static final Map<String, Set<String>> YOUTUBE_NOTIFICATION_MAP = new HashMap<>();
 
     protected void execute() {
@@ -37,19 +36,19 @@ public class YouTubeService {
         final Set<String> playlistItemResponseSet = YOUTUBE_NOTIFICATION_MAP.keySet().stream()
                 .map(YouTubeService::callPlayListItemApi).collect(Collectors.toSet());
         try {
-            final Map<String, Set<String>> videoIdMap = constructVideoIdMap(playlistItemResponseSet);
-            if (videoIdMap.isEmpty()) {
+            final Map<String, Set<String>> needToBeNotifiedMap = constructNeedToBeNotifiedMap(playlistItemResponseSet);
+            if (needToBeNotifiedMap.isEmpty()) {
                 return;
             }
 
-            final String videoResponseString = callVideoApi(videoIdMap.keySet());
+            final String videoResponseString = callVideoApi(needToBeNotifiedMap.keySet());
             if (StringUtils.isBlank(videoResponseString)) {
                 return;
             }
 
             final JSONArray itemJsonArray = new JSONObject(videoResponseString).getJSONArray("items");
             for (int i = 0; i < itemJsonArray.length(); i++) {
-                notification(itemJsonArray.getJSONObject(i), videoIdMap);
+                notification(itemJsonArray.getJSONObject(i), needToBeNotifiedMap);
             }
         } catch (final JSONException exception) {
             exception.printStackTrace();
@@ -57,7 +56,7 @@ public class YouTubeService {
     }
 
     public static String callPlayListItemApi(final String playlistId) {
-        final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).connectTimeout(Duration.ofMillis(1000)).build();
+        final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).build();
         try {
             final URI uri = new URIBuilder(CommonUtil.YOUTUBE_API_BASE_URI + "/playlistItems")
                     .addParameter("playlistId", playlistId)
@@ -75,29 +74,28 @@ public class YouTubeService {
         return StringUtils.EMPTY;
     }
 
-    private Map<String, Set<String>> constructVideoIdMap(final Set<String> playlistItemResponseSet) {
-        final Map<String, Set<String>> videoIdMap = new HashMap<>();
-        playlistItemResponseSet.forEach(playlistItemResponseString -> {
-            final JSONArray playlistItemJsonArray = new JSONObject(playlistItemResponseString).getJSONArray("items");
-            if (playlistItemJsonArray.isEmpty()) {
-                return;
-            }
+    private Map<String, Set<String>> constructNeedToBeNotifiedMap(final Set<String> playlistItemResponseSet) {
+        final Map<String, Set<String>> newVideoIdMap = new HashMap<>();
+        playlistItemResponseSet.stream()
+                .map(JSONObject::new)
+                .map(playlistJsonObject -> playlistJsonObject.getJSONArray("items"))
+                .filter(playlistItemJsonArray -> !playlistItemJsonArray.isEmpty())
+                .map(playlistItemJsonArray -> playlistItemJsonArray.getJSONObject(0).getJSONObject("snippet"))
+                .forEach(snippetJsonObject -> {
+                    final String playlistId = snippetJsonObject.getString("playlistId");
+                    final String videoId = snippetJsonObject.getJSONObject("resourceId").getString("videoId");
+                    if (StringUtils.equals(YT_PLAYLIST_ID_VIDEO_ID_MAP.get(playlistId), videoId)) {
+                        return;
+                    }
 
-            final JSONObject snippetJsonObject = playlistItemJsonArray.getJSONObject(0).getJSONObject("snippet");
-            final String playlistId = snippetJsonObject.getString("playlistId");
-            final String videoId = snippetJsonObject.getJSONObject("resourceId").getString("videoId");
-            if (StringUtils.equals(YT_PLAYLIST_ID_VIDEO_ID_MAP.get(playlistId), videoId)) {
-                return;
-            }
-
-            YT_PLAYLIST_ID_VIDEO_ID_MAP.put(playlistId, videoId);
-            videoIdMap.put(videoId, YOUTUBE_NOTIFICATION_MAP.get(playlistId));
-        });
-        return videoIdMap;
+                    YT_PLAYLIST_ID_VIDEO_ID_MAP.put(playlistId, videoId);
+                    newVideoIdMap.putIfAbsent(videoId, YOUTUBE_NOTIFICATION_MAP.get(playlistId));
+                });
+        return newVideoIdMap;
     }
 
     private String callVideoApi(final Set<String> videoIdSet) {
-        final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).connectTimeout(Duration.ofMillis(1000)).build();
+        final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).build();
         try {
             final URIBuilder uriBuilder = new URIBuilder(CommonUtil.YOUTUBE_API_BASE_URI + "/videos")
                     .addParameter("part", "snippet,liveStreamingDetails")
@@ -113,7 +111,7 @@ public class YouTubeService {
         return StringUtils.EMPTY;
     }
 
-    private void notification(final JSONObject videoJsonObject, final Map<String, Set<String>> videoIdMap) {
+    private void notification(final JSONObject videoJsonObject, final Map<String, Set<String>> needToBeNotifiedMap) {
         if (videoJsonObject.has("liveStreamingDetails") && videoJsonObject.getJSONObject("liveStreamingDetails").has("actualEndTime")) {
             return;
         }
@@ -125,7 +123,7 @@ public class YouTubeService {
         final String thumb = getThumbnail(snippetJsonObject.getJSONObject("thumbnails"));
         final Color color = new Color(255, 0, 0);
 
-        for (final String messageChannelId : videoIdMap.get(videoId)) {
+        for (final String messageChannelId : needToBeNotifiedMap.get(videoId)) {
             final MessageChannel messageChannel = CommonUtil.JDA.getChannelById(MessageChannel.class, messageChannelId);
             if (messageChannel == null) {
                 continue;
@@ -149,5 +147,19 @@ public class YouTubeService {
         } else {
             return thumbnailJsonObject.getJSONObject("default").getString("url");
         }
+    }
+
+    public static void addDataToYTPlaylistIdVideoIdMap(final Set<String> playlistItemResponseSet) {
+        playlistItemResponseSet.stream()
+                .map(JSONObject::new)
+                .map(playlistJsonObject -> playlistJsonObject.getJSONArray("items"))
+                .filter(playlistItemJsonArray -> !playlistItemJsonArray.isEmpty())
+                .map(playlistItemJsonArray -> playlistItemJsonArray.getJSONObject(0).getJSONObject("snippet"))
+                .filter(snippetJsonObject -> CommonUtil.checkStartTime(snippetJsonObject.getString("publishedAt")))
+                .forEach(snippetJsonObject -> {
+                    final String playlistId = snippetJsonObject.getString("playlistId");
+                    final String videoId = snippetJsonObject.getJSONObject("resourceId").getString("videoId");
+                    YT_PLAYLIST_ID_VIDEO_ID_MAP.putIfAbsent(playlistId, videoId);
+                });
     }
 }
