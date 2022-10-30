@@ -25,7 +25,6 @@ public class RemoveRoleAction implements Action {
                         title = "移除身分組失敗";
                         desc = mentionMember.getNickname() + "並未擁有" + role.getName() + "的身分組";
                     } else {
-                        final String reason = "RemoveRoleAction : " + member.getUser().getAsTag();
                         message.getGuild().removeRoleFromMember(mentionMember, role).queue();
                         title = "移除身分組成功";
                         desc = "移除身分組 : " + role.getName();

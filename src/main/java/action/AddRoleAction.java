@@ -25,7 +25,6 @@ public class AddRoleAction implements Action {
                         title = "新增身分組失敗";
                         desc = mentionMember.getNickname() + "已經擁有" + role.getName() + "的身分組了";
                     } else {
-                        final String reason = "AddRoleAction : " + member.getUser().getAsTag();
                         message.getGuild().addRoleToMember(mentionMember, role).queue();
                         title = "新增身分組成功";
                         desc = "新增身分組 : " + role.getName();
