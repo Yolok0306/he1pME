@@ -23,7 +23,7 @@ public class EditNameAction implements Action {
             mentionMember.modifyNickname(newName).queue();
             final String title = "修改暱稱成功";
             final String desc = oldName + " -> " + newName;
-            final String thumb = CommonUtil.getRealAvatarUrl(mentionMember);
+            final String thumb = mentionMember.getEffectiveAvatarUrl();
             CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, thumb);
         });
     }

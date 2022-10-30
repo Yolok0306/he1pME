@@ -174,7 +174,7 @@ public class CommonUtil {
     public static void replyByHe1pMETemplate(final MessageChannel messageChannel, final Member member,
                                              final String title, final String desc, final String thumb) {
         final EmbedBuilder embedBuilder = new EmbedBuilder().setTitle(title).setDescription(desc).setColor(HE1PME_COLOR)
-                .setAuthor(member.getUser().getAsTag(), null, getRealAvatarUrl(member));
+                .setAuthor(member.getUser().getAsTag(), null, member.getEffectiveAvatarUrl());
         if (StringUtils.isNotBlank(thumb)) {
             embedBuilder.setThumbnail(thumb);
         }
@@ -193,9 +193,5 @@ public class CommonUtil {
 
     public static String descStartWithDiamondFormat(final String desc) {
         return StringUtils.abbreviate(desc, 36);
-    }
-
-    public static String getRealAvatarUrl(final Member member) {
-        return Optional.ofNullable(member.getUser().getAvatarUrl()).orElse(member.getUser().getDefaultAvatarUrl());
     }
 }

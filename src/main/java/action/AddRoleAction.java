@@ -17,7 +17,7 @@ public class AddRoleAction implements Action {
     public void execute(final MessageChannel messageChannel, final Message message, final Member member) {
         message.getMentions().getMembers().stream().findFirst().ifPresent(mentionMember ->
                 message.getMentions().getRoles().stream().findFirst().ifPresent(role -> {
-                    final String title, desc, thumb = CommonUtil.getRealAvatarUrl(mentionMember);
+                    final String title, desc, thumb = mentionMember.getEffectiveAvatarUrl();
                     if (member.getPermissions().size() <= mentionMember.getPermissions().size()) {
                         title = "新增身分組失敗";
                         desc = member.getNickname() + "的權限不足";
