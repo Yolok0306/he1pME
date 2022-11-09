@@ -16,7 +16,6 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import org.apache.commons.lang3.StringUtils;
 import util.CommonUtil;
 
 import java.awt.*;
@@ -30,8 +29,8 @@ public class CallActionService {
         if (callAction == null) {
             return;
         }
-
-        final String content = "<@" + callAction.getId() + ">" + StringUtils.SPACE + callAction.getMessage();
+        
+        final String content = String.format("<@%s> %s", callAction.getId(), callAction.getMessage());
         final MessageEmbed messageEmbed = new EmbedBuilder().setColor(callAction.getColor())
                 .setImage(callAction.getImage()).build();
         messageChannel.sendMessage(content).addEmbeds(messageEmbed).queue();

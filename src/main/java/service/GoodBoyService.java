@@ -34,7 +34,7 @@ public class GoodBoyService {
         final int punishmentTime = 3;
         member.timeoutFor(punishmentTime, TimeUnit.MINUTES).queue();
         final String title = "言論審查系統";
-        final String desc = "◆ 不當言論 : " + content + StringUtils.LF + "◆ 懲處 : 禁言" + punishmentTime + "分鐘";
+        final String desc = String.format("◆ 不當言論 : %s\n◆ 懲處 : 禁言%d分鐘", content, punishmentTime);
         CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, StringUtils.EMPTY);
     }
 

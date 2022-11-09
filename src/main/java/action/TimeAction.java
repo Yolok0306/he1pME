@@ -20,11 +20,11 @@ public class TimeAction implements Action {
 
     @Override
     public void execute(final MessageChannel messageChannel, final Message message, final Member member) {
-        final String regex = "\\" + CommonUtil.SIGN + getInstruction() + "\\p{Blank}*";
+        final String regex = String.format("\\%s%s\\p{Blank}*", CommonUtil.SIGN, getInstruction());
         final String userZoneId = message.getContentRaw().replaceAll(regex, StringUtils.EMPTY);
         final ZoneId zoneId = StringUtils.isNotBlank(userZoneId) ? ZoneId.of(userZoneId) : ZoneId.systemDefault();
 
-        final String title = "現在時間 (" + zoneId + ")";
+        final String title = String.format("現在時間 (%s)", zoneId);
         final String desc = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(ZonedDateTime.now(zoneId));
         CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, StringUtils.EMPTY);
     }

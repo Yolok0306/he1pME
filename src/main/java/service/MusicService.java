@@ -16,6 +16,7 @@ import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.concrete.VoiceChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.time.DurationFormatUtils;
 import plugin.AudioTrackScheduler;
 import plugin.GuildAudioManager;
 import util.CommonUtil;
@@ -46,7 +47,7 @@ public class MusicService {
             return;
         }
 
-        final String regex = "\\" + CommonUtil.SIGN + "play\\p{Blank}*";
+        final String regex = String.format("\\%splay\\p{Blank}*", CommonUtil.SIGN);
         final String musicSource = message.getContentRaw().replaceAll(regex, StringUtils.EMPTY);
         if (StringUtils.isBlank(musicSource)) {
             return;
@@ -135,7 +136,7 @@ public class MusicService {
             title = "播放清單有0首歌 :";
             desc = "播放清單為空";
         } else {
-            title = "播放清單有" + queue.size() + "首歌 :";
+            title = String.format("播放清單有%d首歌 :", queue.size());
             desc = queue.stream()
                     .filter(Objects::nonNull)
                     .map(audioTrack -> CommonUtil.descStartWithDiamondFormat("◆ " + audioTrack.getInfo().title))
@@ -184,9 +185,8 @@ public class MusicService {
     }
 
     private String timeFormat(final long milliseconds) {
-        final long hours = TimeUnit.MILLISECONDS.toHours(milliseconds);
-        final long minutes = TimeUnit.MILLISECONDS.toMinutes(milliseconds);
-        final long seconds = TimeUnit.MILLISECONDS.toSeconds(milliseconds) % 60;
-        return hours == 0 ? minutes + ":" + seconds : hours + ":" + minutes + ":" + seconds;
+        return TimeUnit.MILLISECONDS.toHours(milliseconds) == 0 ?
+                DurationFormatUtils.formatDuration(milliseconds, "mm:ss", true) :
+                DurationFormatUtils.formatDuration(milliseconds, "HH:mm:ss", true);
     }
 }

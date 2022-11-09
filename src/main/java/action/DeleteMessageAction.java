@@ -18,7 +18,7 @@ public class DeleteMessageAction implements Action {
 
     @Override
     public void execute(final MessageChannel messageChannel, final Message message, final Member member) {
-        final String regex = "\\" + CommonUtil.SIGN + getInstruction() + "\\p{Blank}*";
+        final String regex = String.format("\\%s%s\\p{Blank}*", CommonUtil.SIGN, getInstruction());
         final String userNumber = message.getContentRaw().replaceAll(regex, StringUtils.EMPTY);
         try {
             final int number = Integer.parseInt(userNumber);

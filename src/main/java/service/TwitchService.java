@@ -79,8 +79,8 @@ public class TwitchService {
 
     private void notification(final JSONObject dataJsonObject) {
         final String userLogin = dataJsonObject.getString("user_login");
-        final String title = "開台通知";
-        final String desc = dataJsonObject.getString("user_name") + " - " + dataJsonObject.getString("title");
+        final String title = dataJsonObject.getString("user_name");
+        final String desc = dataJsonObject.getString("title");
         final String thumb = dataJsonObject.getString("thumbnail_url").replace("-{width}x{height}", StringUtils.EMPTY);
         final Color color = new Color(144, 0, 255);
 

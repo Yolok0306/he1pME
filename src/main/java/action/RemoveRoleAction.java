@@ -6,6 +6,8 @@ import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import util.CommonUtil;
 
+import java.util.Objects;
+
 @help(example = "removeRole @member @role", description = "為被標記的成員移除被標記的身分組")
 public class RemoveRoleAction implements Action {
     @Override
@@ -18,20 +20,20 @@ public class RemoveRoleAction implements Action {
         message.getMentions().getMembers().stream().findFirst().ifPresent(mentionMember ->
                 message.getMentions().getRoles().stream().findFirst().ifPresent(role -> {
                     final String title, desc, thumb = mentionMember.getEffectiveAvatarUrl();
-                    if (member.getPermissions().size() <= mentionMember.getPermissions().size()) {
+                    final Member botMember = member.getGuild().getMember(member.getJDA().getSelfUser());
+                    if (CommonUtil.isHigher(member, mentionMember)) {
                         title = "移除身分組失敗";
-                        desc = member.getNickname() + "的權限不足";
-                    } else if (!mentionMember.getRoles().contains(role)) {
+                        desc = String.format("\"%s\"並未擁有比\"%s\"還高的身分組", member.getNickname(), role.getName());
+                    } else if (CommonUtil.isHigher(Objects.requireNonNull(botMember), role)) {
                         title = "移除身分組失敗";
-                        desc = mentionMember.getNickname() + "並未擁有" + role.getName() + "的身分組";
+                        desc = String.format("\"%s\"並未擁有比\"%s\"還高的身分組", botMember.getNickname(), role.getName());
                     } else {
                         message.getGuild().removeRoleFromMember(mentionMember, role).queue();
                         title = "移除身分組成功";
-                        desc = "移除身分組 : " + role.getName();
+                        desc = String.format("移除身分組 : %s", role.getName());
                     }
                     CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, thumb);
                 })
-
         );
     }
 }

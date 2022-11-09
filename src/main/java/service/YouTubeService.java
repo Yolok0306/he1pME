@@ -118,8 +118,8 @@ public class YouTubeService {
 
         final JSONObject snippetJsonObject = videoJsonObject.getJSONObject("snippet");
         final String videoId = videoJsonObject.getString("id");
-        final String title = videoJsonObject.has("liveStreamingDetails") ? "開台通知" : "上片通知";
-        final String desc = snippetJsonObject.getString("channelTitle") + " - " + snippetJsonObject.getString("title");
+        final String title = snippetJsonObject.getString("channelTitle");
+        final String desc = snippetJsonObject.getString("title");
         final String thumb = getThumbnail(snippetJsonObject.getJSONObject("thumbnails"));
         final Color color = new Color(255, 0, 0);
 

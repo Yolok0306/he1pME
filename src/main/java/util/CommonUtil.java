@@ -14,7 +14,9 @@ import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import service.GoodBoyService;
 import service.TwitchService;
@@ -193,5 +195,14 @@ public class CommonUtil {
 
     public static String descStartWithDiamondFormat(final String desc) {
         return StringUtils.abbreviate(desc, 36);
+    }
+
+    public static boolean isHigher(final Member source, final Member target) {
+        return CollectionUtils.isNotEmpty(source.getRoles()) && CollectionUtils.isNotEmpty(target.getRoles()) &&
+                source.getRoles().get(0).getPosition() > target.getRoles().get(0).getPosition();
+    }
+
+    public static boolean isHigher(final Member member, final Role role) {
+        return CollectionUtils.isNotEmpty(member.getRoles()) && member.getRoles().get(0).getPosition() > role.getPosition();
     }
 }
