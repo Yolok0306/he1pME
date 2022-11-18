@@ -1,16 +1,13 @@
-package Service;
+package service;
 
-import Action.Action;
-import Annotation.help;
-import Util.CommonUtil;
-import discord4j.core.event.domain.message.MessageCreateEvent;
-import discord4j.core.event.domain.message.MessageUpdateEvent;
-import discord4j.core.object.entity.Member;
-import discord4j.core.object.entity.Message;
-import discord4j.core.object.entity.channel.MessageChannel;
-import discord4j.core.object.entity.channel.TextChannel;
+import action.Action;
+import annotation.help;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.apache.commons.lang3.StringUtils;
 import org.reflections.Reflections;
+import util.CommonUtil;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -34,7 +31,7 @@ public class MessageEventService {
                 .map(Method::getName)
                 .collect(Collectors.toSet());
 
-        actionMap = new Reflections("Action").getSubTypesOf(Action.class).stream()
+        actionMap = new Reflections("action").getSubTypesOf(Action.class).stream()
                 .filter(Objects::nonNull)
                 .filter(action -> action.isAnnotationPresent(help.class))
                 .collect(Collectors.toMap(action -> {
@@ -47,38 +44,11 @@ public class MessageEventService {
                 }, Function.identity(), (existing, replacement) -> existing, HashMap::new));
     }
 
-    public void receiveEvent(final MessageCreateEvent event) {
-        final Optional<MessageChannel> messageChannelOpt = event.getMessage().getChannel().blockOptional();
-        final Optional<Member> memberOpt = event.getMember();
-        if (messageChannelOpt.isEmpty() || memberOpt.isEmpty()) {
-            return;
-        }
-
-        final Message message = event.getMessage();
-        execute(messageChannelOpt.get(), memberOpt.get(), message, message.getContent());
-    }
-
-    public void receiveEvent(final MessageUpdateEvent event) {
-        final Optional<Message> messageOpt = event.getMessage().blockOptional();
-        if (messageOpt.isEmpty()) {
-            return;
-        }
-
-        final Message message = messageOpt.get();
-        final Optional<MessageChannel> messageChannelOpt = event.getChannel().blockOptional();
-        final Optional<Member> memberOpt = message.getAuthorAsMember().blockOptional();
-        if (messageChannelOpt.isEmpty() || memberOpt.isEmpty()) {
-            return;
-        }
-
-        execute(messageChannelOpt.get(), memberOpt.get(), message, message.getContent());
-    }
-
-    private void execute(final MessageChannel messageChannel, final Member member, final Message message, final String content) {
+    public void execute(final MessageChannel messageChannel, final Member member, final Message message) {
         if (isNotInstructionChannel(messageChannel)) {
             goodBoyService.checkContent(messageChannel, message, member);
-        } else if (content.startsWith(CommonUtil.SIGN)) {
-            final String instruction = format(content);
+        } else if (message.getContentRaw().startsWith(CommonUtil.SIGN)) {
+            final String instruction = format(message.getContentRaw());
 
             if (musicActionSet.contains(instruction)) {
                 executeMusicAction(messageChannel, message, member, instruction);
@@ -87,23 +57,20 @@ public class MessageEventService {
             } else {
                 callActionService.execute(messageChannel, message, instruction);
             }
-        } else if (!content.startsWith("!") && !member.isBot()) {
-            message.delete().block();
+        } else if (!message.getContentRaw().startsWith("!") && !member.getUser().isBot()) {
+            message.delete().queue();
         }
     }
 
     private boolean isNotInstructionChannel(final MessageChannel messageChannel) {
-        if (messageChannel instanceof TextChannel) {
-            final TextChannel textChannel = (TextChannel) messageChannel;
-            return !StringUtils.contains(textChannel.getName(), "指令");
-        }
-        return Boolean.FALSE;
+        return !StringUtils.contains(messageChannel.getName(), "指令") &&
+                !StringUtils.contains(messageChannel.getName().toLowerCase(), "instruction");
     }
 
     private String format(final String content) {
+        final int indexAfterSIGN = CommonUtil.SIGN.length();
         final int spaceIndex = content.indexOf(StringUtils.SPACE);
-        final String instruction = spaceIndex == -1 ? content : content.substring(0, spaceIndex);
-        return instruction.substring(CommonUtil.SIGN.length());
+        return spaceIndex == -1 ? content.substring(indexAfterSIGN) : content.substring(indexAfterSIGN, spaceIndex);
     }
 
     private void executeMusicAction(final MessageChannel messageChannel, final Message message, final Member member, final String instruction) {

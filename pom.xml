@@ -18,9 +18,9 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.discord4j</groupId>
-            <artifactId>discord4j-core</artifactId>
-            <version>3.2.2</version>
+            <groupId>net.dv8tion</groupId>
+            <artifactId>JDA</artifactId>
+            <version>5.0.0-alpha.21</version>
         </dependency>
         <dependency>
             <groupId>com.sedmelluq</groupId>
@@ -62,7 +62,6 @@
             <artifactId>json</artifactId>
             <version>20220320</version>
         </dependency>
-
     </dependencies>
 
     <build>

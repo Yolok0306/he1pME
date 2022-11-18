@@ -1,4 +1,4 @@
-package Util;
+package util;
 
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
@@ -10,31 +10,33 @@ import com.amazonaws.services.dynamodbv2.document.spec.QuerySpec;
 import com.amazonaws.services.dynamodbv2.document.spec.ScanSpec;
 import com.amazonaws.services.dynamodbv2.document.utils.NameMap;
 import com.amazonaws.services.dynamodbv2.document.utils.ValueMap;
-import discord4j.core.GatewayDiscordClient;
-import discord4j.core.object.entity.Member;
-import discord4j.core.object.entity.Role;
-import discord4j.core.object.entity.channel.MessageChannel;
-import discord4j.core.spec.EmbedCreateFields;
-import discord4j.core.spec.EmbedCreateSpec;
-import discord4j.rest.util.Color;
 import lombok.extern.slf4j.Slf4j;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import service.GoodBoyService;
+import service.TwitchService;
+import service.YouTubeService;
 
+import java.awt.*;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.Set;
 
 @Slf4j
 public class CommonUtil {
-    public static final String SIGN = "$";
-    public static final long FREQUENCY = 300000;
-    public static GatewayDiscordClient BOT;
+    public static JDA JDA;
+    public static String SIGN;
+    public static long FREQUENCY;
     public static Regions REGIONS;
     public static BasicAWSCredentials BASIC_AWS_CREDENTIALS;
-    public static String DISCORD_API_TOKEN;
-    public static String DISCORD_API_TOKEN_TYPE;
-    public static String DISCORD_API_BASE_URI;
     public static String TWITCH_API_CLIENT_ID;
     public static String TWITCH_API_TOKEN_TYPE;
     public static String TWITCH_API_ACCESS_TOKEN;
@@ -43,11 +45,7 @@ public class CommonUtil {
     public static String YOUTUBE_API_KEY;
     public static String YOUTUBE_API_BASE_URI;
     public static String YOUTUBE_LOGO_URI;
-    public static final Color HE1PME_COLOR = Color.of(255, 192, 203);
-    public static final Map<String, Set<String>> BAD_WORD_MAP = new HashMap<>();
-    public static final Map<String, Set<String>> TWITCH_NOTIFICATION_MAP = new HashMap<>();
-    public static final Map<String, Set<String>> YOUTUBE_NOTIFICATION_MAP = new HashMap<>();
-    public static Map<String, String> YT_PLAYLIST_ID_VIDEO_ID_MAP;
+    public static final Color HE1PME_COLOR = new Color(255, 192, 203);
 
     public static void loadAllDataFromDB() {
         final AmazonDynamoDB amazonDynamoDB = AmazonDynamoDBClientBuilder.standard().withRegion(REGIONS)
@@ -63,23 +61,14 @@ public class CommonUtil {
 
     private static void getServerDataFromDB(final DynamoDB dynamoDB, final ScanSpec scanSpec) {
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("ServerData").scan(scanSpec);
-
         if (!items.iterator().hasNext()) {
-            throw new IllegalStateException("Can not get Token from ServerData table!");
+            throw new IllegalStateException("Could not get any data in ServerData Table!");
         }
 
         items.forEach(item -> {
             switch (item.getString("name")) {
-                case "Discord Api Token":
-                    DISCORD_API_TOKEN = item.getString("id");
-                    break;
-
-                case "Discord Api Token Type":
-                    DISCORD_API_TOKEN_TYPE = item.getString("id");
-                    break;
-
-                case "Discord Api Base Uri":
-                    DISCORD_API_BASE_URI = item.getString("id");
+                case "Sign":
+                    SIGN = item.getString("id");
                     break;
 
                 case "Twitch Api Client Id":
@@ -119,38 +108,47 @@ public class CommonUtil {
 
     private static void getBadWordFromDB(final DynamoDB dynamoDB, final ScanSpec scanSpec) {
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("BadWord").scan(scanSpec);
+        if (!items.iterator().hasNext()) {
+            log.error("Could not get any data in BadWord Table!");
+            return;
+        }
 
-        items.forEach(item -> BAD_WORD_MAP.compute(item.getString("guild_id"), (key, value) -> {
-            final Set<String> innerSet = Objects.nonNull(value) ? value : new HashSet<>();
-            innerSet.add(item.getString("word"));
-            return innerSet;
-        }));
+        items.forEach(item -> {
+            final String key = item.getString("guild_id");
+            GoodBoyService.BAD_WORD_MAP.computeIfAbsent(key, (k) -> new HashSet<>());
+            final Set<String> value = GoodBoyService.BAD_WORD_MAP.get(key);
+            value.add(item.getString("word"));
+        });
     }
 
     private static void getTwitchNotificationFromDB(final DynamoDB dynamoDB, final ScanSpec scanSpec) {
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("TwitchNotification").scan(scanSpec);
+        if (!items.iterator().hasNext()) {
+            log.error("Could not get any data in TwitchNotification Table!");
+            return;
+        }
 
-        items.forEach(item -> TWITCH_NOTIFICATION_MAP.compute(item.getString("twitch_channel_id"), (key, value) -> {
-            final Set<String> innerSet = Objects.nonNull(value) ? value : new HashSet<>();
-            innerSet.add(item.getString("message_channel_id"));
-            return innerSet;
-        }));
+        items.forEach(item -> {
+            final String key = item.getString("twitch_channel_id");
+            TwitchService.TWITCH_NOTIFICATION_MAP.computeIfAbsent(key, (k) -> new HashSet<>());
+            final Set<String> value = TwitchService.TWITCH_NOTIFICATION_MAP.get(key);
+            value.add(item.getString("message_channel_id"));
+        });
     }
 
     private static void getYouTubeNotificationFromDB(final DynamoDB dynamoDB, final ScanSpec scanSpec) {
         final ItemCollection<ScanOutcome> items = dynamoDB.getTable("YouTubeNotification").scan(scanSpec);
+        if (!items.iterator().hasNext()) {
+            log.error("Could not get any data in YouTubeNotification Table!");
+            return;
+        }
 
-        items.forEach(item -> YOUTUBE_NOTIFICATION_MAP.compute(item.getString("youtube_channel_playlist_id"), (key, value) -> {
-            final Set<String> innerSet = Objects.nonNull(value) ? value : new HashSet<>();
-            innerSet.add(item.getString("message_channel_id"));
-            return innerSet;
-        }));
-    }
-
-    public static boolean checkStartTime(final String startTimeString, final ZonedDateTime now) {
-        final ZonedDateTime startTime = ZonedDateTime.parse(startTimeString);
-        final ZonedDateTime nowAfterCheck = Optional.ofNullable(now).orElse(ZonedDateTime.now(ZoneId.of("UTC")));
-        return Duration.between(startTime, nowAfterCheck).toSeconds() < Duration.ofMillis(FREQUENCY).toSeconds();
+        items.forEach(item -> {
+            final String key = item.getString("youtube_channel_playlist_id");
+            YouTubeService.YOUTUBE_NOTIFICATION_MAP.computeIfAbsent(key, (k) -> new HashSet<>());
+            final Set<String> value = YouTubeService.YOUTUBE_NOTIFICATION_MAP.get(key);
+            value.add(item.getString("message_channel_id"));
+        });
     }
 
     public static Optional<Item> getMemberDataFromDB(final String name, final String guildId) {
@@ -168,7 +166,7 @@ public class CommonUtil {
             result = items.iterator().next();
         } else {
             result = null;
-            log.error("Can not find data with name = \"" + name + "\" and guild_id = \"" + guildId + "\" in MemberData Table!");
+            log.error("Unable to get data for name = {} and guild_id = {} in MemberData Table!", name, guildId);
         }
 
         dynamoDB.shutdown();
@@ -177,14 +175,18 @@ public class CommonUtil {
 
     public static void replyByHe1pMETemplate(final MessageChannel messageChannel, final Member member,
                                              final String title, final String desc, final String thumb) {
-        final EmbedCreateFields.Author author = EmbedCreateFields.Author.of(member.getTag(), StringUtils.EMPTY, member.getAvatarUrl());
-        final EmbedCreateSpec embedCreateSpec;
+        final EmbedBuilder embedBuilder = new EmbedBuilder().setTitle(title).setDescription(desc).setColor(HE1PME_COLOR)
+                .setAuthor(member.getNickname(), null, member.getEffectiveAvatarUrl());
         if (StringUtils.isNotBlank(thumb)) {
-            embedCreateSpec = EmbedCreateSpec.builder().title(title).description(desc).thumbnail(thumb).color(HE1PME_COLOR).author(author).build();
-        } else {
-            embedCreateSpec = EmbedCreateSpec.builder().title(title).description(desc).color(HE1PME_COLOR).author(author).build();
+            embedBuilder.setThumbnail(thumb);
         }
-        messageChannel.createMessage(embedCreateSpec).block();
+        messageChannel.sendMessageEmbeds(embedBuilder.build()).queue();
+    }
+
+    public static boolean checkStartTime(final String startTimeString) {
+        final ZonedDateTime startTime = ZonedDateTime.parse(startTimeString);
+        final ZonedDateTime now = ZonedDateTime.now(ZoneId.of("UTC"));
+        return Duration.between(startTime, now).toSeconds() >= Duration.ofMillis(FREQUENCY).toSeconds();
     }
 
     public static String descFormat(final String desc) {
@@ -195,8 +197,12 @@ public class CommonUtil {
         return StringUtils.abbreviate(desc, 36);
     }
 
-    public static boolean isNotHigher(final Role role1, final Role role2) {
-        return role1.getPosition().blockOptional().isEmpty() || role2.getPosition().blockOptional().isEmpty() ||
-                role1.getPosition().blockOptional().get() <= role2.getPosition().blockOptional().get();
+    public static boolean isHigher(final Member source, final Member target) {
+        return CollectionUtils.isNotEmpty(source.getRoles()) && CollectionUtils.isNotEmpty(target.getRoles()) &&
+                source.getRoles().get(0).getPosition() > target.getRoles().get(0).getPosition();
+    }
+
+    public static boolean isHigher(final Member member, final Role role) {
+        return CollectionUtils.isNotEmpty(member.getRoles()) && member.getRoles().get(0).getPosition() > role.getPosition();
     }
 }

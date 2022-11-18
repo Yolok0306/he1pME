@@ -1,8 +1,9 @@
-package Entity;
+package entity;
 
-import discord4j.rest.util.Color;
 import lombok.Builder;
 import lombok.Getter;
+
+import java.awt.*;
 
 @Getter
 @Builder

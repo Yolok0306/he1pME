@@ -1,80 +1,100 @@
-import Service.MessageEventService;
-import Service.TimerTaskService;
-import Service.VoiceStateService;
-import Service.YoutubeService;
-import Util.CommonUtil;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.regions.Regions;
-import discord4j.core.DiscordClient;
-import discord4j.core.event.domain.VoiceStateUpdateEvent;
-import discord4j.core.event.domain.lifecycle.ReadyEvent;
-import discord4j.core.event.domain.message.MessageCreateEvent;
-import discord4j.core.event.domain.message.MessageUpdateEvent;
-import discord4j.gateway.intent.Intent;
-import discord4j.gateway.intent.IntentSet;
-import org.json.JSONObject;
+import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.events.message.MessageUpdateEvent;
+import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.requests.GatewayIntent;
+import org.jetbrains.annotations.NotNull;
+import org.json.JSONException;
+import service.MessageEventService;
+import service.TimerTaskService;
+import service.TwitchService;
+import service.YouTubeService;
+import util.CommonUtil;
 
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.*;
+import java.util.Properties;
+import java.util.Set;
+import java.util.Timer;
 import java.util.stream.Collectors;
 
-public class He1pME {
-    private static final IntentSet intentSet = IntentSet.of(Intent.GUILDS, Intent.GUILD_MEMBERS, Intent.GUILD_MESSAGES,
-            Intent.GUILD_VOICE_STATES);
+public class He1pME extends ListenerAdapter {
+    private static final Set<GatewayIntent> gatewayIntentSet = Set.of(GatewayIntent.GUILD_MEMBERS,
+            GatewayIntent.GUILD_EMOJIS_AND_STICKERS, GatewayIntent.GUILD_VOICE_STATES,
+            GatewayIntent.GUILD_MESSAGES, GatewayIntent.MESSAGE_CONTENT);
     private static final MessageEventService messageEventService = new MessageEventService();
-    private static final VoiceStateService voiceStateService = new VoiceStateService();
     private static final TimerTaskService timerTaskService = new TimerTaskService();
     private static final Timer timer = new Timer();
 
     public static void main(final String[] args) {
-        init();
-        timer.schedule(timerTaskService, 0, CommonUtil.FREQUENCY);
-        CommonUtil.BOT.getEventDispatcher().on(ReadyEvent.class).subscribe(event ->
-                System.out.printf("-----Logged in as %s #%s-----%n", event.getSelf().getUsername(), event.getSelf().getDiscriminator()));
-        CommonUtil.BOT.getEventDispatcher().on(MessageCreateEvent.class).subscribe(messageEventService::receiveEvent);
-        CommonUtil.BOT.getEventDispatcher().on(MessageUpdateEvent.class).subscribe(messageEventService::receiveEvent);
-        CommonUtil.BOT.getEventDispatcher().on(VoiceStateUpdateEvent.class).subscribe(voiceStateService::receiveEvent);
-        CommonUtil.BOT.onDisconnect().block();
-    }
-
-    private static void init() {
-        setDynamoDBConfig();
-        CommonUtil.loadAllDataFromDB();
-        CommonUtil.YT_PLAYLIST_ID_VIDEO_ID_MAP = constructYTPlaylistIdVideoIdMap();
-        CommonUtil.BOT = DiscordClient.create(CommonUtil.DISCORD_API_TOKEN).gateway().setEnabledIntents(intentSet).login()
-                .blockOptional().orElseThrow(() -> new IllegalStateException("Bot token : " + CommonUtil.DISCORD_API_TOKEN + " is invalid !"));
-    }
-
-    private static void setDynamoDBConfig() {
-        final Properties properties = new Properties();
-        try {
-            properties.load(new FileInputStream("src/main/resources/DynamoDB.properties"));
-        } catch (final IOException e) {
-            throw new RuntimeException(e);
-        }
-
+        final Properties properties = getProperties();
+        CommonUtil.FREQUENCY = Long.parseLong(properties.getProperty("FREQUENCY"));
         CommonUtil.REGIONS = Regions.fromName(properties.getProperty("AWS_DEFAULT_REGION"));
         CommonUtil.BASIC_AWS_CREDENTIALS = new BasicAWSCredentials(
                 properties.getProperty("AWS_ACCESS_KEY_ID"), properties.getProperty("AWS_SECRET_ACCESS_KEY")
         );
+        CommonUtil.loadAllDataFromDB();
+        addDataToTwitchChannelSet();
+        addDataToYTPlaylistIdVideoIdMap();
+        CommonUtil.JDA = JDABuilder.createDefault(properties.getProperty("DISCORD_BOT_TOKEN"), gatewayIntentSet)
+                .addEventListeners(new He1pME()).build();
+        timer.schedule(timerTaskService, 5000, CommonUtil.FREQUENCY);
     }
 
-    private static Map<String, String> constructYTPlaylistIdVideoIdMap() {
-        if (CommonUtil.YOUTUBE_NOTIFICATION_MAP.isEmpty()) {
-            return new HashMap<>();
+    @Override
+    public void onMessageReceived(@NotNull final MessageReceivedEvent event) {
+        final MessageChannel messageChannel = event.getMessage().getChannel();
+        final Member member = event.getMember();
+        final Message message = event.getMessage();
+        messageEventService.execute(messageChannel, member, message);
+    }
+
+    @Override
+    public void onMessageUpdate(@NotNull final MessageUpdateEvent event) {
+        final MessageChannel messageChannel = event.getMessage().getChannel();
+        final Message message = event.getMessage();
+        final Member member = event.getMember();
+        messageEventService.execute(messageChannel, member, message);
+    }
+
+    private static Properties getProperties() {
+        final Properties properties = new Properties();
+        try {
+            properties.load(new FileInputStream("src/main/resources/DynamoDB.properties"));
+        } catch (final IOException exception) {
+            throw new RuntimeException(exception.getMessage());
+        }
+        return properties;
+    }
+
+    private static void addDataToTwitchChannelSet() {
+        if (TwitchService.TWITCH_NOTIFICATION_MAP.isEmpty()) {
+            return;
         }
 
-        final Set<String> playlistItemResponseSet = CommonUtil.YOUTUBE_NOTIFICATION_MAP.keySet().stream()
-                .map(YoutubeService::callPlayListItemApi).collect(Collectors.toSet());
-        return playlistItemResponseSet.stream()
-                .map(JSONObject::new)
-                .map(playlistJsonObject -> playlistJsonObject.getJSONArray("items"))
-                .filter(playlistItemJsonArray -> !playlistItemJsonArray.isEmpty())
-                .map(playlistItemJsonArray -> playlistItemJsonArray.getJSONObject(0).getJSONObject("snippet"))
-                .filter(snippetJsonObject -> !CommonUtil.checkStartTime(snippetJsonObject.getString("publishedAt"), null))
-                .collect(Collectors.toMap(snippetJsonObject -> snippetJsonObject.getString("playlistId"),
-                        snippetJsonObject -> snippetJsonObject.getJSONObject("resourceId").getString("videoId"),
-                        (existing, replacement) -> existing, HashMap::new));
+        try {
+            TwitchService.addDataToTwitchChannelSet();
+        } catch (final JSONException exception) {
+            exception.printStackTrace();
+        }
+    }
+
+    private static void addDataToYTPlaylistIdVideoIdMap() {
+        if (YouTubeService.YOUTUBE_NOTIFICATION_MAP.isEmpty()) {
+            return;
+        }
+
+        final Set<String> playlistItemResponseSet = YouTubeService.YOUTUBE_NOTIFICATION_MAP.keySet().stream()
+                .map(YouTubeService::callPlayListItemApi).collect(Collectors.toSet());
+        try {
+            YouTubeService.addDataToYTPlaylistIdVideoIdMap(playlistItemResponseSet);
+        } catch (final JSONException exception) {
+            exception.printStackTrace();
+        }
     }
 }
