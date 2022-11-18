@@ -21,12 +21,12 @@ public class EditNameAction implements Action {
         message.getMentions().getMembers().stream().findFirst().ifPresent(mentionMember -> {
             final String regex = String.format("\\%s%s\\p{Blank}<@\\d{18}>\\p{Blank}++", CommonUtil.SIGN, getInstruction());
             final String newName = message.getContentRaw().replaceAll(regex, StringUtils.EMPTY);
-            final String oldName = mentionMember.getNickname();
+            final String oldName = mentionMember.getEffectiveName();
             final String title, desc, thumb = mentionMember.getEffectiveAvatarUrl();
             final Member botMember = member.getGuild().getMember(member.getJDA().getSelfUser());
             if (CommonUtil.isHigher(Objects.requireNonNull(botMember), mentionMember)) {
                 title = "修改暱稱失敗";
-                desc = String.format("\"%s\"只能修改最高身分組比自己低的成員！", botMember.getNickname());
+                desc = String.format("\"%s\"只能修改最高身分組比自己低的成員！", botMember.getEffectiveName());
             } else {
                 mentionMember.modifyNickname(newName).queue();
                 title = "修改暱稱成功";

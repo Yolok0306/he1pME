@@ -176,7 +176,7 @@ public class CommonUtil {
     public static void replyByHe1pMETemplate(final MessageChannel messageChannel, final Member member,
                                              final String title, final String desc, final String thumb) {
         final EmbedBuilder embedBuilder = new EmbedBuilder().setTitle(title).setDescription(desc).setColor(HE1PME_COLOR)
-                .setAuthor(member.getNickname(), null, member.getEffectiveAvatarUrl());
+                .setAuthor(member.getEffectiveName(), null, member.getEffectiveAvatarUrl());
         if (StringUtils.isNotBlank(thumb)) {
             embedBuilder.setThumbnail(thumb);
         }
