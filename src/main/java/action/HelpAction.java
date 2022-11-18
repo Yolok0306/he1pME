@@ -64,7 +64,7 @@ public class HelpAction implements Action {
                 }))
                 .map(action -> action.getAnnotation(help.class))
                 .forEach(help -> embedBuilder.addField(CommonUtil.SIGN + help.example(), help.description(), Boolean.FALSE));
-        embedBuilder.setColor(CommonUtil.HE1PME_COLOR).setAuthor(member.getNickname(), null, member.getEffectiveAvatarUrl());
+        embedBuilder.setColor(CommonUtil.HE1PME_COLOR).setAuthor(member.getEffectiveName(), null, member.getEffectiveAvatarUrl());
         messageEmbedList.add(embedBuilder.build());
     }
 
@@ -84,7 +84,7 @@ public class HelpAction implements Action {
                 .sorted(Comparator.comparing(Method::getName))
                 .map(musicMethod -> musicMethod.getAnnotation(help.class))
                 .forEach(help -> embedBuilder.addField(CommonUtil.SIGN + help.example(), help.description(), Boolean.FALSE));
-        embedBuilder.setColor(CommonUtil.HE1PME_COLOR).setAuthor(member.getNickname(), null, member.getEffectiveAvatarUrl());
+        embedBuilder.setColor(CommonUtil.HE1PME_COLOR).setAuthor(member.getEffectiveName(), null, member.getEffectiveAvatarUrl());
         messageEmbedList.add(embedBuilder.build());
     }
 
@@ -99,7 +99,7 @@ public class HelpAction implements Action {
                 .filter(Objects::nonNull)
                 .sorted(Map.Entry.comparingByKey())
                 .forEach(entry -> embedBuilder.addField(CommonUtil.SIGN + entry.getKey(), entry.getValue(), Boolean.FALSE));
-        embedBuilder.setColor(CommonUtil.HE1PME_COLOR).setAuthor(member.getNickname(), null, member.getEffectiveAvatarUrl());
+        embedBuilder.setColor(CommonUtil.HE1PME_COLOR).setAuthor(member.getEffectiveName(), null, member.getEffectiveAvatarUrl());
         messageEmbedList.add(embedBuilder.build());
     }
 

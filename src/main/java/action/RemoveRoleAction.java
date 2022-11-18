@@ -23,10 +23,10 @@ public class RemoveRoleAction implements Action {
                     final Member botMember = member.getGuild().getMember(member.getJDA().getSelfUser());
                     if (CommonUtil.isHigher(member, mentionMember)) {
                         title = "移除身分組失敗";
-                        desc = String.format("\"%s\"並未擁有比\"%s\"還高的身分組", member.getNickname(), role.getName());
+                        desc = String.format("\"%s\"並未擁有比\"%s\"還高的身分組", member.getEffectiveName(), role.getName());
                     } else if (CommonUtil.isHigher(Objects.requireNonNull(botMember), role)) {
                         title = "移除身分組失敗";
-                        desc = String.format("\"%s\"並未擁有比\"%s\"還高的身分組", botMember.getNickname(), role.getName());
+                        desc = String.format("\"%s\"並未擁有比\"%s\"還高的身分組", botMember.getEffectiveName(), role.getName());
                     } else {
                         message.getGuild().removeRoleFromMember(mentionMember, role).queue();
                         title = "移除身分組成功";
