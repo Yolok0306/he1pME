@@ -2,9 +2,7 @@ package action;
 
 import annotation.help;
 import lombok.extern.slf4j.Slf4j;
-import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.apache.commons.lang3.StringUtils;
 import util.CommonUtil;
 
@@ -17,17 +15,16 @@ public class DeleteMessageAction implements Action {
     }
 
     @Override
-    public void execute(final MessageChannel messageChannel, final Message message, final Member member) {
+    public void execute(final Message message) {
         final String regex = String.format("\\%s%s\\p{Blank}*", CommonUtil.SIGN, getInstruction());
         final String userNumber = message.getContentRaw().replaceAll(regex, StringUtils.EMPTY);
         try {
             final int number = Integer.parseInt(userNumber);
-            messageChannel.getHistoryBefore(message, number).complete().getRetrievedHistory()
-                    .forEach(previousMessage -> messageChannel.deleteMessageById(previousMessage.getId()).queue());
+            message.getChannel().getHistoryBefore(message, number).complete().getRetrievedHistory()
+                    .forEach(previousMessage -> message.getChannel().deleteMessageById(previousMessage.getId()).queue());
         } catch (final IllegalArgumentException numberFormatException) {
             log.error("\"{}\" cannot be executed because number = {}!", message.getContentRaw(), userNumber);
         }
-
         message.delete().queue();
     }
 }

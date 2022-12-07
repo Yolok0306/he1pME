@@ -4,7 +4,6 @@ import annotation.help;
 import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.json.JSONException;
 import service.GoodBoyService;
 import service.TwitchService;
@@ -15,6 +14,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -27,7 +27,7 @@ public class ReloadAction implements Action {
     }
 
     @Override
-    public void execute(final MessageChannel messageChannel, final Message message, final Member member) {
+    public void execute(final Message message) {
         GoodBoyService.BAD_WORD_MAP.clear();
         TwitchService.TWITCH_NOTIFICATION_MAP.clear();
         YouTubeService.YOUTUBE_NOTIFICATION_MAP.clear();
@@ -37,6 +37,7 @@ public class ReloadAction implements Action {
         adjustYTPlaylistIdVideoIdMap();
         message.delete().queue();
 
+        final Member member = Objects.requireNonNull(message.getMember());
         final String now = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(ZonedDateTime.now(ZoneId.systemDefault()));
         log.info("Reload Cache by {} at {}!", member.getUser().getAsTag(), now);
     }

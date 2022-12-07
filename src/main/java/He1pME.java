@@ -1,9 +1,6 @@
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.regions.Regions;
 import net.dv8tion.jda.api.JDABuilder;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.MessageUpdateEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
@@ -48,18 +45,12 @@ public class He1pME extends ListenerAdapter {
 
     @Override
     public void onMessageReceived(@NotNull final MessageReceivedEvent event) {
-        final MessageChannel messageChannel = event.getMessage().getChannel();
-        final Member member = event.getMember();
-        final Message message = event.getMessage();
-        messageEventService.execute(messageChannel, member, message);
+        messageEventService.execute(event.getMessage());
     }
 
     @Override
     public void onMessageUpdate(@NotNull final MessageUpdateEvent event) {
-        final MessageChannel messageChannel = event.getMessage().getChannel();
-        final Message message = event.getMessage();
-        final Member member = event.getMember();
-        messageEventService.execute(messageChannel, member, message);
+        messageEventService.execute(event.getMessage());
     }
 
     private static Properties getProperties() {
