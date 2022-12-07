@@ -38,31 +38,27 @@ public class TwitchService implements Runnable {
             return;
         }
 
-        try {
-            final JSONArray dataJsonArray = new JSONObject(responseString).getJSONArray("data");
-            if (dataJsonArray.isEmpty()) {
-                return;
-            }
-
-            dataJsonArray.toList().parallelStream()
-                    .filter(data -> data instanceof HashMap<?, ?>)
-                    .map(data -> (Map<?, ?>) data)
-                    .forEach(data -> {
-                        final String type = data.get("type").toString();
-                        if (!StringUtils.equals(type, "live")) {
-                            return;
-                        }
-
-                        final String userLogin = data.get("user_login").toString();
-                        final String id = data.get("id").toString();
-                        if (!TWITCH_CACHE.containsKey(userLogin) || !StringUtils.equals(TWITCH_CACHE.get(userLogin), id)) {
-                            TWITCH_CACHE.put(userLogin, id);
-                            notification(data);
-                        }
-                    });
-        } catch (final JSONException exception) {
-            exception.printStackTrace();
+        final JSONArray dataJsonArray = new JSONObject(responseString).getJSONArray("data");
+        if (dataJsonArray.isEmpty()) {
+            return;
         }
+
+        dataJsonArray.toList().parallelStream()
+                .filter(data -> data instanceof HashMap<?, ?>)
+                .map(data -> (Map<?, ?>) data)
+                .forEach(data -> {
+                    final String type = data.get("type").toString();
+                    if (!StringUtils.equals(type, "live")) {
+                        return;
+                    }
+
+                    final String userLogin = data.get("user_login").toString();
+                    final String id = data.get("id").toString();
+                    if (!TWITCH_CACHE.containsKey(userLogin) || !StringUtils.equals(TWITCH_CACHE.get(userLogin), id)) {
+                        TWITCH_CACHE.put(userLogin, id);
+                        notification(data);
+                    }
+                });
     }
 
     private static String callStreamApi(final Set<String> userLoginSet) {

@@ -7,7 +7,6 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.utils.URIBuilder;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 import util.CommonUtil;
 
@@ -37,25 +36,21 @@ public class YouTubeService implements Runnable {
 
         final Set<String> playlistItemResponseSet = YOUTUBE_NOTIFICATION_MAP.keySet().parallelStream()
                 .map(YouTubeService::callPlayListItemApi).collect(Collectors.toSet());
-        try {
-            final Map<String, Set<String>> needToBeNotifiedMap = constructNeedToBeNotifiedMap(playlistItemResponseSet);
-            if (needToBeNotifiedMap.isEmpty()) {
-                return;
-            }
-
-            final String videoResponseString = callVideoApi(needToBeNotifiedMap.keySet());
-            if (StringUtils.isBlank(videoResponseString)) {
-                return;
-            }
-
-            final JSONArray itemJsonArray = new JSONObject(videoResponseString).getJSONArray("items");
-            itemJsonArray.toList().parallelStream()
-                    .filter(item -> item instanceof HashMap<?, ?>)
-                    .map(item -> (Map<?, ?>) item)
-                    .forEach(item -> notification(item, needToBeNotifiedMap));
-        } catch (final JSONException exception) {
-            exception.printStackTrace();
+        final Map<String, Set<String>> needToBeNotifiedMap = constructNeedToBeNotifiedMap(playlistItemResponseSet);
+        if (needToBeNotifiedMap.isEmpty()) {
+            return;
         }
+
+        final String videoResponseString = callVideoApi(needToBeNotifiedMap.keySet());
+        if (StringUtils.isBlank(videoResponseString)) {
+            return;
+        }
+
+        final JSONArray itemJsonArray = new JSONObject(videoResponseString).getJSONArray("items");
+        itemJsonArray.toList().parallelStream()
+                .filter(item -> item instanceof HashMap<?, ?>)
+                .map(item -> (Map<?, ?>) item)
+                .forEach(item -> notification(item, needToBeNotifiedMap));
     }
 
     public static String callPlayListItemApi(final String playlistId) {
