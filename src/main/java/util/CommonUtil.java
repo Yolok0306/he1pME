@@ -13,6 +13,7 @@ import com.amazonaws.services.dynamodbv2.document.utils.ValueMap;
 import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
@@ -26,9 +27,9 @@ import java.awt.*;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
+import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class CommonUtil {
@@ -197,12 +198,27 @@ public class CommonUtil {
         return StringUtils.abbreviate(desc, 36);
     }
 
-    public static boolean isHigher(final Member source, final Member target) {
-        return CollectionUtils.isNotEmpty(source.getRoles()) && CollectionUtils.isNotEmpty(target.getRoles()) &&
-                source.getRoles().get(0).getPosition() > target.getRoles().get(0).getPosition();
+    public static boolean notHigher(final Member source, final Member target) {
+        if (CollectionUtils.isEmpty(source.getRoles()) || CollectionUtils.isEmpty(target.getRoles())) {
+            return true;
+        }
+
+        final List<Integer> sourcePositionList = source.getRoles().stream()
+                .map(Role::getPosition)
+                .sorted(Comparator.comparing(Integer::intValue).reversed())
+                .collect(Collectors.toList());
+        final List<Integer> targetPositionList = target.getRoles().stream()
+                .map(Role::getPosition)
+                .sorted(Comparator.comparing(Integer::intValue).reversed())
+                .collect(Collectors.toList());
+        return sourcePositionList.get(0) <= targetPositionList.get(0) || target.getPermissions().contains(Permission.ADMINISTRATOR);
     }
 
-    public static boolean isHigher(final Member member, final Role role) {
-        return CollectionUtils.isNotEmpty(member.getRoles()) && member.getRoles().get(0).getPosition() > role.getPosition();
+    public static boolean notHigher(final Member member, final Role role) {
+        if (CollectionUtils.isEmpty(member.getRoles())) {
+            return true;
+        }
+
+        return member.getRoles().stream().noneMatch(eachRole -> eachRole.getPosition() > role.getPosition());
     }
 }
