@@ -3,7 +3,6 @@ package action;
 import annotation.help;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.apache.commons.lang3.StringUtils;
 import util.CommonUtil;
 
@@ -17,7 +16,8 @@ public class EditNameAction implements Action {
     }
 
     @Override
-    public void execute(final MessageChannel messageChannel, final Message message, final Member member) {
+    public void execute(final Message message) {
+        final Member member = Objects.requireNonNull(message.getMember());
         message.getMentions().getMembers().stream().findFirst().ifPresent(mentionMember -> {
             final String regex = String.format("\\%s%s\\p{Blank}<@\\d{18}>\\p{Blank}++", CommonUtil.SIGN, getInstruction());
             final String newName = message.getContentRaw().replaceAll(regex, StringUtils.EMPTY);
@@ -32,7 +32,7 @@ public class EditNameAction implements Action {
                 title = "修改暱稱成功";
                 desc = String.format("%s -> %s", oldName, newName);
             }
-            CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, thumb);
+            CommonUtil.replyByHe1pMETemplate(message.getChannel(), member, title, desc, thumb);
         });
     }
 }

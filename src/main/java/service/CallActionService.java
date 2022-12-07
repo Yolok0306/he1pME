@@ -15,7 +15,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import util.CommonUtil;
 
 import java.awt.*;
@@ -24,16 +23,16 @@ import java.util.Optional;
 @Slf4j
 public class CallActionService {
 
-    protected void execute(final MessageChannel messageChannel, final Message message, final String instruction) {
+    protected void execute(final Message message, final String instruction) {
         final CallAction callAction = getCallActionFromDB(instruction, message.getGuild().getId());
         if (callAction == null) {
             return;
         }
-        
+
         final String content = String.format("<@%s> %s", callAction.getId(), callAction.getMessage());
         final MessageEmbed messageEmbed = new EmbedBuilder().setColor(callAction.getColor())
                 .setImage(callAction.getImage()).build();
-        messageChannel.sendMessage(content).addEmbeds(messageEmbed).queue();
+        message.getChannel().sendMessage(content).addEmbeds(messageEmbed).queue();
     }
 
     private CallAction getCallActionFromDB(final String action, final String guildId) {

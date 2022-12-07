@@ -4,26 +4,23 @@ import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.apache.commons.lang3.StringUtils;
 import util.CommonUtil;
 
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class GoodBoyService {
     public static final Map<String, Set<String>> BAD_WORD_MAP = new HashMap<>();
 
-    protected void checkContent(final MessageChannel messageChannel, final Message message, final Member member) {
+    protected void checkContent(final Message message) {
         if (!BAD_WORD_MAP.containsKey(message.getGuild().getId())) {
             return;
         }
 
         final Set<String> badWordSet = BAD_WORD_MAP.get(message.getGuild().getId());
+        final Member member = Objects.requireNonNull(message.getMember());
         final String content = message.getContentRaw();
         if (member.getUser().isBot() || notNeedToCheck(member) || !isBadWord(content, badWordSet)) {
             return;
@@ -35,7 +32,7 @@ public class GoodBoyService {
         member.timeoutFor(punishmentTime, TimeUnit.MINUTES).queue();
         final String title = "言論審查系統";
         final String desc = String.format("◆ 不當言論 : %s\n◆ 懲處 : 禁言%d分鐘", content, punishmentTime);
-        CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, StringUtils.EMPTY);
+        CommonUtil.replyByHe1pMETemplate(message.getChannel(), member, title, desc, StringUtils.EMPTY);
     }
 
     private boolean notNeedToCheck(final Member member) {

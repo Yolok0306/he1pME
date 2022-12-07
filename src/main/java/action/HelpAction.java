@@ -12,7 +12,6 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.reflections.Reflections;
@@ -33,12 +32,13 @@ public class HelpAction implements Action {
     }
 
     @Override
-    public void execute(final MessageChannel messageChannel, final Message message, final Member member) {
+    public void execute(final Message message) {
+        final Member member = Objects.requireNonNull(message.getMember());
         final List<MessageEmbed> messageEmbedList = new ArrayList<>();
         addActionEmbed(messageEmbedList, member);
         addMusicEmbed(messageEmbedList, member);
         addCallActionEmbed(messageEmbedList, member);
-        messageChannel.sendMessageEmbeds(messageEmbedList).queue();
+        message.getChannel().sendMessageEmbeds(messageEmbedList).queue();
     }
 
     private void addActionEmbed(final List<MessageEmbed> messageEmbedList, final Member member) {

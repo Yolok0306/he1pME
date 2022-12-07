@@ -2,7 +2,6 @@ package service;
 
 import action.Action;
 import annotation.help;
-import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.apache.commons.lang3.StringUtils;
@@ -44,20 +43,19 @@ public class MessageEventService {
                 }, Function.identity(), (existing, replacement) -> existing, HashMap::new));
     }
 
-    public void execute(final MessageChannel messageChannel, final Member member, final Message message) {
-        if (isNotInstructionChannel(messageChannel)) {
-            goodBoyService.checkContent(messageChannel, message, member);
+    public void execute(final Message message) {
+        if (isNotInstructionChannel(message.getChannel())) {
+            goodBoyService.checkContent(message);
         } else if (message.getContentRaw().startsWith(CommonUtil.SIGN)) {
             final String instruction = format(message.getContentRaw());
-
             if (musicActionSet.contains(instruction)) {
-                executeMusicAction(messageChannel, message, member, instruction);
+                executeMusicAction(message, instruction);
             } else if (actionMap.containsKey(instruction)) {
-                executeAction(messageChannel, message, member, instruction);
+                executeAction(message, instruction);
             } else {
-                callActionService.execute(messageChannel, message, instruction);
+                callActionService.execute(message, instruction);
             }
-        } else if (!message.getContentRaw().startsWith("!") && !member.getUser().isBot()) {
+        } else if (!message.getContentRaw().startsWith("!") && !Objects.requireNonNull(message.getMember()).getUser().isBot()) {
             message.delete().queue();
         }
     }
@@ -73,19 +71,19 @@ public class MessageEventService {
         return spaceIndex == -1 ? content.substring(indexAfterSIGN) : content.substring(indexAfterSIGN, spaceIndex);
     }
 
-    private void executeMusicAction(final MessageChannel messageChannel, final Message message, final Member member, final String instruction) {
+    private void executeMusicAction(final Message message, final String instruction) {
         try {
-            final Method method = MusicService.class.getDeclaredMethod(instruction, MessageChannel.class, Message.class, Member.class);
-            method.invoke(musicService, messageChannel, message, member);
+            final Method method = MusicService.class.getDeclaredMethod(instruction, Message.class);
+            method.invoke(musicService, message);
         } catch (final InvocationTargetException | IllegalAccessException | NoSuchMethodException exception) {
             exception.printStackTrace();
         }
     }
 
-    private void executeAction(final MessageChannel messageChannel, final Message message, final Member member, final String instruction) {
+    private void executeAction(final Message message, final String instruction) {
         try {
             final Class<? extends Action> actionClass = actionMap.get(instruction);
-            actionClass.getDeclaredConstructor().newInstance().execute(messageChannel, message, member);
+            actionClass.getDeclaredConstructor().newInstance().execute(message);
         } catch (final InstantiationException | IllegalAccessException | InvocationTargetException |
                        NoSuchMethodException exception) {
             exception.printStackTrace();

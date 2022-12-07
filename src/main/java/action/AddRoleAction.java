@@ -3,7 +3,6 @@ package action;
 import annotation.help;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import util.CommonUtil;
 
 import java.util.Objects;
@@ -16,7 +15,8 @@ public class AddRoleAction implements Action {
     }
 
     @Override
-    public void execute(final MessageChannel messageChannel, final Message message, final Member member) {
+    public void execute(final Message message) {
+        final Member member = Objects.requireNonNull(message.getMember());
         message.getMentions().getMembers().stream().findFirst().ifPresent(mentionMember ->
                 message.getMentions().getRoles().stream().findFirst().ifPresent(role -> {
                     final String title, desc, thumb = mentionMember.getEffectiveAvatarUrl();
@@ -32,7 +32,7 @@ public class AddRoleAction implements Action {
                         title = "新增身分組成功";
                         desc = String.format("新增身分組 : %s", role.getName());
                     }
-                    CommonUtil.replyByHe1pMETemplate(messageChannel, member, title, desc, thumb);
+                    CommonUtil.replyByHe1pMETemplate(message.getChannel(), member, title, desc, thumb);
                 })
         );
     }
