@@ -6,7 +6,6 @@ import net.dv8tion.jda.api.events.message.MessageUpdateEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.jetbrains.annotations.NotNull;
-import org.json.JSONException;
 import service.MessageEventService;
 import service.TimerTaskService;
 import service.TwitchService;
@@ -21,12 +20,15 @@ import java.util.Timer;
 import java.util.stream.Collectors;
 
 public class He1pME extends ListenerAdapter {
-    private static final Set<GatewayIntent> gatewayIntentSet = Set.of(GatewayIntent.GUILD_MEMBERS,
-            GatewayIntent.GUILD_EMOJIS_AND_STICKERS, GatewayIntent.GUILD_VOICE_STATES,
-            GatewayIntent.GUILD_MESSAGES, GatewayIntent.MESSAGE_CONTENT);
+    private static final Set<GatewayIntent> gatewayIntentSet;
     private static final MessageEventService messageEventService = new MessageEventService();
     private static final TimerTaskService timerTaskService = new TimerTaskService();
     private static final Timer timer = new Timer();
+
+    static {
+        gatewayIntentSet = Set.of(GatewayIntent.GUILD_MEMBERS, GatewayIntent.GUILD_EMOJIS_AND_STICKERS,
+                GatewayIntent.GUILD_VOICE_STATES, GatewayIntent.GUILD_MESSAGES, GatewayIntent.MESSAGE_CONTENT);
+    }
 
     public static void main(final String[] args) {
         final Properties properties = getProperties();
@@ -36,10 +38,11 @@ public class He1pME extends ListenerAdapter {
                 properties.getProperty("AWS_ACCESS_KEY_ID"), properties.getProperty("AWS_SECRET_ACCESS_KEY")
         );
         CommonUtil.loadAllDataFromDB();
-        addDataToTwitchCache();
-        addDataToYoutubeCache();
         CommonUtil.JDA = JDABuilder.createDefault(properties.getProperty("DISCORD_BOT_TOKEN"), gatewayIntentSet)
                 .addEventListeners(new He1pME()).build();
+
+        initTwitchCache();
+        initYoutubeCache();
         timer.schedule(timerTaskService, 5000, CommonUtil.FREQUENCY);
     }
 
@@ -56,36 +59,28 @@ public class He1pME extends ListenerAdapter {
     private static Properties getProperties() {
         final Properties properties = new Properties();
         try {
-            properties.load(new FileInputStream("src/main/resources/DynamoDB.properties"));
+            properties.load(new FileInputStream("src/main/resources/Config.properties"));
         } catch (final IOException exception) {
             throw new RuntimeException(exception.getMessage());
         }
         return properties;
     }
 
-    private static void addDataToTwitchCache() {
+    private static void initTwitchCache() {
         if (TwitchService.TWITCH_NOTIFICATION_MAP.isEmpty()) {
             return;
         }
 
-        try {
-            TwitchService.addDataToTwitchCache(TwitchService.TWITCH_NOTIFICATION_MAP.keySet());
-        } catch (final JSONException exception) {
-            exception.printStackTrace();
-        }
+        TwitchService.addDataToTwitchCache(TwitchService.TWITCH_NOTIFICATION_MAP.keySet());
     }
 
-    private static void addDataToYoutubeCache() {
+    private static void initYoutubeCache() {
         if (YouTubeService.YOUTUBE_NOTIFICATION_MAP.isEmpty()) {
             return;
         }
 
         final Set<String> playlistItemResponseSet = YouTubeService.YOUTUBE_NOTIFICATION_MAP.keySet().parallelStream()
                 .map(YouTubeService::callPlayListItemApi).collect(Collectors.toSet());
-        try {
-            YouTubeService.addDataToYoutubeCache(playlistItemResponseSet);
-        } catch (final JSONException exception) {
-            exception.printStackTrace();
-        }
+        YouTubeService.addDataToYoutubeCache(playlistItemResponseSet);
     }
 }
