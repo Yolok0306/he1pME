@@ -38,11 +38,10 @@ public class He1pME extends ListenerAdapter {
                 properties.getProperty("AWS_ACCESS_KEY_ID"), properties.getProperty("AWS_SECRET_ACCESS_KEY")
         );
         CommonUtil.loadAllDataFromDB();
-        CommonUtil.JDA = JDABuilder.createDefault(properties.getProperty("DISCORD_BOT_TOKEN"), gatewayIntentSet)
-                .addEventListeners(new He1pME()).build();
-
         initTwitchCache();
         initYoutubeCache();
+        CommonUtil.JDA = JDABuilder.createDefault(properties.getProperty("DISCORD_BOT_TOKEN"), gatewayIntentSet)
+                .addEventListeners(new He1pME()).build();
         timer.schedule(timerTaskService, 5000, CommonUtil.FREQUENCY);
     }
 
