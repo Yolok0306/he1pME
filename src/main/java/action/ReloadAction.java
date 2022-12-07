@@ -4,7 +4,6 @@ import annotation.help;
 import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
-import org.json.JSONException;
 import service.GoodBoyService;
 import service.TwitchService;
 import service.YouTubeService;
@@ -33,8 +32,8 @@ public class ReloadAction implements Action {
         YouTubeService.YOUTUBE_NOTIFICATION_MAP.clear();
         CommonUtil.loadAllDataFromDB();
 
-        adjustTwitchChannelSet();
-        adjustYTPlaylistIdVideoIdMap();
+        adjustTwitchCache();
+        adjustYoutubeCache();
         message.delete().queue();
 
         final Member member = Objects.requireNonNull(message.getMember());
@@ -42,39 +41,38 @@ public class ReloadAction implements Action {
         log.info("Reload Cache by {} at {}!", member.getUser().getAsTag(), now);
     }
 
-    private void adjustTwitchChannelSet() {
+    private void adjustTwitchCache() {
         if (TwitchService.TWITCH_NOTIFICATION_MAP.isEmpty()) {
-            TwitchService.TWITCH_CHANNEL_SET.clear();
+            TwitchService.TWITCH_CACHE.clear();
             return;
         }
 
-        TwitchService.TWITCH_CHANNEL_SET.clear();
-        try {
-            TwitchService.addDataToTwitchChannelSet();
-        } catch (final JSONException exception) {
-            exception.printStackTrace();
-        }
+        final Map<String, String> existingDataMap = TwitchService.TWITCH_CACHE.entrySet().parallelStream()
+                .filter(entry -> TwitchService.TWITCH_NOTIFICATION_MAP.containsKey(entry.getKey()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        final Set<String> userLoginSet = TwitchService.TWITCH_NOTIFICATION_MAP.keySet().parallelStream()
+                .filter(key -> !existingDataMap.containsKey(key))
+                .collect(Collectors.toSet());
+        TwitchService.TWITCH_CACHE.clear();
+        TwitchService.TWITCH_CACHE.putAll(existingDataMap);
+        TwitchService.addDataToTwitchCache(userLoginSet);
     }
 
-    private void adjustYTPlaylistIdVideoIdMap() {
+    private void adjustYoutubeCache() {
         if (YouTubeService.YOUTUBE_NOTIFICATION_MAP.isEmpty()) {
-            YouTubeService.YT_PLAYLIST_ID_VIDEO_ID_MAP.clear();
+            YouTubeService.YOUTUBE_CACHE.clear();
             return;
         }
 
-        final Map<String, String> existingDataMap = YouTubeService.YT_PLAYLIST_ID_VIDEO_ID_MAP.entrySet().stream()
+        final Map<String, String> existingDataMap = YouTubeService.YOUTUBE_CACHE.entrySet().parallelStream()
                 .filter(entry -> YouTubeService.YOUTUBE_NOTIFICATION_MAP.containsKey(entry.getKey()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-        final Set<String> playlistItemResponseSet = YouTubeService.YT_PLAYLIST_ID_VIDEO_ID_MAP.keySet().stream()
+        final Set<String> playlistItemResponseSet = YouTubeService.YOUTUBE_NOTIFICATION_MAP.keySet().parallelStream()
                 .filter(key -> !existingDataMap.containsKey(key))
                 .map(YouTubeService::callPlayListItemApi)
                 .collect(Collectors.toSet());
-        YouTubeService.YT_PLAYLIST_ID_VIDEO_ID_MAP.clear();
-        YouTubeService.YT_PLAYLIST_ID_VIDEO_ID_MAP.putAll(existingDataMap);
-        try {
-            YouTubeService.addDataToYTPlaylistIdVideoIdMap(playlistItemResponseSet);
-        } catch (final JSONException exception) {
-            exception.printStackTrace();
-        }
+        YouTubeService.YOUTUBE_CACHE.clear();
+        YouTubeService.YOUTUBE_CACHE.putAll(existingDataMap);
+        YouTubeService.addDataToYoutubeCache(playlistItemResponseSet);
     }
 }

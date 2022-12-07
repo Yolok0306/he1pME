@@ -36,8 +36,8 @@ public class He1pME extends ListenerAdapter {
                 properties.getProperty("AWS_ACCESS_KEY_ID"), properties.getProperty("AWS_SECRET_ACCESS_KEY")
         );
         CommonUtil.loadAllDataFromDB();
-        addDataToTwitchChannelSet();
-        addDataToYTPlaylistIdVideoIdMap();
+        addDataToTwitchCache();
+        addDataToYoutubeCache();
         CommonUtil.JDA = JDABuilder.createDefault(properties.getProperty("DISCORD_BOT_TOKEN"), gatewayIntentSet)
                 .addEventListeners(new He1pME()).build();
         timer.schedule(timerTaskService, 5000, CommonUtil.FREQUENCY);
@@ -63,27 +63,27 @@ public class He1pME extends ListenerAdapter {
         return properties;
     }
 
-    private static void addDataToTwitchChannelSet() {
+    private static void addDataToTwitchCache() {
         if (TwitchService.TWITCH_NOTIFICATION_MAP.isEmpty()) {
             return;
         }
 
         try {
-            TwitchService.addDataToTwitchChannelSet();
+            TwitchService.addDataToTwitchCache(TwitchService.TWITCH_NOTIFICATION_MAP.keySet());
         } catch (final JSONException exception) {
             exception.printStackTrace();
         }
     }
 
-    private static void addDataToYTPlaylistIdVideoIdMap() {
+    private static void addDataToYoutubeCache() {
         if (YouTubeService.YOUTUBE_NOTIFICATION_MAP.isEmpty()) {
             return;
         }
 
-        final Set<String> playlistItemResponseSet = YouTubeService.YOUTUBE_NOTIFICATION_MAP.keySet().stream()
+        final Set<String> playlistItemResponseSet = YouTubeService.YOUTUBE_NOTIFICATION_MAP.keySet().parallelStream()
                 .map(YouTubeService::callPlayListItemApi).collect(Collectors.toSet());
         try {
-            YouTubeService.addDataToYTPlaylistIdVideoIdMap(playlistItemResponseSet);
+            YouTubeService.addDataToYoutubeCache(playlistItemResponseSet);
         } catch (final JSONException exception) {
             exception.printStackTrace();
         }

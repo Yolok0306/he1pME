@@ -18,21 +18,22 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
-public class TwitchService {
-    public static final Set<String> TWITCH_CHANNEL_SET = new HashSet<>();
-    public static final Map<String, Set<String>> TWITCH_NOTIFICATION_MAP = new HashMap<>();
+public class TwitchService implements Runnable {
+    public static final Map<String, String> TWITCH_CACHE = new ConcurrentHashMap<>();
+    public static final Map<String, Set<String>> TWITCH_NOTIFICATION_MAP = new ConcurrentHashMap<>();
 
-    protected void execute() {
+    @Override
+    public void run() {
         if (TWITCH_NOTIFICATION_MAP.isEmpty()) {
             return;
         }
 
-        final String responseString = callStreamApi();
+        final String responseString = callStreamApi(TWITCH_NOTIFICATION_MAP.keySet());
         if (StringUtils.isBlank(responseString)) {
             return;
         }
@@ -43,25 +44,32 @@ public class TwitchService {
                 return;
             }
 
-            for (int i = 0; i < dataJsonArray.length(); i++) {
-                final JSONObject jsonObject = dataJsonArray.getJSONObject(i);
-                final String type = jsonObject.getString("type");
-                final String userLogin = jsonObject.getString("user_login");
-                if (StringUtils.equals(type, "live") && !TWITCH_CHANNEL_SET.contains(userLogin)) {
-                    TWITCH_CHANNEL_SET.add(userLogin);
-                    notification(jsonObject);
-                }
-            }
+            dataJsonArray.toList().parallelStream()
+                    .filter(data -> data instanceof HashMap<?, ?>)
+                    .map(data -> (Map<?, ?>) data)
+                    .forEach(data -> {
+                        final String type = data.get("type").toString();
+                        if (!StringUtils.equals(type, "live")) {
+                            return;
+                        }
+
+                        final String userLogin = data.get("user_login").toString();
+                        final String id = data.get("id").toString();
+                        if (!TWITCH_CACHE.containsKey(userLogin) || !StringUtils.equals(TWITCH_CACHE.get(userLogin), id)) {
+                            TWITCH_CACHE.put(userLogin, id);
+                            notification(data);
+                        }
+                    });
         } catch (final JSONException exception) {
             exception.printStackTrace();
         }
     }
 
-    private static String callStreamApi() {
+    private static String callStreamApi(final Set<String> userLoginSet) {
         final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).build();
         try {
             final URIBuilder uriBuilder = new URIBuilder(CommonUtil.TWITCH_API_BASE_URI + "/streams");
-            TWITCH_NOTIFICATION_MAP.keySet().forEach(key -> uriBuilder.addParameter("user_login", key));
+            userLoginSet.parallelStream().forEach(key -> uriBuilder.addParameter("user_login", key));
             final HttpRequest httpRequest = HttpRequest.newBuilder()
                     .GET()
                     .uri(uriBuilder.build())
@@ -77,11 +85,11 @@ public class TwitchService {
         return StringUtils.EMPTY;
     }
 
-    private void notification(final JSONObject dataJsonObject) {
-        final String userLogin = dataJsonObject.getString("user_login");
-        final String title = dataJsonObject.getString("user_name");
-        final String desc = dataJsonObject.getString("title");
-        final String thumb = dataJsonObject.getString("thumbnail_url").replace("-{width}x{height}", StringUtils.EMPTY);
+    private void notification(final Map<?, ?> data) {
+        final String userLogin = data.get("user_login").toString();
+        final String title = data.get("user_name").toString();
+        final String desc = data.get("title").toString();
+        final String thumb = data.get("thumbnail_url").toString().replace("-{width}x{height}", StringUtils.EMPTY);
         final Color color = new Color(144, 0, 255);
 
         for (final String messageChannelId : TWITCH_NOTIFICATION_MAP.get(userLogin)) {
@@ -96,8 +104,8 @@ public class TwitchService {
         }
     }
 
-    public static void addDataToTwitchChannelSet() {
-        final String responseString = TwitchService.callStreamApi();
+    public static void addDataToTwitchCache(final Set<String> userLoginSet) {
+        final String responseString = TwitchService.callStreamApi(userLoginSet);
         if (StringUtils.isBlank(responseString)) {
             return;
         }
@@ -108,14 +116,18 @@ public class TwitchService {
                 return;
             }
 
-            for (int i = 0; i < dataJsonArray.length(); i++) {
-                final String type = dataJsonArray.getJSONObject(i).getString("type");
-                final String startedAt = dataJsonArray.getJSONObject(i).getString("started_at");
-                if (StringUtils.equals(type, "live") && CommonUtil.checkStartTime(startedAt)) {
-                    final String userLogin = dataJsonArray.getJSONObject(i).getString("user_login");
-                    TWITCH_CHANNEL_SET.add(userLogin);
-                }
-            }
+            dataJsonArray.toList().parallelStream()
+                    .filter(data -> data instanceof HashMap<?, ?>)
+                    .map(data -> (Map<?, ?>) data)
+                    .forEach(data -> {
+                        final String type = data.get("type").toString();
+                        final String startedAt = data.get("started_at").toString();
+                        if (StringUtils.equals(type, "live") && CommonUtil.checkStartTime(startedAt)) {
+                            final String userLogin = data.get("user_login").toString();
+                            final String id = data.get("id").toString();
+                            TWITCH_CACHE.put(userLogin, id);
+                        }
+                    });
         } catch (final JSONException exception) {
             exception.printStackTrace();
         }

@@ -8,7 +8,10 @@ public class TimerTaskService extends TimerTask {
 
     @Override
     public void run() {
-        twitchService.execute();
-        youtubeService.execute();
+        final Thread twitchServiceThread = new Thread(twitchService);
+        twitchServiceThread.start();
+        
+        final Thread youTubeServiceThread = new Thread(youtubeService);
+        youTubeServiceThread.start();
     }
 }
