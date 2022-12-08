@@ -17,7 +17,6 @@ import java.io.IOException;
 import java.util.Properties;
 import java.util.Set;
 import java.util.Timer;
-import java.util.stream.Collectors;
 
 public class He1pME extends ListenerAdapter {
     private static final Set<GatewayIntent> gatewayIntentSet;
@@ -78,8 +77,7 @@ public class He1pME extends ListenerAdapter {
             return;
         }
 
-        final Set<String> playlistItemResponseSet = YouTubeService.YOUTUBE_NOTIFICATION_MAP.keySet().parallelStream()
-                .map(YouTubeService::callPlayListItemApi).collect(Collectors.toSet());
+        final Set<String> playlistItemResponseSet = YouTubeService.filterAndGetPlayListItemResponseSet(null);
         YouTubeService.addDataToYoutubeCache(playlistItemResponseSet);
     }
 }

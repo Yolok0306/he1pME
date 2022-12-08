@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.utils.URIBuilder;
 import org.json.JSONArray;
@@ -25,7 +26,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class YouTubeService implements Runnable {
-    public static Map<String, String> YOUTUBE_CACHE = new ConcurrentHashMap<>();
+    public static final Map<String, String> YOUTUBE_CACHE = new ConcurrentHashMap<>();
     public static final Map<String, Set<String>> YOUTUBE_NOTIFICATION_MAP = new ConcurrentHashMap<>();
 
     @Override
@@ -34,8 +35,7 @@ public class YouTubeService implements Runnable {
             return;
         }
 
-        final Set<String> playlistItemResponseSet = YOUTUBE_NOTIFICATION_MAP.keySet().parallelStream()
-                .map(YouTubeService::callPlayListItemApi).collect(Collectors.toSet());
+        final Set<String> playlistItemResponseSet = filterAndGetPlayListItemResponseSet(null);
         final Map<String, Set<String>> needToBeNotifiedMap = constructNeedToBeNotifiedMap(playlistItemResponseSet);
         if (needToBeNotifiedMap.isEmpty()) {
             return;
@@ -53,7 +53,15 @@ public class YouTubeService implements Runnable {
                 .forEach(item -> notification(item, needToBeNotifiedMap));
     }
 
-    public static String callPlayListItemApi(final String playlistId) {
+    public static Set<String> filterAndGetPlayListItemResponseSet(final Set<String> existingDataSet) {
+        return CollectionUtils.isEmpty(existingDataSet) ?
+                YOUTUBE_NOTIFICATION_MAP.keySet().parallelStream()
+                        .map(YouTubeService::callPlayListItemApi).collect(Collectors.toSet()) :
+                YOUTUBE_NOTIFICATION_MAP.keySet().parallelStream().filter(key -> !existingDataSet.contains(key))
+                        .map(YouTubeService::callPlayListItemApi).collect(Collectors.toSet());
+    }
+
+    private static String callPlayListItemApi(final String playlistId) {
         final HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).build();
         try {
             final URI uri = new URIBuilder(CommonUtil.YOUTUBE_API_BASE_URI + "/playlistItems")

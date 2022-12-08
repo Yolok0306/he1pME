@@ -50,12 +50,12 @@ public class ReloadAction implements Action {
         final Map<String, String> existingDataMap = TwitchService.TWITCH_CACHE.entrySet().parallelStream()
                 .filter(entry -> TwitchService.TWITCH_NOTIFICATION_MAP.containsKey(entry.getKey()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-        final Set<String> userLoginSet = TwitchService.TWITCH_NOTIFICATION_MAP.keySet().parallelStream()
+        final Set<String> newDataSet = TwitchService.TWITCH_NOTIFICATION_MAP.keySet().parallelStream()
                 .filter(key -> !existingDataMap.containsKey(key))
                 .collect(Collectors.toSet());
         TwitchService.TWITCH_CACHE.clear();
         TwitchService.TWITCH_CACHE.putAll(existingDataMap);
-        TwitchService.addDataToTwitchCache(userLoginSet);
+        TwitchService.addDataToTwitchCache(newDataSet);
     }
 
     private void adjustYoutubeCache() {
@@ -67,12 +67,9 @@ public class ReloadAction implements Action {
         final Map<String, String> existingDataMap = YouTubeService.YOUTUBE_CACHE.entrySet().parallelStream()
                 .filter(entry -> YouTubeService.YOUTUBE_NOTIFICATION_MAP.containsKey(entry.getKey()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-        final Set<String> playlistItemResponseSet = YouTubeService.YOUTUBE_NOTIFICATION_MAP.keySet().parallelStream()
-                .filter(key -> !existingDataMap.containsKey(key))
-                .map(YouTubeService::callPlayListItemApi)
-                .collect(Collectors.toSet());
+        final Set<String> newDataSet = YouTubeService.filterAndGetPlayListItemResponseSet(existingDataMap.keySet());
         YouTubeService.YOUTUBE_CACHE.clear();
         YouTubeService.YOUTUBE_CACHE.putAll(existingDataMap);
-        YouTubeService.addDataToYoutubeCache(playlistItemResponseSet);
+        YouTubeService.addDataToYoutubeCache(newDataSet);
     }
 }
