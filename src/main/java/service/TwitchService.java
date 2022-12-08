@@ -7,7 +7,6 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.utils.URIBuilder;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 import util.CommonUtil;
 
@@ -106,26 +105,22 @@ public class TwitchService implements Runnable {
             return;
         }
 
-        try {
-            final JSONArray dataJsonArray = new JSONObject(responseString).getJSONArray("data");
-            if (dataJsonArray.isEmpty()) {
-                return;
-            }
-
-            dataJsonArray.toList().parallelStream()
-                    .filter(data -> data instanceof HashMap<?, ?>)
-                    .map(data -> (Map<?, ?>) data)
-                    .forEach(data -> {
-                        final String type = data.get("type").toString();
-                        final String startedAt = data.get("started_at").toString();
-                        if (StringUtils.equals(type, "live") && CommonUtil.checkStartTime(startedAt)) {
-                            final String userLogin = data.get("user_login").toString();
-                            final String id = data.get("id").toString();
-                            TWITCH_CACHE.put(userLogin, id);
-                        }
-                    });
-        } catch (final JSONException exception) {
-            exception.printStackTrace();
+        final JSONArray dataJsonArray = new JSONObject(responseString).getJSONArray("data");
+        if (dataJsonArray.isEmpty()) {
+            return;
         }
+
+        dataJsonArray.toList().parallelStream()
+                .filter(data -> data instanceof HashMap<?, ?>)
+                .map(data -> (Map<?, ?>) data)
+                .forEach(data -> {
+                    final String type = data.get("type").toString();
+                    final String startedAt = data.get("started_at").toString();
+                    if (StringUtils.equals(type, "live") && CommonUtil.checkStartTime(startedAt)) {
+                        final String userLogin = data.get("user_login").toString();
+                        final String id = data.get("id").toString();
+                        TWITCH_CACHE.put(userLogin, id);
+                    }
+                });
     }
 }
