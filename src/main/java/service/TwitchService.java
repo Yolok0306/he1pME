@@ -72,12 +72,33 @@ public class TwitchService implements Runnable {
                     .header("Authorization", CommonUtil.TWITCH_API_TOKEN_TYPE + StringUtils.SPACE + CommonUtil.TWITCH_API_ACCESS_TOKEN)
                     .build();
             final HttpResponse<String> httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+
+            if (httpResponse.statusCode() == 401) {
+                refreshAccessToken(httpClient);
+                return callStreamApi(userLoginSet);
+            }
+
             log.info(httpResponse.statusCode() + StringUtils.SPACE + httpResponse.body());
             return httpResponse.body();
         } catch (final URISyntaxException | IOException | InterruptedException e) {
             e.printStackTrace();
         }
         return StringUtils.EMPTY;
+    }
+
+    private static void refreshAccessToken(final HttpClient httpClient) throws URISyntaxException, IOException, InterruptedException {
+        final URIBuilder uriBuilder = new URIBuilder("https://id.twitch.tv/oauth2/token");
+        uriBuilder.addParameter("client_id", CommonUtil.TWITCH_API_CLIENT_ID);
+        uriBuilder.addParameter("client_secret", CommonUtil.TWITCH_API_CLIENT_SECRET);
+        uriBuilder.addParameter("grant_type", "client_credentials");
+        final HttpRequest httpRequest = HttpRequest.newBuilder()
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .uri(uriBuilder.build())
+                .build();
+        final HttpResponse<String> httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+        final JSONObject response = new JSONObject(httpResponse.body());
+        CommonUtil.TWITCH_API_ACCESS_TOKEN = response.getString("access_token");
+        CommonUtil.TWITCH_API_TOKEN_TYPE = StringUtils.capitalize(response.getString("token_type"));
     }
 
     private void notification(final Map<?, ?> data) {
