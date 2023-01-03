@@ -39,6 +39,7 @@ public class CommonUtil {
     public static Regions REGIONS;
     public static BasicAWSCredentials BASIC_AWS_CREDENTIALS;
     public static String TWITCH_API_CLIENT_ID;
+    public static String TWITCH_API_CLIENT_SECRET;
     public static String TWITCH_API_TOKEN_TYPE;
     public static String TWITCH_API_ACCESS_TOKEN;
     public static String TWITCH_API_BASE_URI;
@@ -74,6 +75,10 @@ public class CommonUtil {
 
                 case "Twitch Api Client Id":
                     TWITCH_API_CLIENT_ID = item.getString("id");
+                    break;
+
+                case "Twitch Api Client Secret":
+                    TWITCH_API_CLIENT_SECRET = item.getString("id");
                     break;
 
                 case "Twitch Api Token Type":
