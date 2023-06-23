@@ -1,11 +1,7 @@
-FROM maven:3.8.6-jdk-11
+FROM openjdk:17-slim
 
-COPY src/main/ home/app/src/main/
+WORKDIR /app
 
-COPY pom.xml home/app/
+COPY target/*.jar /app
 
-WORKDIR home/app/
-
-RUN mvn clean package
-
-ENTRYPOINT ["java","-jar","target/he1pME-1.1.jar"]
+ENTRYPOINT ["java","-jar","he1pME-2.0.0-SNAPSHOT.jar"]

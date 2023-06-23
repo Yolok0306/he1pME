@@ -1,1 +1,1 @@
-java -jar target/he1pME-1.1.jar
+java -jar target/he1pME-2.0.0-SNAPSHOT.jar
