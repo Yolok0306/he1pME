@@ -5,11 +5,11 @@ import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
 import net.dv8tion.jda.api.entities.Guild;
 
 public class GuildAudioManager {
-    private AudioPlayer player;
+    private final AudioPlayer player;
     /**
      * Track scheduler for the player.
      */
-    public AudioTrackScheduler scheduler;
+    public final AudioTrackScheduler scheduler;
 
     /**
      * Creates a player and a track scheduler.

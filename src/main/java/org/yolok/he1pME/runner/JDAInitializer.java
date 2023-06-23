@@ -2,7 +2,6 @@ package org.yolok.he1pME.runner;
 
 import jakarta.annotation.PostConstruct;
 import net.dv8tion.jda.api.JDABuilder;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,7 +15,7 @@ import java.util.Set;
 import java.util.Timer;
 
 @Component
-public class JDAInitializer extends ListenerAdapter implements CommandLineRunner {
+public class JDAInitializer implements CommandLineRunner {
     @Value("${discord.bot.token}")
     private String discordBotToken;
     @Autowired

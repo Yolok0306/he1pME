@@ -73,7 +73,7 @@ public class MusicService {
         }
 
         audioPlayerManager.loadItem(musicSource, new AudioLoadResultHandler() {
-            AudioTrackScheduler scheduler = guildAudioManager.scheduler;
+            final AudioTrackScheduler scheduler = guildAudioManager.scheduler;
 
             @Override
             public void trackLoaded(AudioTrack track) {
