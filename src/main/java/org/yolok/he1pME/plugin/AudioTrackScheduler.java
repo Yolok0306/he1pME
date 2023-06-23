@@ -10,9 +10,9 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class AudioTrackScheduler extends AudioEventAdapter {
-    private AudioPlayer player;
-    private BlockingQueue<AudioTrack> queue;
-    private Guild guild;
+    private final AudioPlayer player;
+    private final BlockingQueue<AudioTrack> queue;
+    private final Guild guild;
 
     /**
      * @param player The audio player this scheduler uses

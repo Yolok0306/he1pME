@@ -6,5 +6,4 @@ import org.yolok.he1pME.entity.YouTubeNotification;
 
 @EnableScan
 public interface YouTubeNotificationRepository extends CrudRepository<YouTubeNotification, String> {
-
 }

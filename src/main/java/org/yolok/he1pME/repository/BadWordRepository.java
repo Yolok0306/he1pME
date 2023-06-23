@@ -6,5 +6,4 @@ import org.yolok.he1pME.entity.BadWord;
 
 @EnableScan
 public interface BadWordRepository extends CrudRepository<BadWord, String> {
-
 }
