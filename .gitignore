@@ -29,7 +29,6 @@
 *.zip
 *.tar.gz
 *.rar
-*.properties
 
 # Target Folder #
 target/
