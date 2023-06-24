@@ -19,11 +19,10 @@ import java.util.Optional;
 public class CallActionService {
     @Autowired
     private CallActionRepository callActionRepository;
-
     @Autowired
     private MemberDataRepository memberDataRepository;
 
-    protected void execute(Message message, String instruction) {
+    public void execute(Message message, String instruction) {
         String guildId = message.getGuild().getId();
         Optional<CallAction> callActionOpt = callActionRepository.findByActionAndGuildId(instruction, guildId);
         if (callActionOpt.isEmpty()) {
