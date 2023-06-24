@@ -18,7 +18,6 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Configuration
@@ -67,11 +66,11 @@ public class CommonUtil {
             return true;
         }
 
-        List<Integer> sourcePositionList = source.getRoles().stream()
+        List<Integer> sourcePositionList = source.getRoles().parallelStream()
                 .map(Role::getPosition)
                 .sorted(Comparator.comparing(Integer::intValue).reversed())
                 .toList();
-        List<Integer> targetPositionList = target.getRoles().stream()
+        List<Integer> targetPositionList = target.getRoles().parallelStream()
                 .map(Role::getPosition)
                 .sorted(Comparator.comparing(Integer::intValue).reversed())
                 .toList();
@@ -83,6 +82,6 @@ public class CommonUtil {
             return true;
         }
 
-        return member.getRoles().stream().noneMatch(eachRole -> eachRole.getPosition() > role.getPosition());
+        return member.getRoles().parallelStream().noneMatch(eachRole -> eachRole.getPosition() > role.getPosition());
     }
 }
