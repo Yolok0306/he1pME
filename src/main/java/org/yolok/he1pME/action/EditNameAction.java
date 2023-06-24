@@ -21,7 +21,7 @@ public class EditNameAction implements Action {
     @Override
     public void execute(Message message) {
         Member member = Objects.requireNonNull(message.getMember());
-        Optional<Member> mentionMemberOpt = message.getMentions().getMembers().stream().findFirst();
+        Optional<Member> mentionMemberOpt = message.getMentions().getMembers().parallelStream().findFirst();
         Member botMember = member.getGuild().getMember(member.getJDA().getSelfUser());
         if (mentionMemberOpt.isEmpty() || botMember == null) {
             return;

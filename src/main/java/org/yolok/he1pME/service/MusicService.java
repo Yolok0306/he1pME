@@ -151,8 +151,7 @@ public class MusicService {
             desc = "播放清單為空";
         } else {
             title = String.format("播放清單有%d首歌 :", queue.size());
-            desc = queue.stream()
-                    .filter(Objects::nonNull)
+            desc = queue.parallelStream()
                     .map(audioTrack -> CommonUtil.descStartWithDiamondFormat("◆ " + audioTrack.getInfo().title))
                     .collect(Collectors.joining(StringUtils.LF));
         }
@@ -196,7 +195,7 @@ public class MusicService {
     }
 
     private boolean isChannelContainBot(VoiceChannel voiceChannel) {
-        return voiceChannel.getMembers().stream()
+        return voiceChannel.getMembers().parallelStream()
                 .map(ISnowflake::getId)
                 .anyMatch(id -> StringUtils.equals(id, voiceChannel.getJDA().getSelfUser().getId()));
     }

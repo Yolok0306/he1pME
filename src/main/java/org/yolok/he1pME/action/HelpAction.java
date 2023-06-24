@@ -47,6 +47,7 @@ public class HelpAction implements Action {
 
     private void addActionEmbed(List<MessageEmbed> messageEmbedList, Member member) {
         Set<Class<? extends Action>> actionSet = Arrays.stream(applicationContext.getBeanNamesForType(Action.class))
+                .parallel()
                 .map(beanName -> applicationContext.getBean(beanName, Action.class))
                 .map(Action::getClass)
                 .filter(action -> action.isAnnotationPresent(Help.class))
@@ -56,11 +57,12 @@ public class HelpAction implements Action {
         }
 
         EmbedBuilder embedBuilder = new EmbedBuilder().setTitle("一般指令");
-        actionSet.stream()
+        actionSet.parallelStream()
                 .sorted(Comparator.comparing(action -> {
                     try {
                         return action.getDeclaredConstructor().newInstance().getInstruction();
                     } catch (Exception exception) {
+                        log.error(exception.getMessage());
                         exception.printStackTrace();
                     }
                     return StringUtils.EMPTY;
@@ -73,6 +75,7 @@ public class HelpAction implements Action {
 
     private void addMusicEmbed(List<MessageEmbed> messageEmbedList, Member member) {
         Set<Method> musicMethodSet = Arrays.stream(MusicService.class.getDeclaredMethods())
+                .parallel()
                 .filter(method -> method.isAnnotationPresent(Help.class))
                 .filter(method -> Modifier.isPublic(method.getModifiers()))
                 .collect(Collectors.toSet());
@@ -81,7 +84,7 @@ public class HelpAction implements Action {
         }
 
         EmbedBuilder embedBuilder = new EmbedBuilder().setTitle("音樂指令");
-        musicMethodSet.stream()
+        musicMethodSet.parallelStream()
                 .sorted(Comparator.comparing(Method::getName))
                 .map(musicMethod -> musicMethod.getAnnotation(Help.class))
                 .forEach(help -> embedBuilder.addField(CommonUtil.SIGN + help.example(), help.description(), Boolean.FALSE));
@@ -92,13 +95,12 @@ public class HelpAction implements Action {
     private void addCallActionEmbed(List<MessageEmbed> messageEmbedList, Member member) {
         String guildId = member.getGuild().getId();
         Iterable<CallAction> callActionIterable = callActionRepository.findByGuildId(guildId);
-        Map<String, String> callActionMap = new HashMap<>();
-        if (callActionIterable.iterator().hasNext()) {
-            callActionIterable.forEach(callAction -> callActionMap.put(callAction.getAction(), callAction.getDescription()));
-        } else {
-            log.error("Unable to get data for guild_id = {} in CallAction table!", guildId);
+        if (!callActionIterable.iterator().hasNext()) {
             return;
         }
+
+        Map<String, String> callActionMap = new HashMap<>();
+        callActionIterable.forEach(callAction -> callActionMap.put(callAction.getAction(), callAction.getDescription()));
 
         EmbedBuilder embedBuilder = new EmbedBuilder().setTitle("客製化指令");
         callActionMap.entrySet().stream()

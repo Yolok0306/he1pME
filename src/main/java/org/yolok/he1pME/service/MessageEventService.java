@@ -34,12 +34,14 @@ public class MessageEventService {
     @PostConstruct
     public void init() {
         musicActionSet = Arrays.stream(MusicService.class.getDeclaredMethods())
+                .parallel()
                 .filter(method -> method.isAnnotationPresent(Help.class))
                 .filter(method -> Modifier.isPublic(method.getModifiers()))
                 .map(Method::getName)
                 .collect(Collectors.toSet());
 
         actionMap = Arrays.stream(applicationContext.getBeanNamesForType(Action.class))
+                .parallel()
                 .map(beanName -> applicationContext.getBean(beanName, Action.class))
                 .filter(action -> action.getClass().isAnnotationPresent(Help.class))
                 .collect(Collectors.toMap(Action::getInstruction, Action::getClass,
