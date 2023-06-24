@@ -18,16 +18,15 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @Service
 public class GoodBoyService {
+    private Map<String, Set<String>> badWordMap;
     @Autowired
     private BadWordRepository badWordRepository;
-    private Map<String, Set<String>> badWordMap;
 
     @PostConstruct
     public void initBadWordMap(){
         badWordMap = new HashMap<>();
         Iterable<BadWord> badWordIterable = badWordRepository.findAll();
         if (!badWordIterable.iterator().hasNext()) {
-            log.error("Could not get any data in BadWord Table!");
             return;
         }
 
@@ -39,7 +38,7 @@ public class GoodBoyService {
         });
     }
 
-    protected void checkContent(Message message) {
+    public void checkContent(Message message) {
         if (!badWordMap.containsKey(message.getGuild().getId())) {
             return;
         }

@@ -22,14 +22,14 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class MessageEventService {
+    private Set<String> musicActionSet;
+    private Map<String, Class<? extends Action>> actionMap;
     @Autowired
     private GoodBoyService goodBoyService;
     @Autowired
     private CallActionService callActionService;
     @Autowired
     private ApplicationContext applicationContext;
-    private Set<String> musicActionSet;
-    private Map<String, Class<? extends Action>> actionMap;
 
     @PostConstruct
     public void init() {

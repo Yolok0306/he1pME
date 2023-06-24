@@ -6,22 +6,19 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.http.client.utils.URIBuilder;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 import org.yolok.he1pME.entity.TwitchNotification;
 import org.yolok.he1pME.repository.TwitchNotificationRepository;
 import org.yolok.he1pME.util.CommonUtil;
 
 import java.awt.*;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -42,14 +39,16 @@ public class TwitchService implements Runnable {
     private String twitchLogoUri;
     private String twitchApiTokenType;
     private String twitchApiAccessToken;
-    @Autowired
-    private TwitchNotificationRepository twitchNotificationRepository;
     private Map<String, String> cache;
     private Map<String, Set<String>> notificationMap;
+    private final RestTemplate restTemplate = new RestTemplate();
+    @Autowired
+    private TwitchNotificationRepository twitchNotificationRepository;
 
     @PostConstruct
     public void init() {
         initNotificationMap();
+        getNewAccessToken();
         initCache(notificationMap.keySet());
     }
 
@@ -57,7 +56,6 @@ public class TwitchService implements Runnable {
         notificationMap = new HashMap<>();
         Iterable<TwitchNotification> twitchNotificationIterable = twitchNotificationRepository.findAll();
         if (!twitchNotificationIterable.iterator().hasNext()) {
-            log.error("Could not get any data in TwitchNotification Table!");
             return;
         }
 
@@ -67,14 +65,6 @@ public class TwitchService implements Runnable {
             Set<String> value = notificationMap.get(key);
             value.add(twitchNotification.getMessageChannelId());
         });
-
-        HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).build();
-        try {
-            refreshAccessToken(httpClient);
-        } catch (URISyntaxException | InterruptedException | IOException e) {
-            log.error("RuntimeException: " + e.getMessage());
-            throw new RuntimeException(e);
-        }
     }
 
     public void adjustCache() {
@@ -148,45 +138,39 @@ public class TwitchService implements Runnable {
     }
 
     private String callStreamApi(Set<String> userLoginSet) {
-        HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).build();
-        try {
-            URIBuilder uriBuilder = new URIBuilder(twitchApiBaseUri + "/streams");
-            userLoginSet.parallelStream().forEach(key -> uriBuilder.addParameter("user_login", key));
-            HttpRequest httpRequest = HttpRequest.newBuilder()
-                    .GET()
-                    .uri(uriBuilder.build())
-                    .header("Client-Id", twitchApiClientId)
-                    .header("Authorization", twitchApiTokenType + StringUtils.SPACE + twitchApiAccessToken)
-                    .build();
-            HttpResponse<String> httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(twitchApiBaseUri + "/streams");
+        userLoginSet.parallelStream().forEach(key -> uriBuilder.queryParam("user_login", key));
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Client-Id", twitchApiClientId);
+        headers.set("Authorization", twitchApiTokenType + StringUtils.SPACE + twitchApiAccessToken);
+        HttpEntity<?> entity = new HttpEntity<>(headers);
+        ResponseEntity<String> responseEntity = restTemplate.exchange(
+                uriBuilder.build().toUri(), HttpMethod.GET, entity, String.class);
 
-            if (httpResponse.statusCode() == 401) {
-                refreshAccessToken(httpClient);
-                return callStreamApi(userLoginSet);
-            }
-
-            log.info(httpResponse.statusCode() + StringUtils.SPACE + httpResponse.body());
-            return httpResponse.body();
-        } catch (URISyntaxException | IOException | InterruptedException e) {
-            e.printStackTrace();
+        if (responseEntity.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+            getNewAccessToken();
+            return callStreamApi(userLoginSet);
         }
-        return StringUtils.EMPTY;
+
+        log.info(responseEntity.getStatusCode() + StringUtils.SPACE + responseEntity.getBody());
+        return responseEntity.getBody();
     }
 
-    private void refreshAccessToken(HttpClient httpClient) throws URISyntaxException, IOException, InterruptedException {
-        URIBuilder uriBuilder = new URIBuilder("https://id.twitch.tv/oauth2/token");
-        uriBuilder.addParameter("client_id", twitchApiClientId);
-        uriBuilder.addParameter("client_secret", twitchApiClientSecret);
-        uriBuilder.addParameter("grant_type", "client_credentials");
-        HttpRequest httpRequest = HttpRequest.newBuilder()
-                .POST(HttpRequest.BodyPublishers.noBody())
-                .uri(uriBuilder.build())
-                .build();
-        HttpResponse<String> httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
-        JSONObject response = new JSONObject(httpResponse.body());
+    private void getNewAccessToken() {
+        String tokenEndpoint = "https://id.twitch.tv/oauth2/token";
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(tokenEndpoint)
+                .queryParam("client_id", twitchApiClientId)
+                .queryParam("client_secret", twitchApiClientSecret)
+                .queryParam("grant_type", "client_credentials");
+        HttpHeaders headers = new HttpHeaders();
+        HttpEntity<?> entity = new HttpEntity<>(headers);
+        ResponseEntity<String> responseEntity = restTemplate.exchange(
+                uriBuilder.build().toUri(), HttpMethod.POST, entity, String.class);
+        JSONObject response = new JSONObject(responseEntity.getBody());
         twitchApiAccessToken = response.getString("access_token");
         twitchApiTokenType = StringUtils.capitalize(response.getString("token_type"));
     }
+
 
     private void notification(Map<?, ?> data) {
         String userLogin = data.get("user_login").toString();

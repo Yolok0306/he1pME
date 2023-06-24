@@ -70,11 +70,11 @@ public class CommonUtil {
         List<Integer> sourcePositionList = source.getRoles().stream()
                 .map(Role::getPosition)
                 .sorted(Comparator.comparing(Integer::intValue).reversed())
-                .collect(Collectors.toList());
+                .toList();
         List<Integer> targetPositionList = target.getRoles().stream()
                 .map(Role::getPosition)
                 .sorted(Comparator.comparing(Integer::intValue).reversed())
-                .collect(Collectors.toList());
+                .toList();
         return sourcePositionList.get(0) <= targetPositionList.get(0) || target.getPermissions().contains(Permission.ADMINISTRATOR);
     }
 
