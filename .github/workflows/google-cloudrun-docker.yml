@@ -22,7 +22,8 @@ jobs:
         uses: actions/setup-java@v3
         with:
           java-version: '17'
-          distribution: 'oracle'
+          distribution: 'temurin'
+          cache: 'maven'
           
       - name: Build Jar with Maven
         run: mvn -B package -Ddiscord.bot.token=${{ secrets.DISCORD_BOT_TOKEN }} -Damazon.aws.region=${{ secrets.AMAZON_AWS_REGION }} -Damazon.aws.accesskey=${{ secrets.AMAZON_AWS_ACCESSKEY }} -Damazon.aws.secretkey=${{ secrets.AMAZON_AWS_SECRETKEY }} -Dtwitch.api.client.id=${{ secrets.TWITCH_API_CLIENT_ID }} -Dtwitch.api.client.secret=${{ secrets.TWITCH_API_CLIENT_SECRET }} -Dyoutube.api.key=${{ secrets.YOUTUBE_API_KEY }}
