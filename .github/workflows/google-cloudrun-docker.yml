@@ -46,7 +46,7 @@ jobs:
       - name: Copy Docker image to GCE instance
         uses: appleboy/scp-action@v0.1.4
         with:
-          host: ${{ secrets.INSTANCE_NAME }}.c.${{ secrets.PROJECT_ID }}.internal
+          host: ${{ secrets.GCE_INSTANCE_NAME }}.c.${{ secrets.GCE_PROJECT_ID }}.internal
           username: ${{ secrets.GCE_USERNAME }}
           private-key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: ${GITHUB_WORKSPACE}/${env.IMAGE_NAME}:${{ github.sha }}
@@ -55,7 +55,7 @@ jobs:
       - name: SSH into GCE instance and start container
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ secrets.INSTANCE_NAME }}.c.${{ secrets.PROJECT_ID }}.internal
+          host: ${{ secrets.GCE_INSTANCE_NAME }}.c.${{ secrets.GCE_PROJECT_ID }}.internal
           username: ${{ secrets.GCE_USERNAME }}
           private-key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
