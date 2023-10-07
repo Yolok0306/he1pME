@@ -17,12 +17,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-        
-      - name: Setup JDK and Maven
-        uses: s4u/setup-maven-action@v1.10.0
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3.13.0
         with:
           java-version: 17
-          maven-version: 3.6.3
+          distribution: oracle
+
+      - name: Set up Maven
+        uses: stCarolas/setup-maven@v4.5
+        with:
+          maven-version: 3.8.2
 
       - name: Build Jar file
         run: |
@@ -69,7 +74,8 @@ jobs:
           username: ${{ secrets.GCE_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            sudo docker stop ${{ env.CONTAINER_NAME }}
-            sudo docker rm ${{ env.CONTAINER_NAME }}
-            sudo docker images -a | grep '${{ env.IMAGE_NAME }}' | awk '{print $3}' | xargs docker rmi
-            sudo docker run -d --name ${{ env.CONTAINER_NAME }} ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            sudo su
+            docker stop ${{ env.CONTAINER_NAME }}
+            docker rm ${{ env.CONTAINER_NAME }}
+            docker images -a | grep '${{ env.IMAGE_NAME }}' | awk '{print $3}' | xargs docker rmi
+            docker run -d --name ${{ env.CONTAINER_NAME }} ${{ env.IMAGE_NAME }}:${{ github.sha }}
