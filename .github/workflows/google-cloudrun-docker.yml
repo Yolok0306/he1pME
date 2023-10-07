@@ -18,19 +18,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         
-      - name: Install Java
-        run: |
-          sudo apt install openjdk-17-jdk openjdk-17-jre
-          java --version
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
       - name: Install Maven
-        run: |
-          sudo apt-get install -y maven
-          mvn -v
+        run: sudo apt-get install -y maven
           
       - name: Build Jar file
         run: |
-          mvn clean install -U
+          java --version
+          mvn -v
           mvn -B package -Ddiscord.bot.token=${{ secrets.DISCORD_BOT_TOKEN }} -Damazon.aws.region=${{ secrets.AMAZON_AWS_REGION }} -Damazon.aws.accesskey=${{ secrets.AMAZON_AWS_ACCESSKEY }} -Damazon.aws.secretkey=${{ secrets.AMAZON_AWS_SECRETKEY }} -Dtwitch.api.client.id=${{ secrets.TWITCH_API_CLIENT_ID }} -Dtwitch.api.client.secret=${{ secrets.TWITCH_API_CLIENT_SECRET }} -Dyoutube.api.key=${{ secrets.YOUTUBE_API_KEY }}
         
       - name: Set up Docker Buildx
