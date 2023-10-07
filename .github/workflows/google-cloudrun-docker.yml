@@ -1,4 +1,4 @@
-name: Deploy to Cloud Run
+name: Build and Deploy to GCP
 
 on:
   push:
@@ -35,6 +35,14 @@ jobs:
         with:
           context: .
           load: true
+          build-args: |
+            DISCORD_BOT_TOKEN=${{ secrets.DISCORD_BOT_TOKEN }}
+            AMAZON_AWS_REGION=${{ secrets.AMAZON_AWS_REGION }}
+            AMAZON_AWS_ACCESSKEY=${{ secrets.AMAZON_AWS_ACCESSKEY }}
+            AMAZON_AWS_SECRETKEY=${{ secrets.AMAZON_AWS_SECRETKEY }}
+            TWITCH_API_CLIENT_ID=${{ secrets.TWITCH_API_CLIENT_ID }}
+            TWITCH_API_CLIENT_SECRET=${{ secrets.TWITCH_API_CLIENT_SECRET }}
+            YOUTUBE_API_KEY=${{ secrets.YOUTUBE_API_KEY }}
           tags: ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
       - name: Google Auth
@@ -50,8 +58,6 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
       - name: SSH into GCE instance and start container
         uses: appleboy/ssh-action@v1.0.0
@@ -60,7 +66,7 @@ jobs:
           username: ${{ secrets.GCE_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            sudo docker stop ${{ env.CONTAINER_NAME }} || true
-            sudo docker rm ${{ env.CONTAINER_NAME }} || true
-            sudo docker images -a | grep '${{ env.IMAGE_NAME }}' | awk '{print $3}' | xargs docker rmi || true
+            sudo docker stop ${{ env.CONTAINER_NAME }}
+            sudo docker rm ${{ env.CONTAINER_NAME }}
+            sudo docker images -a | grep '${{ env.IMAGE_NAME }}' | awk '{print $3}' | xargs docker rmi
             sudo docker run -d --name ${{ env.CONTAINER_NAME }} ${{ env.IMAGE_NAME }}:${{ github.sha }}
