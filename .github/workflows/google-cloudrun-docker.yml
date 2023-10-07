@@ -6,8 +6,6 @@ on:
       - main
 
 env:
-  PROJECT_ID: he1pme
-  INSTANCE_NAME: he1pme-instance
   IMAGE_NAME: he1pme
   CONTAINER_NAME: he1pme
 
@@ -45,31 +43,24 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Set up Google Cloud SDK
-        uses: google-github-actions/setup-gcloud@v0.2.1
-        with:
-          service_account_key: ${{ secrets.IAM_SECRET_KEY }}
-          project_id: ${{ env.PROJECT_ID }}
-          export_default_credentials: true
-
       - name: Copy Docker image to GCE instance
         uses: appleboy/scp-action@v0.1.4
         with:
-          host: ${{ env.INSTANCE_NAME }}.c.${{ env.PROJECT_ID }}.internal
-          username: ${{ secrets.IAM_USERNAME }}
-          private-key: ${{ secrets.IAM_SECRET_KEY }}
+          host: ${{ secrets.INSTANCE_NAME }}.c.${{ secrets.PROJECT_ID }}.internal
+          username: ${{ secrets.GCE_USERNAME }}
+          private-key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: ${GITHUB_WORKSPACE}/${env.IMAGE_NAME}:${{ github.sha }}
-          target: cd /home/${{ secrets.IAM_USERNAME }}/${{ env.CONTAINER_NAME }}/${env.IMAGE_NAME}:${{ github.sha }}
+          target: cd /home/${{ secrets.GCE_USERNAME }}/${{ env.CONTAINER_NAME }}/${env.IMAGE_NAME}:${{ github.sha }}
 
       - name: SSH into GCE instance and start container
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ env.INSTANCE_NAME }}.c.${{ env.PROJECT_ID }}.internal
-          username: ${{ secrets.IAM_USERNAME }}
-          private-key: ${{ secrets.IAM_SECRET_KEY }}
+          host: ${{ secrets.INSTANCE_NAME }}.c.${{ secrets.PROJECT_ID }}.internal
+          username: ${{ secrets.GCE_USERNAME }}
+          private-key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/${{ secrets.IAM_USERNAME }}/${{ env.CONTAINER_NAME }}/
             sudo docker stop ${{ env.CONTAINER_NAME }} || true
             sudo docker rm ${{ env.CONTAINER_NAME }} || true
+            cd /home/${{ secrets.GCE_USERNAME }}/${{ env.CONTAINER_NAME }}/
             sudo docker run -d --name ${{ env.CONTAINER_NAME }} ${env.IMAGE_NAME}:${{ github.sha }}
             
