@@ -35,32 +35,26 @@ jobs:
         with:
           context: .
           load: true
-          tags: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          tags: ${{ secrets.GCP_REGISTRY_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Copy Docker image to GCE instance
-        uses: appleboy/scp-action@v0.1.4
+      - name: Google Auth
+        uses: 'google-github-actions/auth@v1'
         with:
-          host: ${{ secrets.GCE_INSTANCE_NAME }}.c.${{ secrets.GCE_PROJECT_ID }}.internal
-          username: ${{ secrets.GCE_USERNAME }}
-          private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: ${GITHUB_WORKSPACE}/${env.IMAGE_NAME}:${{ github.sha }}
-          target: cd /home/${{ secrets.GCE_USERNAME }}/${{ env.CONTAINER_NAME }}/${env.IMAGE_NAME}:${{ github.sha }}
+          credentials_json: ${{ secrets.GCP_IAM_SECRET_KEY }}
+
+      - name: Push to Google Artifact Registry
+        run: |-
+          gcloud auth configure-docker ${{ secrets.GCP_REGISTRY_REGION }}-docker.pkg.dev
+          docker push ${{ secrets.GCP_REGISTRY_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
       - name: SSH into GCE instance and start container
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ secrets.GCE_INSTANCE_NAME }}.c.${{ secrets.GCE_PROJECT_ID }}.internal
+          host: ${{ secrets.GCE_HOST }}
           username: ${{ secrets.GCE_USERNAME }}
           private-key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             sudo docker stop ${{ env.CONTAINER_NAME }} || true
             sudo docker rm ${{ env.CONTAINER_NAME }} || true
-            cd /home/${{ secrets.GCE_USERNAME }}/${{ env.CONTAINER_NAME }}/
-            sudo docker run -d --name ${{ env.CONTAINER_NAME }} ${env.IMAGE_NAME}:${{ github.sha }}
+            sudo docker run -d --name ${{ env.CONTAINER_NAME }} ${{ secrets.GCP_REGISTRY_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
             
