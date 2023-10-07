@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class TwitchService implements Runnable {
+    private final RestTemplate restTemplate = new RestTemplate();
     @Value("${twitch.api.client.id}")
     private String twitchApiClientId;
     @Value("${twitch.api.client.secret}")
@@ -41,7 +42,6 @@ public class TwitchService implements Runnable {
     private String twitchApiAccessToken;
     private Map<String, String> cache;
     private Map<String, Set<String>> notificationMap;
-    private final RestTemplate restTemplate = new RestTemplate();
     @Autowired
     private TwitchNotificationRepository twitchNotificationRepository;
 

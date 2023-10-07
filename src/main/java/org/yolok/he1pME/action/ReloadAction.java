@@ -26,6 +26,7 @@ public class ReloadAction implements Action {
     private TwitchService twitchService;
     @Autowired
     private YouTubeService youTubeService;
+
     @Override
     public String getInstruction() {
         return "reload";

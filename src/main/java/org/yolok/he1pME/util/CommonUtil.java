@@ -27,16 +27,6 @@ public class CommonUtil {
     public static long FREQUENCY;
     public static Color HE1PME_COLOR = new Color(255, 192, 203);
 
-    @Value("${sign}")
-    private void setSign(String sign) {
-        SIGN = sign;
-    }
-
-    @Value("${frequency}")
-    private void setFrequency(long frequency) {
-        FREQUENCY = frequency;
-    }
-
     public static void replyByHe1pMETemplate(MessageChannel messageChannel, Member member,
                                              String title, String desc, String thumb) {
         EmbedBuilder embedBuilder = new EmbedBuilder().setTitle(title).setDescription(desc).setColor(HE1PME_COLOR)
@@ -83,5 +73,15 @@ public class CommonUtil {
         }
 
         return member.getRoles().parallelStream().noneMatch(eachRole -> eachRole.getPosition() > role.getPosition());
+    }
+
+    @Value("${sign}")
+    private void setSign(String sign) {
+        SIGN = sign;
+    }
+
+    @Value("${frequency}")
+    private void setFrequency(long frequency) {
+        FREQUENCY = frequency;
     }
 }

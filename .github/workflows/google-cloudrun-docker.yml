@@ -7,18 +7,15 @@ on:
 
 env:
   PROJECT_ID: he1pme
-  SERVICE_NAME: he1pme-service
-  SERVICE_REGION: us-west1
-  REGISTRY_NAME: he1pme-registry
-  REGISTRY_REGION: us-west1
+  INSTANCE_NAME: he1pme-instance
   IMAGE_NAME: he1pme
+  CONTAINER_NAME: he1pme
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -40,25 +37,39 @@ jobs:
         with:
           context: .
           load: true
-          tags: ${{ env.REGISTRY_REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-        
-      - name: Google Auth
-        uses: 'google-github-actions/auth@v1'
-        with:
-          credentials_json: ${{ secrets.GCP_IAM_KEY }}
-        
-      - name: Push to Google Artifact Registry
-        run: |-
-          gcloud auth configure-docker ${{ env.REGISTRY_REGION }}-docker.pkg.dev
-          docker push ${{ env.REGISTRY_REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-      
-      - name: Deploy to Google Cloud Run
-        id: deploy
-        uses: 'google-github-actions/deploy-cloudrun@v1'
-        with:
-          region: ${{ env.SERVICE_REGION }}
-          service: ${{ env.SERVICE_NAME }}
-          image: ${{ env.REGISTRY_REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          tags: ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
-      - name: Use output
-        run: curl ${{ steps.deploy.outputs.url }}
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v0.2.1
+        with:
+          service_account_key: ${{ secrets.IAM_SECRET_KEY }}
+          project_id: ${{ env.PROJECT_ID }}
+          export_default_credentials: true
+
+      - name: Copy Docker image to GCE instance
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ env.INSTANCE_NAME }}.c.${{ env.PROJECT_ID }}.internal
+          username: ${{ secrets.IAM_USERNAME }}
+          private-key: ${{ secrets.IAM_SECRET_KEY }}
+          source: ${GITHUB_WORKSPACE}/${env.IMAGE_NAME}:${{ github.sha }}
+          target: cd /home/${{ secrets.IAM_USERNAME }}/${{ env.CONTAINER_NAME }}/${env.IMAGE_NAME}:${{ github.sha }}
+
+      - name: SSH into GCE instance and start container
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ env.INSTANCE_NAME }}.c.${{ env.PROJECT_ID }}.internal
+          username: ${{ secrets.IAM_USERNAME }}
+          private-key: ${{ secrets.IAM_SECRET_KEY }}
+          script: |
+            cd /home/${{ secrets.IAM_USERNAME }}/${{ env.CONTAINER_NAME }}/
+            sudo docker stop ${{ env.CONTAINER_NAME }} || true
+            sudo docker rm ${{ env.CONTAINER_NAME }} || true
+            sudo docker run -d --name ${{ env.CONTAINER_NAME }} ${env.IMAGE_NAME}:${{ github.sha }}
+            
