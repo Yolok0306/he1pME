@@ -23,7 +23,7 @@ public class GoodBoyService {
     private BadWordRepository badWordRepository;
 
     @PostConstruct
-    public void initBadWordMap(){
+    public void initBadWordMap() {
         badWordMap = new HashMap<>();
         Iterable<BadWord> badWordIterable = badWordRepository.findAll();
         if (!badWordIterable.iterator().hasNext()) {

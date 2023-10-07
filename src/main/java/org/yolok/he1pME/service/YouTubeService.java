@@ -30,6 +30,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class YouTubeService implements Runnable {
+    private final RestTemplate restTemplate = new RestTemplate();
     @Value("${youtube.api.key}")
     private String youtubeApiKey;
     @Value("${youtube.api.base.uri}")
@@ -38,7 +39,6 @@ public class YouTubeService implements Runnable {
     private String youtubeLogoUri;
     private Map<String, String> cache;
     private Map<String, Set<String>> notificationMap;
-    private final RestTemplate restTemplate = new RestTemplate();
     @Autowired
     private YouTubeNotificationRepository youTubeNotificationRepository;
 

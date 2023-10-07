@@ -1,10 +1,10 @@
 package org.yolok.he1pME.action;
 
-import org.springframework.stereotype.Component;
-import org.yolok.he1pME.annotation.Help;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.Role;
+import org.springframework.stereotype.Component;
+import org.yolok.he1pME.annotation.Help;
 import org.yolok.he1pME.util.CommonUtil;
 
 import java.util.Objects;
