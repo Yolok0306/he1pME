@@ -6,7 +6,7 @@ on:
       - main
 
 env:
-  IMAGE_NAME: he1pme
+  IMAGE_NAME: ${{ secrets.GCP_REGISTRY_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
   CONTAINER_NAME: he1pme
 
 jobs:
@@ -35,7 +35,7 @@ jobs:
         with:
           context: .
           load: true
-          tags: ${{ secrets.GCP_REGISTRY_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          tags: ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
       - name: Google Auth
         uses: 'google-github-actions/auth@v1'
@@ -45,16 +45,22 @@ jobs:
       - name: Push to Google Artifact Registry
         run: |-
           gcloud auth configure-docker ${{ secrets.GCP_REGISTRY_REGION }}-docker.pkg.dev
-          docker push ${{ secrets.GCP_REGISTRY_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
       - name: SSH into GCE instance and start container
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.GCE_HOST }}
           username: ${{ secrets.GCE_USERNAME }}
-          private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             sudo docker stop ${{ env.CONTAINER_NAME }} || true
             sudo docker rm ${{ env.CONTAINER_NAME }} || true
-            sudo docker run -d --name ${{ env.CONTAINER_NAME }} ${{ secrets.GCP_REGISTRY_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-            
+            sudo docker images -a | grep '${{ env.IMAGE_NAME }}' | awk '{print $3}' | xargs docker rmi || true
+            sudo docker run -d --name ${{ env.CONTAINER_NAME }} ${{ env.IMAGE_NAME }}:${{ github.sha }}
