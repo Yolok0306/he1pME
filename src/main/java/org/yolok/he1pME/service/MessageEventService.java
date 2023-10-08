@@ -16,7 +16,10 @@ import org.yolok.he1pME.util.CommonUtil;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -40,12 +43,11 @@ public class MessageEventService {
                 .map(Method::getName)
                 .collect(Collectors.toSet());
 
-        actionMap = Arrays.stream(applicationContext.getBeanNamesForType(Action.class))
-                .parallel()
-                .map(beanName -> applicationContext.getBean(beanName, Action.class))
-                .filter(action -> action.getClass().isAnnotationPresent(Help.class))
-                .collect(Collectors.toMap(Action::getInstruction, Action::getClass,
-                        (existing, replacement) -> existing, HashMap::new));
+        actionMap = applicationContext.getBeansOfType(Action.class).entrySet()
+                .parallelStream()
+                .filter(entry -> entry.getValue().getClass().isAnnotationPresent(Help.class))
+                .map(Map.Entry::getValue)
+                .collect(Collectors.toMap(Action::getInstruction, Action::getClass));
     }
 
     public void execute(Message message) {
@@ -81,16 +83,16 @@ public class MessageEventService {
             Object bean = applicationContext.getBean(MusicService.class);
             MethodUtils.invokeMethod(bean, instruction, message);
         } catch (InvocationTargetException | IllegalAccessException | NoSuchMethodException exception) {
-            exception.printStackTrace();
+            log.error("execute music action error", exception);
         }
     }
 
-    private void executeAction(Message message, Class<? extends Action> actionClass) {
+    private void executeAction(Message message, Class<? extends Action> clazz) {
         try {
-            Object bean = applicationContext.getBean(actionClass);
+            Object bean = applicationContext.getBean(clazz);
             MethodUtils.invokeMethod(bean, "execute", message);
         } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException exception) {
-            exception.printStackTrace();
+            log.error("execute custom action error", exception);
         }
     }
 }

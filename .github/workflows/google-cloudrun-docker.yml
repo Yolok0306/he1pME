@@ -1,4 +1,4 @@
-name: Build and Deploy to GCP
+name: Deploy He1pME
 
 on:
   push:
@@ -10,7 +10,7 @@ env:
   CONTAINER_NAME: he1pme
 
 jobs:
-  build:
+  Build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -18,24 +18,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Set up JDK
+      - name: Set Up Java
         uses: actions/setup-java@v3.13.0
         with:
           java-version: 17
           distribution: oracle
 
-      - name: Set up Maven
+      - name: Set Up Maven
         uses: stCarolas/setup-maven@v4.5
         with:
           maven-version: 3.8.2
 
-      - name: Build Jar file
-        run: |
-          java --version
-          mvn -v
-          mvn -B package -Ddiscord.bot.token=${{ secrets.DISCORD_BOT_TOKEN }} -Damazon.aws.region=${{ secrets.AMAZON_AWS_REGION }} -Damazon.aws.accesskey=${{ secrets.AMAZON_AWS_ACCESSKEY }} -Damazon.aws.secretkey=${{ secrets.AMAZON_AWS_SECRETKEY }} -Dtwitch.api.client.id=${{ secrets.TWITCH_API_CLIENT_ID }} -Dtwitch.api.client.secret=${{ secrets.TWITCH_API_CLIENT_SECRET }} -Dyoutube.api.key=${{ secrets.YOUTUBE_API_KEY }}
-        
-      - name: Set up Docker Buildx
+      - name: Build Jar File
+        run: mvn -B package -Ddiscord.bot.token=${{ secrets.DISCORD_BOT_TOKEN }} -Damazon.aws.region=${{ secrets.AMAZON_AWS_REGION }} -Damazon.aws.accesskey=${{ secrets.AMAZON_AWS_ACCESSKEY }} -Damazon.aws.secretkey=${{ secrets.AMAZON_AWS_SECRETKEY }} -Dtwitch.api.client.id=${{ secrets.TWITCH_API_CLIENT_ID }} -Dtwitch.api.client.secret=${{ secrets.TWITCH_API_CLIENT_SECRET }} -Dyoutube.api.key=${{ secrets.YOUTUBE_API_KEY }}
+
+      - name: Set Up Docker
         uses: docker/setup-buildx-action@v2
         
       - name: Build Docker Image
@@ -53,29 +50,34 @@ jobs:
             YOUTUBE_API_KEY=${{ secrets.YOUTUBE_API_KEY }}
           tags: ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
-      - name: Google Auth
+      - name: Google Cloud Platform Auth
         uses: 'google-github-actions/auth@v1'
         with:
           credentials_json: ${{ secrets.GCP_IAM_SECRET_KEY }}
 
-      - name: Push to Google Artifact Registry
-        run: |-
+      - name: Push New Docker Image
+        run: |
           gcloud auth configure-docker ${{ secrets.GCP_REGISTRY_REGION }}-docker.pkg.dev
+          OLD_IMAGES=$(gcloud container images list-tags ${{ env.IMAGE_NAME }} --format="get(digest)" --sort-by=timestamp)
+          if [ -n "$OLD_IMAGES" ]; then
+            for IMAGE in $OLD_IMAGES; do
+              gcloud container images delete -q ${{ env.IMAGE_NAME }}@$IMAGE --force-delete-tags
+            done
+          fi
           docker push ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
-  deploy:
-    needs: build
+  Deploy:
+    needs: Build
     runs-on: ubuntu-latest
     steps:
-      - name: SSH into GCE instance and start container
+      - name: Start New Docker Container
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.GCE_HOST }}
           username: ${{ secrets.GCE_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            sudo su
             docker stop ${{ env.CONTAINER_NAME }}
             docker rm ${{ env.CONTAINER_NAME }}
             docker images -a | grep '${{ env.IMAGE_NAME }}' | awk '{print $3}' | xargs docker rmi
-            docker run -d --name ${{ env.CONTAINER_NAME }} ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            sudo docker run -d --name ${{ env.CONTAINER_NAME }} ${{ env.IMAGE_NAME }}:${{ github.sha }}
