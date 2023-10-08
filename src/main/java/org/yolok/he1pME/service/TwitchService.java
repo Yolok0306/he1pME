@@ -60,14 +60,12 @@ public class TwitchService {
 
     public void initNotificationMap() {
         List<TwitchNotification> twitchNotificationList = twitchNotificationRepository.findAll();
-        if (CollectionUtils.isEmpty(twitchNotificationList)) {
-            return;
-        }
-
-        notificationMap = twitchNotificationList.parallelStream().collect(Collectors.groupingBy(
-                TwitchNotification::getTwitchChannelId,
-                Collectors.mapping(TwitchNotification::getMessageChannelId, Collectors.toSet())
-        ));
+        notificationMap = CollectionUtils.isEmpty(twitchNotificationList) ?
+                Collections.emptyMap() :
+                twitchNotificationList.parallelStream().collect(Collectors.groupingBy(
+                        TwitchNotification::getTwitchChannelId,
+                        Collectors.mapping(TwitchNotification::getMessageChannelId, Collectors.toSet())
+                ));
     }
 
     public void adjustCache() {
