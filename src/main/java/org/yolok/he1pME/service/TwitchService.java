@@ -1,5 +1,6 @@
 package org.yolok.he1pME.service;
 
+import jakarta.annotation.Nullable;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.EmbedBuilder;
@@ -19,21 +20,21 @@ import org.yolok.he1pME.repository.TwitchNotificationRepository;
 import org.yolok.he1pME.util.CommonUtil;
 
 import java.awt.*;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.net.URI;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 public class TwitchService implements Runnable {
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final Color twitchColor = new Color(144, 0, 255);
     @Value("${twitch.api.client.id}")
     private String twitchApiClientId;
     @Value("${twitch.api.client.secret}")
     private String twitchApiClientSecret;
+    @Value("${twitch.oauth.api.base.uri}")
+    private String twitchOauthApiBaseUri;
     @Value("${twitch.api.base.uri}")
     private String twitchApiBaseUri;
     @Value("${twitch.logo.uri:null}")
@@ -42,6 +43,8 @@ public class TwitchService implements Runnable {
     private String twitchApiAccessToken;
     private Map<String, String> cache;
     private Map<String, Set<String>> notificationMap;
+    @Autowired
+    private RestTemplate restTemplate;
     @Autowired
     private TwitchNotificationRepository twitchNotificationRepository;
 
@@ -137,38 +140,48 @@ public class TwitchService implements Runnable {
                 });
     }
 
+    @Nullable
     private String callStreamApi(Set<String> userLoginSet) {
         UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(twitchApiBaseUri + "/streams");
         userLoginSet.parallelStream().forEach(key -> uriBuilder.queryParam("user_login", key));
+        URI uri = uriBuilder.build().toUri();
         HttpHeaders headers = new HttpHeaders();
         headers.set("Client-Id", twitchApiClientId);
         headers.set("Authorization", twitchApiTokenType + StringUtils.SPACE + twitchApiAccessToken);
         HttpEntity<?> entity = new HttpEntity<>(headers);
-        ResponseEntity<String> responseEntity = restTemplate.exchange(
-                uriBuilder.build().toUri(), HttpMethod.GET, entity, String.class);
+        try {
+            ResponseEntity<String> responseEntity = restTemplate.exchange(uri, HttpMethod.GET, entity, String.class);
+            if (responseEntity.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+                getNewAccessToken();
+                return callStreamApi(userLoginSet);
+            }
 
-        if (responseEntity.getStatusCode() == HttpStatus.UNAUTHORIZED) {
-            getNewAccessToken();
-            return callStreamApi(userLoginSet);
+            log.debug(responseEntity.getStatusCode() + StringUtils.SPACE + responseEntity.getBody());
+            return responseEntity.getBody();
+        } catch (Exception e) {
+            log.error("call Twitch stream api failed", e);
         }
 
-        log.info(responseEntity.getStatusCode() + StringUtils.SPACE + responseEntity.getBody());
-        return responseEntity.getBody();
+        return null;
     }
 
     private void getNewAccessToken() {
-        String tokenEndpoint = "https://id.twitch.tv/oauth2/token";
-        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(tokenEndpoint)
+        URI uri = UriComponentsBuilder.fromUriString(twitchOauthApiBaseUri + "/token")
                 .queryParam("client_id", twitchApiClientId)
                 .queryParam("client_secret", twitchApiClientSecret)
-                .queryParam("grant_type", "client_credentials");
+                .queryParam("grant_type", "client_credentials")
+                .build()
+                .toUri();
         HttpHeaders headers = new HttpHeaders();
         HttpEntity<?> entity = new HttpEntity<>(headers);
-        ResponseEntity<String> responseEntity = restTemplate.exchange(
-                uriBuilder.build().toUri(), HttpMethod.POST, entity, String.class);
-        JSONObject response = new JSONObject(responseEntity.getBody());
-        twitchApiAccessToken = response.getString("access_token");
-        twitchApiTokenType = StringUtils.capitalize(response.getString("token_type"));
+        try {
+            ResponseEntity<String> responseEntity = restTemplate.exchange(uri, HttpMethod.POST, entity, String.class);
+            JSONObject response = new JSONObject(Objects.requireNonNull(responseEntity.getBody()));
+            twitchApiAccessToken = response.getString("access_token");
+            twitchApiTokenType = StringUtils.capitalize(response.getString("token_type"));
+        } catch (Exception e) {
+            log.error("call Twitch get new access token api failed", e);
+        }
     }
 
 
@@ -177,8 +190,6 @@ public class TwitchService implements Runnable {
         String title = data.get("user_name").toString();
         String desc = data.get("title").toString();
         String thumb = data.get("thumbnail_url").toString().replace("-{width}x{height}", StringUtils.EMPTY);
-        Color color = new Color(144, 0, 255);
-
         for (String messageChannelId : notificationMap.get(userLogin)) {
             MessageChannel messageChannel = CommonUtil.JDA.getChannelById(MessageChannel.class, messageChannelId);
             if (messageChannel == null) {
@@ -186,7 +197,7 @@ public class TwitchService implements Runnable {
             }
 
             MessageEmbed messageEmbed = new EmbedBuilder().setTitle(title).setDescription(desc).setThumbnail(thumb)
-                    .setColor(color).setAuthor("Twitch", null, twitchLogoUri).build();
+                    .setColor(twitchColor).setAuthor("Twitch", null, twitchLogoUri).build();
             messageChannel.sendMessage("https://www.twitch.tv/" + userLogin).addEmbeds(messageEmbed).queue();
         }
     }

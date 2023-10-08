@@ -1,5 +1,6 @@
 package org.yolok.he1pME.service;
 
+import jakarta.annotation.Nullable;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.EmbedBuilder;
@@ -20,17 +21,15 @@ import org.yolok.he1pME.repository.YouTubeNotificationRepository;
 import org.yolok.he1pME.util.CommonUtil;
 
 import java.awt.*;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.net.URI;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 public class YouTubeService implements Runnable {
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final Color youtubeColor = new Color(255, 0, 0);
     @Value("${youtube.api.key}")
     private String youtubeApiKey;
     @Value("${youtube.api.base.uri}")
@@ -39,6 +38,8 @@ public class YouTubeService implements Runnable {
     private String youtubeLogoUri;
     private Map<String, String> cache;
     private Map<String, Set<String>> notificationMap;
+    @Autowired
+    private RestTemplate restTemplate;
     @Autowired
     private YouTubeNotificationRepository youTubeNotificationRepository;
 
@@ -121,20 +122,34 @@ public class YouTubeService implements Runnable {
     private Set<String> filterAndGetPlayListItemResponseSet(Set<String> existingDataSet) {
         return CollectionUtils.isEmpty(existingDataSet) ?
                 notificationMap.keySet().parallelStream()
-                        .map(this::callPlayListItemApi).collect(Collectors.toSet()) :
-                notificationMap.keySet().parallelStream().filter(key -> !existingDataSet.contains(key))
-                        .map(this::callPlayListItemApi).collect(Collectors.toSet());
+                        .map(this::callPlayListItemApi)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet()) :
+                notificationMap.keySet().parallelStream()
+                        .filter(key -> !existingDataSet.contains(key))
+                        .map(this::callPlayListItemApi)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet());
     }
 
+    @Nullable
     private String callPlayListItemApi(String playlistId) {
-        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(youtubeApiBaseUri + "/playlistItems")
+        URI uri = UriComponentsBuilder.fromUriString(youtubeApiBaseUri + "/playlistItems")
                 .queryParam("playlistId", playlistId)
                 .queryParam("part", "snippet")
                 .queryParam("maxResults", "1")
-                .queryParam("key", youtubeApiKey);
-        ResponseEntity<String> responseEntity = restTemplate.getForEntity(uriBuilder.build().toUri(), String.class);
-        log.info(responseEntity.getStatusCode() + StringUtils.SPACE + handleResponseBodyLog(responseEntity.getBody()));
-        return responseEntity.getBody();
+                .queryParam("key", youtubeApiKey)
+                .build()
+                .toUri();
+        try {
+            ResponseEntity<String> responseEntity = restTemplate.getForEntity(uri, String.class);
+            log.debug(responseEntity.getStatusCode() + StringUtils.SPACE + handleResponseBodyLog(responseEntity.getBody()));
+            return responseEntity.getBody();
+        } catch (Exception e) {
+            log.error("call Youtube play list item api failed", e);
+        }
+
+        return null;
     }
 
 
@@ -158,14 +173,22 @@ public class YouTubeService implements Runnable {
         return newVideoIdMap;
     }
 
+    @Nullable
     private String callVideoApi(Set<String> videoIdSet) {
         UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(youtubeApiBaseUri + "/videos")
                 .queryParam("part", "snippet,liveStreamingDetails")
                 .queryParam("key", youtubeApiKey);
         videoIdSet.parallelStream().forEach(videoId -> uriBuilder.queryParam("id", videoId));
-        ResponseEntity<String> responseEntity = restTemplate.getForEntity(uriBuilder.build().toUri(), String.class);
-        log.info(responseEntity.getStatusCode() + StringUtils.SPACE + handleResponseBodyLog(responseEntity.getBody()));
-        return responseEntity.getBody();
+        URI uri = uriBuilder.build().toUri();
+        try {
+            ResponseEntity<String> responseEntity = restTemplate.getForEntity(uri, String.class);
+            log.debug(responseEntity.getStatusCode() + StringUtils.SPACE + handleResponseBodyLog(responseEntity.getBody()));
+            return responseEntity.getBody();
+        } catch (Exception e) {
+            log.error("call Youtube video api failed", e);
+        }
+
+        return null;
     }
 
     private String handleResponseBodyLog(String responseBody) {
@@ -182,7 +205,6 @@ public class YouTubeService implements Runnable {
         String title = snippet.get("channelTitle").toString();
         String desc = snippet.get("title").toString();
         String thumb = getThumbnail((Map<?, ?>) snippet.get("thumbnails"));
-        Color color = new Color(255, 0, 0);
         needToBeNotifiedMap.get(videoId).parallelStream().forEach(messageChannelId -> {
             MessageChannel messageChannel = CommonUtil.JDA.getChannelById(MessageChannel.class, messageChannelId);
             if (messageChannel == null) {
@@ -190,7 +212,7 @@ public class YouTubeService implements Runnable {
             }
 
             MessageEmbed messageEmbed = new EmbedBuilder().setTitle(title).setDescription(desc).setThumbnail(thumb)
-                    .setColor(color).setAuthor("Youtube", null, youtubeLogoUri).build();
+                    .setColor(youtubeColor).setAuthor("Youtube", null, youtubeLogoUri).build();
             messageChannel.sendMessage("https://www.youtube.com/watch?v=" + videoId).addEmbeds(messageEmbed).queue();
         });
     }
