@@ -54,14 +54,12 @@ public class YouTubeService {
 
     public void initNotificationMap() {
         List<YouTubeNotification> youTubeNotificationList = youTubeNotificationRepository.findAll();
-        if (CollectionUtils.isEmpty(youTubeNotificationList)) {
-            return;
-        }
-
-        notificationMap = youTubeNotificationList.parallelStream().collect(Collectors.groupingBy(
-                YouTubeNotification::getYoutubeChannelPlaylistId,
-                Collectors.mapping(YouTubeNotification::getMessageChannelId, Collectors.toSet())
-        ));
+        notificationMap = CollectionUtils.isEmpty(youTubeNotificationList) ?
+                Collections.emptyMap() :
+                youTubeNotificationList.parallelStream().collect(Collectors.groupingBy(
+                        YouTubeNotification::getYoutubeChannelPlaylistId,
+                        Collectors.mapping(YouTubeNotification::getMessageChannelId, Collectors.toSet())
+                ));
     }
 
     public void adjustCache() {

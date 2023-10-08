@@ -27,14 +27,12 @@ public class GoodBoyService {
     @PostConstruct
     public void initBadWordMap() {
         List<BadWord> badWordList = badWordRepository.findAll();
-        if (CollectionUtils.isEmpty(badWordList)) {
-            return;
-        }
-
-        badWordMap = badWordList.parallelStream().collect(Collectors.groupingBy(
-                BadWord::getGuildId,
-                Collectors.mapping(BadWord::getWord, Collectors.toSet())
-        ));
+        badWordMap = CollectionUtils.isEmpty(badWordList) ?
+                Collections.emptyMap() :
+                badWordList.parallelStream().collect(Collectors.groupingBy(
+                        BadWord::getGuildId,
+                        Collectors.mapping(BadWord::getWord, Collectors.toSet())
+                ));
     }
 
     public void checkContent(Message message) {

@@ -13,7 +13,7 @@ import org.yolok.he1pME.util.CommonUtil;
 import java.util.Set;
 
 @Component
-public class JDAInitializer implements CommandLineRunner {
+public class JDARunner implements CommandLineRunner {
     @Value("${discord.bot.token}")
     private String discordBotToken;
     @Autowired
@@ -28,6 +28,8 @@ public class JDAInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        CommonUtil.JDA = JDABuilder.createDefault(discordBotToken, gatewayIntentSet).addEventListeners(jdaEventListener).build();
+        CommonUtil.JDA = JDABuilder.createDefault(discordBotToken, gatewayIntentSet).
+                addEventListeners(jdaEventListener)
+                .build();
     }
 }
