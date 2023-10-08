@@ -43,6 +43,6 @@ public class ReloadAction implements Action {
 
         Member member = Objects.requireNonNull(message.getMember());
         String now = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(ZonedDateTime.now(ZoneId.systemDefault()));
-        log.info("Reload Cache by {} at {}", member.getUser().getAsTag(), now);
+        log.info("Reload Cache by {} at {}", member.getUser().getName(), now);
     }
 }
