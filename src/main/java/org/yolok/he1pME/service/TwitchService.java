@@ -160,7 +160,7 @@ public class TwitchService {
             log.debug(responseEntity.getStatusCode() + StringUtils.SPACE + responseEntity.getBody());
             return responseEntity.getBody();
         } catch (Exception e) {
-            log.error("call Twitch stream api failed", e);
+            log.error("Failed to execute Twitch stream api", e);
         }
 
         return null;
@@ -181,7 +181,7 @@ public class TwitchService {
             twitchApiAccessToken = response.getString("access_token");
             twitchApiTokenType = StringUtils.capitalize(response.getString("token_type"));
         } catch (Exception e) {
-            log.error("call Twitch get new access token api failed", e);
+            log.error("Failed to execute Twitch get new access token api", e);
         }
     }
 

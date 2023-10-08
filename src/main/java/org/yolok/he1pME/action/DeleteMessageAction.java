@@ -26,10 +26,14 @@ public class DeleteMessageAction implements Action {
             int number = Integer.parseInt(userNumber);
             List<Message> messageList = message.getChannel().getHistoryBefore(message, number).complete().getRetrievedHistory();
             message.getChannel().asTextChannel().deleteMessages(messageList).queue();
-        } catch (IllegalArgumentException illegalArgumentException) {
-            log.error("\"{}\" cannot be executed because number = \"{}\"!", message.getContentRaw(), userNumber);
-            illegalArgumentException.printStackTrace();
+        } catch (Exception e) {
+            log.error("Cannot execute {}, number = {}", message.getContentRaw(), userNumber, e);
         }
-        message.delete().queue();
+
+        try {
+            message.delete().queue();
+        } catch (Exception e) {
+            log.error("Deleting message: {} failed", message.getContentRaw(), e);
+        }
     }
 }

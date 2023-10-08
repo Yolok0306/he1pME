@@ -13,7 +13,6 @@ import org.yolok.he1pME.action.Action;
 import org.yolok.he1pME.annotation.Help;
 import org.yolok.he1pME.util.CommonUtil;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
@@ -82,8 +81,8 @@ public class MessageEventService {
         try {
             Object bean = applicationContext.getBean(MusicService.class);
             MethodUtils.invokeMethod(bean, instruction, message);
-        } catch (InvocationTargetException | IllegalAccessException | NoSuchMethodException exception) {
-            log.error("execute music action error", exception);
+        } catch (Exception e) {
+            log.error("Failed to execute music action: {}", message.getContentRaw(), e);
         }
     }
 
@@ -91,8 +90,8 @@ public class MessageEventService {
         try {
             Object bean = applicationContext.getBean(clazz);
             MethodUtils.invokeMethod(bean, "execute", message);
-        } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException exception) {
-            log.error("execute custom action error", exception);
+        } catch (Exception e) {
+            log.error("Failed to execute custom action: {}", message.getContentRaw(), e);
         }
     }
 }

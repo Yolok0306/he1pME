@@ -46,11 +46,11 @@ public class HelpAction implements Action {
     }
 
     private void addActionEmbed(List<MessageEmbed> messageEmbedList, Member member) {
-        Set<Class<? extends Action>> actionSet = Arrays.stream(applicationContext.getBeanNamesForType(Action.class))
-                .parallel()
-                .map(beanName -> applicationContext.getBean(beanName, Action.class))
+        Set<Class<? extends Action>> actionSet = applicationContext.getBeansOfType(Action.class).entrySet()
+                .parallelStream()
+                .filter(entry -> entry.getValue().getClass().isAnnotationPresent(Help.class))
+                .map(Map.Entry::getValue)
                 .map(Action::getClass)
-                .filter(action -> action.isAnnotationPresent(Help.class))
                 .collect(Collectors.toSet());
         if (CollectionUtils.isEmpty(actionSet)) {
             return;
@@ -61,9 +61,8 @@ public class HelpAction implements Action {
                 .sorted(Comparator.comparing(action -> {
                     try {
                         return action.getDeclaredConstructor().newInstance().getInstruction();
-                    } catch (Exception exception) {
-                        log.error(exception.getMessage());
-                        exception.printStackTrace();
+                    } catch (Exception e) {
+                        log.error("Cannot execute `getInstruction()` in {}", action.getName(), e);
                     }
                     return StringUtils.EMPTY;
                 }))

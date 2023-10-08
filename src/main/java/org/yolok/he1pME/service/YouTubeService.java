@@ -147,7 +147,7 @@ public class YouTubeService {
             log.debug(responseEntity.getStatusCode() + StringUtils.SPACE + handleResponseBodyLog(responseEntity.getBody()));
             return responseEntity.getBody();
         } catch (Exception e) {
-            log.error("call Youtube play list item api failed", e);
+            log.error("Failed to execute Youtube play list item api", e);
         }
 
         return null;
@@ -186,7 +186,7 @@ public class YouTubeService {
             log.debug(responseEntity.getStatusCode() + StringUtils.SPACE + handleResponseBodyLog(responseEntity.getBody()));
             return responseEntity.getBody();
         } catch (Exception e) {
-            log.error("call Youtube video api failed", e);
+            log.error("Failed to execute Youtube video api", e);
         }
 
         return null;
