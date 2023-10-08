@@ -12,6 +12,7 @@ import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -27,7 +28,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-public class TwitchService implements Runnable {
+public class TwitchService {
     private final Color twitchColor = new Color(144, 0, 255);
     @Value("${twitch.api.client.id}")
     private String twitchApiClientId;
@@ -106,8 +107,8 @@ public class TwitchService implements Runnable {
                         (existingValue, newValue) -> existingValue, ConcurrentHashMap::new));
     }
 
-    @Override
-    public void run() {
+    @Async
+    public void execute() {
         if (notificationMap.isEmpty()) {
             return;
         }

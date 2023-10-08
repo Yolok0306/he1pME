@@ -13,6 +13,7 @@ import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -28,7 +29,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-public class YouTubeService implements Runnable {
+public class YouTubeService {
     private final Color youtubeColor = new Color(255, 0, 0);
     @Value("${youtube.api.key}")
     private String youtubeApiKey;
@@ -80,8 +81,8 @@ public class YouTubeService implements Runnable {
         cache.putAll(existingDataMap);
     }
 
-    @Override
-    public void run() {
+    @Async
+    public void execute() {
         if (notificationMap.isEmpty()) {
             return;
         }
