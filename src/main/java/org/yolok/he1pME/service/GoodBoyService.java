@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,7 @@ import org.yolok.he1pME.util.CommonUtil;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -24,18 +26,15 @@ public class GoodBoyService {
 
     @PostConstruct
     public void initBadWordMap() {
-        badWordMap = new HashMap<>();
-        Iterable<BadWord> badWordIterable = badWordRepository.findAll();
-        if (!badWordIterable.iterator().hasNext()) {
+        List<BadWord> badWordList = badWordRepository.findAll();
+        if (CollectionUtils.isEmpty(badWordList)) {
             return;
         }
 
-        badWordIterable.forEach(badWord -> {
-            String key = badWord.getGuildId();
-            badWordMap.computeIfAbsent(key, (k) -> new HashSet<>());
-            Set<String> value = badWordMap.get(key);
-            value.add(badWord.getWord());
-        });
+        badWordMap = badWordList.parallelStream().collect(Collectors.groupingBy(
+                BadWord::getGuildId,
+                Collectors.mapping(BadWord::getWord, Collectors.toSet())
+        ));
     }
 
     public void checkContent(Message message) {
@@ -56,7 +55,7 @@ public class GoodBoyService {
         member.timeoutFor(punishmentTime, TimeUnit.MINUTES).queue();
         String title = "言論審查系統";
         String desc = String.format("◆ 不當言論 : %s\n◆ 懲處 : 禁言%d分鐘", content, punishmentTime);
-        CommonUtil.replyByHe1pMETemplate(message.getChannel(), member, title, desc, StringUtils.EMPTY);
+        CommonUtil.replyByHe1pMETemplate(message.getChannel(), member, title, desc, null);
     }
 
     private boolean notNeedToCheck(Member member) {

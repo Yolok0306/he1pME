@@ -23,6 +23,7 @@ import org.yolok.he1pME.util.CommonUtil;
 
 import java.awt.*;
 import java.net.URI;
+import java.util.List;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -52,18 +53,15 @@ public class YouTubeService {
     }
 
     public void initNotificationMap() {
-        notificationMap = new HashMap<>();
-        Iterable<YouTubeNotification> youTubeNotificationIterable = youTubeNotificationRepository.findAll();
-        if (!youTubeNotificationIterable.iterator().hasNext()) {
+        List<YouTubeNotification> youTubeNotificationList = youTubeNotificationRepository.findAll();
+        if (CollectionUtils.isEmpty(youTubeNotificationList)) {
             return;
         }
 
-        youTubeNotificationIterable.forEach(youTubeNotification -> {
-            String key = youTubeNotification.getYoutubeChannelPlaylistId();
-            notificationMap.computeIfAbsent(key, (k) -> new HashSet<>());
-            Set<String> value = notificationMap.get(key);
-            value.add(youTubeNotification.getMessageChannelId());
-        });
+        notificationMap = youTubeNotificationList.parallelStream().collect(Collectors.groupingBy(
+                YouTubeNotification::getYoutubeChannelPlaylistId,
+                Collectors.mapping(YouTubeNotification::getMessageChannelId, Collectors.toSet())
+        ));
     }
 
     public void adjustCache() {

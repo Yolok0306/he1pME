@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -22,6 +23,7 @@ import org.yolok.he1pME.util.CommonUtil;
 
 import java.awt.*;
 import java.net.URI;
+import java.util.List;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -57,18 +59,15 @@ public class TwitchService {
     }
 
     public void initNotificationMap() {
-        notificationMap = new HashMap<>();
-        Iterable<TwitchNotification> twitchNotificationIterable = twitchNotificationRepository.findAll();
-        if (!twitchNotificationIterable.iterator().hasNext()) {
+        List<TwitchNotification> twitchNotificationList = twitchNotificationRepository.findAll();
+        if (CollectionUtils.isEmpty(twitchNotificationList)) {
             return;
         }
 
-        twitchNotificationIterable.forEach(twitchNotification -> {
-            String key = twitchNotification.getTwitchChannelId();
-            notificationMap.computeIfAbsent(key, (k) -> new HashSet<>());
-            Set<String> value = notificationMap.get(key);
-            value.add(twitchNotification.getMessageChannelId());
-        });
+        notificationMap = twitchNotificationList.parallelStream().collect(Collectors.groupingBy(
+                TwitchNotification::getTwitchChannelId,
+                Collectors.mapping(TwitchNotification::getMessageChannelId, Collectors.toSet())
+        ));
     }
 
     public void adjustCache() {

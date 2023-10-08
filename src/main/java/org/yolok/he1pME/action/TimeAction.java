@@ -29,6 +29,6 @@ public class TimeAction implements Action {
         Member member = Objects.requireNonNull(message.getMember());
         String title = String.format("現在時間 (%s)", zoneId);
         String desc = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(ZonedDateTime.now(zoneId));
-        CommonUtil.replyByHe1pMETemplate(message.getChannel(), member, title, desc, StringUtils.EMPTY);
+        CommonUtil.replyByHe1pMETemplate(message.getChannel(), member, title, desc, null);
     }
 }

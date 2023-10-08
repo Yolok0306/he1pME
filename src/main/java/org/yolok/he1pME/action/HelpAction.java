@@ -39,13 +39,31 @@ public class HelpAction implements Action {
     public void execute(Message message) {
         Member member = Objects.requireNonNull(message.getMember());
         List<MessageEmbed> messageEmbedList = new ArrayList<>();
-        addActionEmbed(messageEmbedList, member);
-        addMusicEmbed(messageEmbedList, member);
+        addMusicActionEmbed(messageEmbedList, member);
+        addCustomActionEmbed(messageEmbedList, member);
         addCallActionEmbed(messageEmbedList, member);
         message.getChannel().sendMessageEmbeds(messageEmbedList).queue();
     }
 
-    private void addActionEmbed(List<MessageEmbed> messageEmbedList, Member member) {
+    private void addMusicActionEmbed(List<MessageEmbed> messageEmbedList, Member member) {
+        Set<Method> musicMethodSet = Arrays.stream(MusicService.class.getDeclaredMethods())
+                .parallel()
+                .filter(method -> method.isAnnotationPresent(Help.class))
+                .filter(method -> Modifier.isPublic(method.getModifiers()))
+                .collect(Collectors.toSet());
+        if (CollectionUtils.isEmpty(musicMethodSet)) {
+            return;
+        }
+
+        EmbedBuilder embedBuilder = getEmbedBuilder(member, "音樂指令");
+        musicMethodSet.parallelStream()
+                .sorted(Comparator.comparing(Method::getName))
+                .map(musicMethod -> musicMethod.getAnnotation(Help.class))
+                .forEach(help -> embedBuilder.addField(CommonUtil.SIGN + help.example(), help.description(), Boolean.FALSE));
+        messageEmbedList.add(embedBuilder.build());
+    }
+
+    private void addCustomActionEmbed(List<MessageEmbed> messageEmbedList, Member member) {
         Set<Class<? extends Action>> actionSet = applicationContext.getBeansOfType(Action.class).entrySet()
                 .parallelStream()
                 .filter(entry -> entry.getValue().getClass().isAnnotationPresent(Help.class))
@@ -56,7 +74,7 @@ public class HelpAction implements Action {
             return;
         }
 
-        EmbedBuilder embedBuilder = new EmbedBuilder().setTitle("一般指令");
+        EmbedBuilder embedBuilder = getEmbedBuilder(member, "一般指令");
         actionSet.parallelStream()
                 .sorted(Comparator.comparing(action -> {
                     try {
@@ -68,44 +86,29 @@ public class HelpAction implements Action {
                 }))
                 .map(action -> action.getAnnotation(Help.class))
                 .forEach(help -> embedBuilder.addField(CommonUtil.SIGN + help.example(), help.description(), Boolean.FALSE));
-        embedBuilder.setColor(CommonUtil.HE1PME_COLOR).setAuthor(member.getEffectiveName(), null, member.getEffectiveAvatarUrl());
-        messageEmbedList.add(embedBuilder.build());
-    }
-
-    private void addMusicEmbed(List<MessageEmbed> messageEmbedList, Member member) {
-        Set<Method> musicMethodSet = Arrays.stream(MusicService.class.getDeclaredMethods())
-                .parallel()
-                .filter(method -> method.isAnnotationPresent(Help.class))
-                .filter(method -> Modifier.isPublic(method.getModifiers()))
-                .collect(Collectors.toSet());
-        if (CollectionUtils.isEmpty(musicMethodSet)) {
-            return;
-        }
-
-        EmbedBuilder embedBuilder = new EmbedBuilder().setTitle("音樂指令");
-        musicMethodSet.parallelStream()
-                .sorted(Comparator.comparing(Method::getName))
-                .map(musicMethod -> musicMethod.getAnnotation(Help.class))
-                .forEach(help -> embedBuilder.addField(CommonUtil.SIGN + help.example(), help.description(), Boolean.FALSE));
-        embedBuilder.setColor(CommonUtil.HE1PME_COLOR).setAuthor(member.getEffectiveName(), null, member.getEffectiveAvatarUrl());
         messageEmbedList.add(embedBuilder.build());
     }
 
     private void addCallActionEmbed(List<MessageEmbed> messageEmbedList, Member member) {
         String guildId = member.getGuild().getId();
-        Iterable<CallAction> callActionIterable = callActionRepository.findByGuildId(guildId);
-        if (!callActionIterable.iterator().hasNext()) {
+        Map<String, String> callActionMap = callActionRepository.findByGuildId(guildId)
+                .parallelStream()
+                .collect(Collectors.toMap(CallAction::getAction, CallAction::getDescription));
+        if (CollectionUtils.isEmpty(callActionMap.entrySet())) {
             return;
         }
 
-        Map<String, String> callActionMap = new HashMap<>();
-        callActionIterable.forEach(callAction -> callActionMap.put(callAction.getAction(), callAction.getDescription()));
-
-        EmbedBuilder embedBuilder = new EmbedBuilder().setTitle("客製化指令");
+        EmbedBuilder embedBuilder = getEmbedBuilder(member, "客製化指令");
         callActionMap.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
                 .forEach(entry -> embedBuilder.addField(CommonUtil.SIGN + entry.getKey(), entry.getValue(), Boolean.FALSE));
-        embedBuilder.setColor(CommonUtil.HE1PME_COLOR).setAuthor(member.getEffectiveName(), null, member.getEffectiveAvatarUrl());
         messageEmbedList.add(embedBuilder.build());
+    }
+
+    private EmbedBuilder getEmbedBuilder(Member member, String title) {
+        return new EmbedBuilder()
+                .setTitle(title)
+                .setColor(CommonUtil.HE1PME_COLOR)
+                .setAuthor(member.getEffectiveName(), null, member.getEffectiveAvatarUrl());
     }
 }

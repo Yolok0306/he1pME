@@ -1,6 +1,5 @@
 package org.yolok.he1pME.action;
 
-
 import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
@@ -44,6 +43,6 @@ public class ReloadAction implements Action {
 
         Member member = Objects.requireNonNull(message.getMember());
         String now = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(ZonedDateTime.now(ZoneId.systemDefault()));
-        log.info("Reload Cache by {} at {}!", member.getUser().getAsTag(), now);
+        log.info("Reload Cache by {} at {}", member.getUser().getAsTag(), now);
     }
 }
