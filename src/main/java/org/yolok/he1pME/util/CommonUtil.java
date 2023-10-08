@@ -29,7 +29,10 @@ public class CommonUtil {
 
     public static void replyByHe1pMETemplate(MessageChannel messageChannel, Member member,
                                              String title, String desc, String thumb) {
-        EmbedBuilder embedBuilder = new EmbedBuilder().setTitle(title).setDescription(desc).setColor(HE1PME_COLOR)
+        EmbedBuilder embedBuilder = new EmbedBuilder()
+                .setTitle(title)
+                .setDescription(desc)
+                .setColor(HE1PME_COLOR)
                 .setAuthor(member.getEffectiveName(), null, member.getEffectiveAvatarUrl());
         if (StringUtils.isNotBlank(thumb)) {
             embedBuilder.setThumbnail(thumb);
