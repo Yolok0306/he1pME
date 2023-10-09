@@ -15,6 +15,7 @@ import java.util.Objects;
 @Component
 @Help(example = "time [zoneId]", description = "取得現在時間")
 public class TimeAction implements Action {
+
     @Override
     public String getInstruction() {
         return "time";

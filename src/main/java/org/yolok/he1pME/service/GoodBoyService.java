@@ -20,9 +20,11 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class GoodBoyService {
-    private Map<String, Set<String>> badWordMap;
+
     @Autowired
     private BadWordRepository badWordRepository;
+
+    private Map<String, Set<String>> badWordMap;
 
     @PostConstruct
     public void initBadWordMap() {

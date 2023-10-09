@@ -10,6 +10,7 @@ import org.yolok.he1pME.service.MessageEventService;
 
 @Component
 public class JDAEventListener extends ListenerAdapter {
+
     @Autowired
     private MessageEventService messageEventService;
 

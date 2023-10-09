@@ -25,8 +25,10 @@ import java.util.stream.Collectors;
 @Component
 @Help(example = "help", description = "查看全部指令")
 public class HelpAction implements Action {
+
     @Autowired
     private CallActionRepository callActionRepository;
+
     @Autowired
     private ApplicationContext applicationContext;
 

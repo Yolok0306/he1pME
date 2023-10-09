@@ -13,6 +13,7 @@ import java.util.List;
 @Component
 @Help(example = "deleteMessage [number]", description = "清除多筆文字頻道的訊息")
 public class DeleteMessageAction implements Action {
+
     @Override
     public String getInstruction() {
         return "deleteMessage";

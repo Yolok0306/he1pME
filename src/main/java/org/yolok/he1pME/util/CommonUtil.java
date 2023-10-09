@@ -22,9 +22,13 @@ import java.util.List;
 @Slf4j
 @Configuration
 public class CommonUtil {
+
     public static JDA JDA;
+
     public static String SIGN;
+
     public static long FREQUENCY;
+
     public static Color HE1PME_COLOR = new Color(255, 192, 203);
 
     public static void replyByHe1pMETemplate(MessageChannel messageChannel, Member member,

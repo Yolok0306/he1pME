@@ -14,10 +14,13 @@ import java.util.Set;
 
 @Component
 public class JDARunner implements CommandLineRunner {
+
     @Value("${discord.bot.token}")
     private String discordBotToken;
+
     @Autowired
     private JDAEventListener jdaEventListener;
+
     private Set<GatewayIntent> gatewayIntentSet;
 
     @PostConstruct
