@@ -11,8 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 import org.yolok.he1pME.annotation.Help;
-import org.yolok.he1pME.entity.CallAction;
-import org.yolok.he1pME.repository.CallActionRepository;
 import org.yolok.he1pME.service.MusicService;
 import org.yolok.he1pME.util.CommonUtil;
 
@@ -25,9 +23,6 @@ import java.util.stream.Collectors;
 @Component
 @Help(example = "help", description = "查看全部指令")
 public class HelpAction implements Action {
-
-    @Autowired
-    private CallActionRepository callActionRepository;
 
     @Autowired
     private ApplicationContext applicationContext;
@@ -43,7 +38,6 @@ public class HelpAction implements Action {
         List<MessageEmbed> messageEmbedList = new ArrayList<>();
         addMusicActionEmbed(messageEmbedList, member);
         addCustomActionEmbed(messageEmbedList, member);
-        addCallActionEmbed(messageEmbedList, member);
         message.getChannel().sendMessageEmbeds(messageEmbedList).queue();
     }
 
@@ -88,22 +82,6 @@ public class HelpAction implements Action {
                 }))
                 .map(action -> action.getAnnotation(Help.class))
                 .forEach(help -> embedBuilder.addField(CommonUtil.SIGN + help.example(), help.description(), Boolean.FALSE));
-        messageEmbedList.add(embedBuilder.build());
-    }
-
-    private void addCallActionEmbed(List<MessageEmbed> messageEmbedList, Member member) {
-        String guildId = member.getGuild().getId();
-        Map<String, String> callActionMap = callActionRepository.findByGuildId(guildId)
-                .parallelStream()
-                .collect(Collectors.toMap(CallAction::getAction, CallAction::getDescription));
-        if (CollectionUtils.isEmpty(callActionMap.entrySet())) {
-            return;
-        }
-
-        EmbedBuilder embedBuilder = getEmbedBuilder(member, "客製化指令");
-        callActionMap.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey())
-                .forEach(entry -> embedBuilder.addField(CommonUtil.SIGN + entry.getKey(), entry.getValue(), Boolean.FALSE));
         messageEmbedList.add(embedBuilder.build());
     }
 
