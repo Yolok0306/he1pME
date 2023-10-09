@@ -29,9 +29,6 @@ public class MessageEventService {
     private GoodBoyService goodBoyService;
 
     @Autowired
-    private CallActionService callActionService;
-
-    @Autowired
     private ApplicationContext applicationContext;
 
     private Set<String> musicActionSet;
@@ -63,8 +60,6 @@ public class MessageEventService {
                 executeMusicAction(message, instruction);
             } else if (actionMap.containsKey(instruction)) {
                 executeAction(message, actionMap.get(instruction));
-            } else {
-                callActionService.execute(message, instruction);
             }
         } else if (!message.getContentRaw().startsWith("!") && !Objects.requireNonNull(message.getMember()).getUser().isBot()) {
             message.delete().queue();

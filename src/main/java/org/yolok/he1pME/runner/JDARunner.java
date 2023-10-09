@@ -31,8 +31,8 @@ public class JDARunner implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        CommonUtil.JDA = JDABuilder.createDefault(discordBotToken, gatewayIntentSet).
-                addEventListeners(jdaEventListener)
+        CommonUtil.JDA = JDABuilder.createDefault(discordBotToken, gatewayIntentSet)
+                .addEventListeners(jdaEventListener)
                 .build();
     }
 }
