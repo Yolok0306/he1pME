@@ -6,8 +6,10 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class TimerTaskService {
+
     @Autowired
     private YouTubeService youtubeService;
+
     @Autowired
     private TwitchService twitchService;
 

@@ -17,8 +17,10 @@ import java.util.Optional;
 @Slf4j
 @Service
 public class CallActionService {
+
     @Autowired
     private CallActionRepository callActionRepository;
+
     @Autowired
     private MemberDataRepository memberDataRepository;
 

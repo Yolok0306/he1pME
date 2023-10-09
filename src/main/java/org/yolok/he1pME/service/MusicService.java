@@ -32,7 +32,9 @@ import java.util.stream.Collectors;
 
 @Service
 public class MusicService {
+
     private final Map<String, GuildAudioManager> audioManagerMap = new HashMap<>();
+
     private final AudioPlayerManager audioPlayerManager = new DefaultAudioPlayerManager();
 
     @PostConstruct

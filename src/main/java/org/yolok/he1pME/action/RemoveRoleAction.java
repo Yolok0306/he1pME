@@ -13,6 +13,7 @@ import java.util.Optional;
 @Component
 @Help(example = "removeRole @member @role", description = "為被標記的成員移除被標記的身分組")
 public class RemoveRoleAction implements Action {
+
     @Override
     public String getInstruction() {
         return "removeRole";

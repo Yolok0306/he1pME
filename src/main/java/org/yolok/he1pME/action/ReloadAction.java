@@ -19,10 +19,13 @@ import java.util.Objects;
 @Component
 @Help(example = "reload", description = "重新載入資料庫資料")
 public class ReloadAction implements Action {
+
     @Autowired
     private GoodBoyService goodBoyService;
+
     @Autowired
     private TwitchService twitchService;
+
     @Autowired
     private YouTubeService youTubeService;
 

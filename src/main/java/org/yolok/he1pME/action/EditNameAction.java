@@ -13,6 +13,7 @@ import java.util.Optional;
 @Component
 @Help(example = "editName @member [name]", description = "為被標記的成員修改名稱")
 public class EditNameAction implements Action {
+
     @Override
     public String getInstruction() {
         return "editName";

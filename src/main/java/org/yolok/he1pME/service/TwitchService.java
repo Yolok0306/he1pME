@@ -31,25 +31,40 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class TwitchService {
-    private final Color twitchColor = new Color(144, 0, 255);
-    @Value("${twitch.api.client.id}")
-    private String twitchApiClientId;
-    @Value("${twitch.api.client.secret}")
-    private String twitchApiClientSecret;
-    @Value("${twitch.oauth.api.base.uri}")
-    private String twitchOauthApiBaseUri;
-    @Value("${twitch.api.base.uri}")
-    private String twitchApiBaseUri;
-    @Value("${twitch.logo.uri:null}")
-    private String twitchLogoUri;
-    private String twitchApiTokenType;
-    private String twitchApiAccessToken;
-    private Map<String, String> cache;
-    private Map<String, Set<String>> notificationMap;
+
     @Autowired
     private RestTemplate restTemplate;
+
     @Autowired
     private TwitchNotificationRepository twitchNotificationRepository;
+
+    @Value("${twitch.api.client.id}")
+    private String twitchApiClientId;
+
+    @Value("${twitch.api.client.secret}")
+    private String twitchApiClientSecret;
+
+    @Value("${twitch.api.baseUrl}")
+    private String twitchApiBaseUrl;
+
+    @Value("${twitch.oauth.api.baseUrl}")
+    private String twitchOauthApiBaseUrl;
+
+    @Value("${twitch.channel.baseUrl}")
+    private String twitchChannelBaseUrl;
+
+    @Value("${twitch.logo.url}")
+    private String twitchLogoUrl;
+
+    private String twitchApiTokenType;
+
+    private String twitchApiAccessToken;
+
+    private Map<String, String> cache;
+
+    private Map<String, Set<String>> notificationMap;
+
+    private final Color twitchColor = new Color(144, 0, 255);
 
     @PostConstruct
     public void init() {
@@ -121,16 +136,16 @@ public class TwitchService {
         }
 
         dataJsonArray.toList().parallelStream()
-                .filter(data -> data instanceof HashMap<?, ?>)
-                .map(data -> (Map<?, ?>) data)
+                .map(JSONObject::valueToString)
+                .map(JSONObject::new)
                 .forEach(data -> {
-                    String type = data.get("type").toString();
+                    String type = data.getString("type");
                     if (!StringUtils.equals(type, "live")) {
                         return;
                     }
 
-                    String userLogin = data.get("user_login").toString();
-                    String id = data.get("id").toString();
+                    String userLogin = data.getString("user_login");
+                    String id = data.getString("id");
                     if (!cache.containsKey(userLogin) || !StringUtils.equals(cache.get(userLogin), id)) {
                         cache.put(userLogin, id);
                         notification(data);
@@ -140,7 +155,7 @@ public class TwitchService {
 
     @Nullable
     private String callStreamApi(Set<String> userLoginSet) {
-        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(twitchApiBaseUri + "/streams");
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(twitchApiBaseUrl + "streams");
         userLoginSet.parallelStream().forEach(key -> uriBuilder.queryParam("user_login", key));
         URI uri = uriBuilder.build().toUri();
         HttpHeaders headers = new HttpHeaders();
@@ -164,7 +179,7 @@ public class TwitchService {
     }
 
     private void getNewAccessToken() {
-        URI uri = UriComponentsBuilder.fromUriString(twitchOauthApiBaseUri + "/token")
+        URI uri = UriComponentsBuilder.fromUriString(twitchOauthApiBaseUrl + "token")
                 .queryParam("client_id", twitchApiClientId)
                 .queryParam("client_secret", twitchApiClientSecret)
                 .queryParam("grant_type", "client_credentials")
@@ -183,20 +198,24 @@ public class TwitchService {
     }
 
 
-    private void notification(Map<?, ?> data) {
-        String userLogin = data.get("user_login").toString();
-        String title = data.get("user_name").toString();
-        String desc = data.get("title").toString();
-        String thumb = data.get("thumbnail_url").toString().replace("-{width}x{height}", StringUtils.EMPTY);
-        for (String messageChannelId : notificationMap.get(userLogin)) {
+    private void notification(JSONObject data) {
+        String userLogin = data.getString("user_login");
+        String userName = data.getString("user_name");
+        String title = data.getString("title");
+        String image = data.getString("thumbnail_url").replace("-{width}x{height}", StringUtils.EMPTY);
+        notificationMap.get(userLogin).parallelStream().forEach(messageChannelId -> {
             MessageChannel messageChannel = CommonUtil.JDA.getChannelById(MessageChannel.class, messageChannelId);
             if (messageChannel == null) {
-                continue;
+                return;
             }
 
-            MessageEmbed messageEmbed = new EmbedBuilder().setTitle(title).setDescription(desc).setThumbnail(thumb)
-                    .setColor(twitchColor).setAuthor("Twitch", null, twitchLogoUri).build();
-            messageChannel.sendMessage("https://www.twitch.tv/" + userLogin).addEmbeds(messageEmbed).queue();
-        }
+            MessageEmbed messageEmbed = new EmbedBuilder()
+                    .setTitle(title)
+                    .setImage(image)
+                    .setColor(twitchColor)
+                    .setAuthor(userName, null, twitchLogoUrl)
+                    .build();
+            messageChannel.sendMessage(twitchChannelBaseUrl + userLogin).addEmbeds(messageEmbed).queue();
+        });
     }
 }

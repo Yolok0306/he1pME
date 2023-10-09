@@ -13,6 +13,7 @@ import java.util.Optional;
 @Component
 @Help(example = "addRole @member @role", description = "為被標記的成員新增被標記的身分組")
 public class AddRoleAction implements Action {
+
     @Override
     public String getInstruction() {
         return "addRole";

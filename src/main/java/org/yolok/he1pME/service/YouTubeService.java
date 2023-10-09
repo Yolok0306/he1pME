@@ -27,23 +27,35 @@ import java.util.List;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
 public class YouTubeService {
-    private final Color youtubeColor = new Color(255, 0, 0);
-    @Value("${youtube.api.key}")
-    private String youtubeApiKey;
-    @Value("${youtube.api.base.uri}")
-    private String youtubeApiBaseUri;
-    @Value("${youtube.logo.uri:null}")
-    private String youtubeLogoUri;
-    private Map<String, String> cache;
-    private Map<String, Set<String>> notificationMap;
+
     @Autowired
     private RestTemplate restTemplate;
+
     @Autowired
     private YouTubeNotificationRepository youTubeNotificationRepository;
+
+    @Value("${youtube.api.key}")
+    private String youtubeApiKey;
+
+    @Value("${youtube.api.baseUrl}")
+    private String youtubeApiBaseUrl;
+
+    @Value("${youtube.video.baseUrl}")
+    private String youtubeVideoBaseUrl;
+
+    @Value("${youtube.logo.url}")
+    private String youtubeLogoUrl;
+
+    private Map<String, String> cache;
+
+    private Map<String, Set<String>> notificationMap;
+
+    private final Color youtubeColor = new Color(255, 0, 0);
 
     @PostConstruct
     public void init() {
@@ -96,8 +108,8 @@ public class YouTubeService {
 
         JSONArray itemJsonArray = new JSONObject(videoResponseString).getJSONArray("items");
         itemJsonArray.toList().parallelStream()
-                .filter(item -> item instanceof HashMap<?, ?>)
-                .map(item -> (Map<?, ?>) item)
+                .map(JSONObject::valueToString)
+                .map(JSONObject::new)
                 .forEach(item -> notification(item, needToBeNotifiedMap));
     }
 
@@ -131,7 +143,7 @@ public class YouTubeService {
 
     @Nullable
     private String callPlayListItemApi(String playlistId) {
-        URI uri = UriComponentsBuilder.fromUriString(youtubeApiBaseUri + "/playlistItems")
+        URI uri = UriComponentsBuilder.fromUriString(youtubeApiBaseUrl + "playlistItems")
                 .queryParam("playlistId", playlistId)
                 .queryParam("part", "snippet")
                 .queryParam("maxResults", "1")
@@ -172,7 +184,7 @@ public class YouTubeService {
 
     @Nullable
     private String callVideoApi(Set<String> videoIdSet) {
-        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(youtubeApiBaseUri + "/videos")
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(youtubeApiBaseUrl + "videos")
                 .queryParam("part", "snippet,liveStreamingDetails")
                 .queryParam("key", youtubeApiKey);
         videoIdSet.parallelStream().forEach(videoId -> uriBuilder.queryParam("id", videoId));
@@ -192,39 +204,37 @@ public class YouTubeService {
         return responseBody == null ? StringUtils.EMPTY : responseBody.replaceAll(StringUtils.LF, StringUtils.EMPTY);
     }
 
-    private void notification(Map<?, ?> item, Map<String, Set<String>> needToBeNotifiedMap) {
-        if (item.containsKey("liveStreamingDetails") && ((Map<?, ?>) item.get("liveStreamingDetails")).containsKey("actualEndTime")) {
+    private void notification(JSONObject item, Map<String, Set<String>> needToBeNotifiedMap) {
+        if (item.has("liveStreamingDetails") && item.getJSONObject("liveStreamingDetails").has("actualEndTime")) {
             return;
         }
 
-        Map<?, ?> snippet = (Map<?, ?>) item.get("snippet");
-        String videoId = item.get("id").toString();
-        String title = snippet.get("channelTitle").toString();
-        String desc = snippet.get("title").toString();
-        String thumb = getThumbnail((Map<?, ?>) snippet.get("thumbnails"));
+        JSONObject snippet = item.getJSONObject("snippet");
+        String videoId = item.getString("id");
+        String channelTitle = snippet.getString("channelTitle");
+        String videoTitle = snippet.getString("title");
+        String image = getImage(snippet.getJSONObject("thumbnails"));
         needToBeNotifiedMap.get(videoId).parallelStream().forEach(messageChannelId -> {
             MessageChannel messageChannel = CommonUtil.JDA.getChannelById(MessageChannel.class, messageChannelId);
             if (messageChannel == null) {
                 return;
             }
 
-            MessageEmbed messageEmbed = new EmbedBuilder().setTitle(title).setDescription(desc).setThumbnail(thumb)
-                    .setColor(youtubeColor).setAuthor("Youtube", null, youtubeLogoUri).build();
-            messageChannel.sendMessage("https://www.youtube.com/watch?v=" + videoId).addEmbeds(messageEmbed).queue();
+            MessageEmbed messageEmbed = new EmbedBuilder()
+                    .setTitle(videoTitle, youtubeVideoBaseUrl + videoId)
+                    .setImage(image)
+                    .setColor(youtubeColor)
+                    .setAuthor(channelTitle, null, youtubeLogoUrl)
+                    .build();
+            messageChannel.sendMessageEmbeds(messageEmbed).queue();
         });
     }
 
-    private String getThumbnail(Map<?, ?> thumbnail) {
-        if (thumbnail.containsKey("maxres")) {
-            return ((Map<?, ?>) thumbnail.get("maxres")).get("url").toString();
-        } else if (thumbnail.containsKey("standard")) {
-            return ((Map<?, ?>) thumbnail.get("standard")).get("url").toString();
-        } else if (thumbnail.containsKey("high")) {
-            return ((Map<?, ?>) thumbnail.get("high")).get("url").toString();
-        } else if (thumbnail.containsKey("medium")) {
-            return ((Map<?, ?>) thumbnail.get("medium")).get("url").toString();
-        } else {
-            return ((Map<?, ?>) thumbnail.get("default")).get("url").toString();
-        }
+    private String getImage(JSONObject thumbnail) {
+        String maxSizeThumbnail = Stream.of("maxres", "standard", "high", "medium")
+                .filter(thumbnail::has)
+                .findFirst()
+                .orElse("default");
+        return thumbnail.getJSONObject(maxSizeThumbnail).getString("url");
     }
 }
