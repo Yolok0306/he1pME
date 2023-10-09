@@ -26,6 +26,6 @@ public class CallAction {
     @DynamoDBAttribute
     private String message;
 
-    @DynamoDBAttribute
-    private String name;
+    @DynamoDBAttribute(attributeName = "member_names")
+    private String memberNames;
 }
