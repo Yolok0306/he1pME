@@ -7,6 +7,7 @@ import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,6 +31,19 @@ public class CommonUtil {
     public static long FREQUENCY;
 
     public static Color HE1PME_COLOR = new Color(255, 192, 203);
+
+    public static void replyByHe1pMETemplate(SlashCommandInteractionEvent event, Member member,
+                                             String title, String desc, String thumb) {
+        EmbedBuilder embedBuilder = new EmbedBuilder()
+                .setTitle(title)
+                .setDescription(desc)
+                .setColor(HE1PME_COLOR)
+                .setAuthor(member.getEffectiveName(), null, member.getEffectiveAvatarUrl());
+        if (StringUtils.isNotBlank(thumb)) {
+            embedBuilder.setThumbnail(thumb);
+        }
+        event.replyEmbeds(embedBuilder.build()).queue();
+    }
 
     public static void replyByHe1pMETemplate(MessageChannel messageChannel, Member member,
                                              String title, String desc, String thumb) {

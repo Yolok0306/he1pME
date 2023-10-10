@@ -1,10 +1,8 @@
 package org.yolok.he1pME.action;
 
-import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 
 public interface Action {
 
-    String getInstruction();
-
-    void execute(Message message);
+    void execute(SlashCommandInteractionEvent event);
 }

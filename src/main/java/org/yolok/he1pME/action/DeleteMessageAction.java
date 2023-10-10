@@ -2,39 +2,34 @@ package org.yolok.he1pME.action;
 
 import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.entities.Message;
-import org.apache.commons.lang3.StringUtils;
+import net.dv8tion.jda.api.entities.channel.unions.MessageChannelUnion;
+import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.interactions.commands.OptionType;
 import org.springframework.stereotype.Component;
-import org.yolok.he1pME.annotation.Help;
-import org.yolok.he1pME.util.CommonUtil;
+import org.yolok.he1pME.annotation.He1pME;
 
 import java.util.List;
+import java.util.Objects;
 
 @Slf4j
 @Component
-@Help(example = "deleteMessage [number]", description = "清除多筆文字頻道的訊息")
+@He1pME(instruction = "delete-message", description = "清除多筆文字頻道的訊息",
+        options = {
+                @He1pME.Option(optionType = OptionType.INTEGER, name = "message-number", description = "message number")
+        }, example = "delete-message [message-number]")
 public class DeleteMessageAction implements Action {
 
     @Override
-    public String getInstruction() {
-        return "deleteMessage";
-    }
-
-    @Override
-    public void execute(Message message) {
-        String regex = String.format("\\%s%s\\p{Blank}*", CommonUtil.SIGN, getInstruction());
-        String userNumber = message.getContentRaw().replaceAll(regex, StringUtils.EMPTY);
+    public void execute(SlashCommandInteractionEvent event) {
+        int number = Objects.requireNonNull(event.getOption("message-number")).getAsInt();
+        MessageChannelUnion messageChannelUnion = event.getChannel();
         try {
-            int number = Integer.parseInt(userNumber);
-            List<Message> messageList = message.getChannel().getHistoryBefore(message, number).complete().getRetrievedHistory();
-            message.getChannel().asTextChannel().deleteMessages(messageList).queue();
+            List<Message> messageList = messageChannelUnion.getHistoryBefore(event.getId(), number).complete().getRetrievedHistory();
+            messageChannelUnion.asTextChannel().deleteMessages(messageList).queue();
         } catch (Exception e) {
-            log.error("Cannot execute {}, number = {}", message.getContentRaw(), userNumber, e);
+            log.error("Cannot execute {}, number = {}", event.getName(), number, e);
         }
 
-        try {
-            message.delete().queue();
-        } catch (Exception e) {
-            log.error("Deleting message: {} failed", message.getContentRaw(), e);
-        }
+        event.reply("Completed!").setEphemeral(true).queue();
     }
 }
