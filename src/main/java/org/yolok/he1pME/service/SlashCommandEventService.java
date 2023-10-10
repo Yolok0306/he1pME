@@ -9,6 +9,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 import org.yolok.he1pME.action.Action;
 import org.yolok.he1pME.annotation.He1pME;
+import org.yolok.he1pME.util.CommonUtil;
 
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
@@ -60,6 +61,11 @@ public class SlashCommandEventService {
     }
 
     private void executeMusicAction(SlashCommandInteractionEvent event, String instruction) {
+        if (CommonUtil.isNotInstructionChannel(event.getMessageChannel().getName())) {
+            event.reply("You cannot execute this instruction in this message channel").setEphemeral(true).queue();
+            return;
+        }
+
         try {
             Object bean = applicationContext.getBean(MusicService.class);
             MethodUtils.invokeMethod(bean, instruction, event);
@@ -69,6 +75,11 @@ public class SlashCommandEventService {
     }
 
     private void executeCustomAction(SlashCommandInteractionEvent event, Class<? extends Action> clazz) {
+        if (CommonUtil.isNotInstructionChannel(event.getMessageChannel().getName())) {
+            event.reply("You cannot execute this instruction in this message channel").setEphemeral(true).queue();
+            return;
+        }
+
         try {
             Object bean = applicationContext.getBean(clazz);
             MethodUtils.invokeMethod(bean, "execute", event);

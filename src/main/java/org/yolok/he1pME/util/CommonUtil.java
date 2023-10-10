@@ -96,6 +96,11 @@ public class CommonUtil {
         return member.getRoles().parallelStream().noneMatch(eachRole -> eachRole.getPosition() > role.getPosition());
     }
 
+    public static boolean isNotInstructionChannel(String messageChannelName) {
+        return !StringUtils.contains(messageChannelName, "指令") &&
+                !StringUtils.containsIgnoreCase(messageChannelName, "instruction");
+    }
+
     @Value("${sign}")
     private void setSign(String sign) {
         SIGN = sign;
