@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,7 +56,8 @@ public class GoodBoyService {
         member.timeoutFor(punishmentTime, TimeUnit.MINUTES).queue();
         String title = "言論審查系統";
         String desc = String.format("◆ 不當言論 : %s\n◆ 懲處 : 禁言%d分鐘", content, punishmentTime);
-        CommonUtil.replyByHe1pMETemplate(message.getChannel(), member, title, desc, null);
+        MessageEmbed he1pMEMessageEmbed = CommonUtil.getHe1pMessageEmbed(member, title, desc, null);
+        message.getChannel().sendMessageEmbeds(he1pMEMessageEmbed).queue();
     }
 
     private boolean notNeedToCheck(Member member) {

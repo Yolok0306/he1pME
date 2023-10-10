@@ -1,32 +1,33 @@
 package org.yolok.he1pME.service;
 
-import com.sedmelluq.discord.lavaplayer.player.AudioLoadResultHandler;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
-import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers;
-import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
-import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackInfo;
+import jakarta.annotation.Nullable;
 import jakarta.annotation.PostConstruct;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.ISnowflake;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.concrete.VoiceChannel;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.managers.AudioManager;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DurationFormatUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.yolok.he1pME.annotation.He1pME;
+import org.yolok.he1pME.plugin.AudioEventListener;
+import org.yolok.he1pME.plugin.AudioPlayerSendHandler;
 import org.yolok.he1pME.plugin.AudioTrackScheduler;
-import org.yolok.he1pME.plugin.GuildAudioManager;
+import org.yolok.he1pME.plugin.ResultHandler;
 import org.yolok.he1pME.util.CommonUtil;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -34,14 +35,18 @@ import java.util.stream.Collectors;
 @Service
 public class MusicService {
 
-    private final Map<String, GuildAudioManager> audioManagerMap = new HashMap<>();
+    @Autowired
+    private AudioPlayerManager audioPlayerManager;
 
-    private final AudioPlayerManager audioPlayerManager = new DefaultAudioPlayerManager();
+    private Map<String, AudioTrackScheduler> audioManagerMap;
+
+    private final String content = "You cannot execute this command because you are not in any voice channel or Bot is not in your voice channel";
 
     @PostConstruct
     public void init() {
         AudioSourceManagers.registerRemoteSources(audioPlayerManager);
         AudioSourceManagers.registerLocalSource(audioPlayerManager);
+        audioManagerMap = new HashMap<>();
     }
 
     @He1pME(instruction = "play", description = "播放音樂",
@@ -50,114 +55,83 @@ public class MusicService {
             }, example = "play [music-url]")
     public void play(SlashCommandInteractionEvent event) {
         Member member = Objects.requireNonNull(event.getMember());
-        Optional<VoiceChannel> voiceChannelOpt = getVoiceChannel(member);
-        if (voiceChannelOpt.isEmpty()) {
-            event.reply("You cannot execute this instruction").setEphemeral(true).queue();
+        Guild guild = Objects.requireNonNull(event.getGuild());
+        VoiceChannel voiceChannel = getVoiceChannel(member);
+        if (voiceChannel == null) {
+            event.reply("You cannot execute this instruction because you are not in any voice channel").setEphemeral(true).queue();
             return;
         }
 
-        String musicUrl = Objects.requireNonNull(event.getOption("music-url")).getAsString();
-        GuildAudioManager guildAudioManager;
-        Guild guild = Objects.requireNonNull(event.getGuild());
-        VoiceChannel voiceChannel = voiceChannelOpt.get();
-        if (isChannelContainBot(voiceChannel)) {
-            guildAudioManager = audioManagerMap.get(guild.getId());
-        } else if (audioManagerMap.containsKey(guild.getId())) {
-            guildAudioManager = audioManagerMap.get(guild.getId());
-            guildAudioManager.scheduler.getPlayer().stopTrack();
-            guildAudioManager.scheduler.getQueue().clear();
-            guild.getAudioManager().openAudioConnection(voiceChannel);
-        } else {
-            guildAudioManager = new GuildAudioManager(audioPlayerManager, guild);
-            audioManagerMap.put(guild.getId(), guildAudioManager);
-            guild.getAudioManager().setSendingHandler(guildAudioManager.getSendHandler());
-            guild.getAudioManager().openAudioConnection(voiceChannel);
+        if (isMemberAndBotNotInSameChannel(member)) {
+            AudioManager getAudioManager = guild.getAudioManager();
+            getAudioManager.openAudioConnection(voiceChannel);
+            audioManagerMap.compute(guild.getId(), (key, value) -> {
+                if (value == null) {
+                    AudioPlayer audioPlayer = audioPlayerManager.createPlayer();
+                    getAudioManager.setSendingHandler(new AudioPlayerSendHandler(audioPlayer));
+                    value = new AudioTrackScheduler(audioPlayer, getAudioManager);
+                    audioPlayer.addListener(new AudioEventListener(value));
+                } else {
+                    value.getPlayer().stopTrack();
+                    value.getQueue().clear();
+                }
+                return value;
+            });
         }
 
-        audioPlayerManager.loadItem(musicUrl, new AudioLoadResultHandler() {
-            final AudioTrackScheduler scheduler = guildAudioManager.scheduler;
 
-            @Override
-            public void trackLoaded(AudioTrack track) {
-                scheduler.queue(track);
-            }
-
-            @Override
-            public void playlistLoaded(AudioPlaylist playlist) {
-                AudioTrack firstTrack = Optional.ofNullable(playlist.getSelectedTrack())
-                        .orElse(playlist.getTracks().get(0));
-                scheduler.queue(firstTrack);
-            }
-
-            @Override
-            public void noMatches() {
-                event.getChannel().sendMessage("Could not play: " + musicUrl).queue();
-                if (scheduler.getPlayer().getPlayingTrack() == null && scheduler.getQueue().isEmpty()) {
-                    guild.getAudioManager().closeAudioConnection();
-                }
-            }
-
-            @Override
-            public void loadFailed(FriendlyException exception) {
-                event.getChannel().sendMessage(exception.getMessage()).queue();
-                if (scheduler.getPlayer().getPlayingTrack() == null && scheduler.getQueue().isEmpty()) {
-                    guild.getAudioManager().closeAudioConnection();
-                }
-            }
-        });
-
-        event.reply("Add `" + musicUrl + "` completed").queue();
+        AudioTrackScheduler audioTrackScheduler = audioManagerMap.get(guild.getId());
+        String musicUrl = Objects.requireNonNull(event.getOption("music-url")).getAsString();
+        audioPlayerManager.loadItem(musicUrl, new ResultHandler(event, audioTrackScheduler));
+        event.reply("/play `" + musicUrl + "` completed").queue();
     }
 
     @He1pME(instruction = "stop", description = "停止播放音樂", example = "stop")
     public void stop(SlashCommandInteractionEvent event) {
         Member member = Objects.requireNonNull(event.getMember());
-        Guild guild = Objects.requireNonNull(event.getGuild());
-        Optional<VoiceChannel> voiceChannelOpt = getVoiceChannel(member);
-        if (voiceChannelOpt.isPresent() && isChannelContainBot(voiceChannelOpt.get())) {
-            AudioTrackScheduler audioTrackScheduler = audioManagerMap.get(guild.getId()).scheduler;
-            audioTrackScheduler.getPlayer().stopTrack();
-            audioTrackScheduler.getQueue().clear();
-            guild.getAudioManager().closeAudioConnection();
+        if (isMemberAndBotNotInSameChannel(member)) {
+            event.reply(content).setEphemeral(true).queue();
+            return;
         }
-        event.reply("Completed").queue();
+
+
+        Guild guild = Objects.requireNonNull(event.getGuild());
+        AudioTrackScheduler audioTrackScheduler = audioManagerMap.get(guild.getId());
+        audioTrackScheduler.getPlayer().stopTrack();
+        audioTrackScheduler.getQueue().clear();
+        guild.getAudioManager().closeAudioConnection();
+        event.reply("/stop completed").queue();
     }
 
     @He1pME(instruction = "np", description = "顯示歌曲的播放資訊", example = "np")
     public void np(SlashCommandInteractionEvent event) {
         Member member = Objects.requireNonNull(event.getMember());
-        Optional<VoiceChannel> voiceChannelOpt = getVoiceChannel(member);
-        if (voiceChannelOpt.isEmpty() || !isChannelContainBot(voiceChannelOpt.get())) {
-            event.reply("You cannot execute this instruction").setEphemeral(true).queue();
+        if (isMemberAndBotNotInSameChannel(member)) {
+            event.reply(content).setEphemeral(true).queue();
             return;
         }
 
         Guild guild = Objects.requireNonNull(event.getGuild());
-        AudioPlayer audioPlayer = audioManagerMap.get(guild.getId()).scheduler.getPlayer();
-        if (audioPlayer.getPlayingTrack() == null || !audioPlayer.getPlayingTrack().isSeekable()) {
-            event.reply("You cannot execute this instruction").setEphemeral(true).queue();
-            return;
-        }
-
+        AudioPlayer audioPlayer = audioManagerMap.get(guild.getId()).getPlayer();
         AudioTrackInfo audioTrackInfo = audioPlayer.getPlayingTrack().getInfo();
         String title = "播放資訊";
         String desc = CommonUtil.descFormat("Title : " + audioTrackInfo.title) + StringUtils.LF +
                 CommonUtil.descFormat("Author : " + audioTrackInfo.author) + StringUtils.LF +
                 CommonUtil.descFormat("Time : " + timeFormat(audioTrackInfo.length));
-        CommonUtil.replyByHe1pMETemplate(event, member, title, desc, null);
+        MessageEmbed he1pMEMessageEmbed = CommonUtil.getHe1pMessageEmbed(member, title, desc, null);
+        event.replyEmbeds(he1pMEMessageEmbed).queue();
     }
 
     @He1pME(instruction = "list", description = "顯示播放清單", example = "list")
     public void list(SlashCommandInteractionEvent event) {
         Member member = Objects.requireNonNull(event.getMember());
-        Optional<VoiceChannel> voiceChannelOpt = getVoiceChannel(member);
-        if (voiceChannelOpt.isEmpty() || !isChannelContainBot(voiceChannelOpt.get())) {
-            event.reply("You cannot execute this instruction").setEphemeral(true).queue();
+        if (isMemberAndBotNotInSameChannel(member)) {
+            event.reply(content).setEphemeral(true).queue();
             return;
         }
 
         Guild guild = Objects.requireNonNull(event.getGuild());
-        BlockingQueue<AudioTrack> queue = audioManagerMap.get(guild.getId()).scheduler.getQueue();
+        BlockingQueue<AudioTrack> queue = audioManagerMap.get(guild.getId()).getQueue();
         String title, desc;
         if (queue.isEmpty()) {
             title = "播放清單有0首歌 :";
@@ -168,55 +142,74 @@ public class MusicService {
                     .map(audioTrack -> CommonUtil.descStartWithDiamondFormat("◆ " + audioTrack.getInfo().title))
                     .collect(Collectors.joining(StringUtils.LF));
         }
-        CommonUtil.replyByHe1pMETemplate(event, member, title, desc, null);
+        MessageEmbed he1pMEMessageEmbed = CommonUtil.getHe1pMessageEmbed(member, title, desc, null);
+        event.replyEmbeds(he1pMEMessageEmbed).queue();
     }
 
     @He1pME(instruction = "skip", description = "跳過這首歌曲", example = "skip")
     public void skip(SlashCommandInteractionEvent event) {
         Member member = Objects.requireNonNull(event.getMember());
-        Guild guild = Objects.requireNonNull(event.getGuild());
-        Optional<VoiceChannel> voiceChannelOpt = getVoiceChannel(member);
-        if (voiceChannelOpt.isPresent() && isChannelContainBot(voiceChannelOpt.get())) {
-            AudioTrackScheduler audioTrackScheduler = audioManagerMap.get(guild.getId()).scheduler;
-            audioTrackScheduler.getPlayer().stopTrack();
-            audioTrackScheduler.nextTrack();
+        if (isMemberAndBotNotInSameChannel(member)) {
+            event.reply(content).setEphemeral(true).queue();
+            return;
         }
-        event.reply("Completed").queue();
+
+        Guild guild = Objects.requireNonNull(event.getGuild());
+        AudioTrackScheduler audioTrackScheduler = audioManagerMap.get(guild.getId());
+        audioTrackScheduler.getPlayer().stopTrack();
+        audioTrackScheduler.nextTrack();
+        event.reply("/skip completed").queue();
     }
 
     @He1pME(instruction = "pause", description = "暫停/恢復播放歌曲", example = "pause")
     public void pause(SlashCommandInteractionEvent event) {
         Member member = Objects.requireNonNull(event.getMember());
-        Guild guild = Objects.requireNonNull(event.getGuild());
-        Optional<VoiceChannel> voiceChannelOpt = getVoiceChannel(member);
-        if (voiceChannelOpt.isPresent() && isChannelContainBot(voiceChannelOpt.get())) {
-            AudioPlayer audioPlayer = audioManagerMap.get(guild.getId()).scheduler.getPlayer();
-            audioPlayer.setPaused(!audioPlayer.isPaused());
+        if (isMemberAndBotNotInSameChannel(member)) {
+            event.reply(content).setEphemeral(true).queue();
+            return;
         }
-        event.reply("Completed").queue();
+
+        Guild guild = Objects.requireNonNull(event.getGuild());
+        AudioPlayer audioPlayer = audioManagerMap.get(guild.getId()).getPlayer();
+        audioPlayer.setPaused(!audioPlayer.isPaused());
+        event.reply("/pause completed").queue();
     }
 
     @He1pME(instruction = "clear", description = "清空播放清單", example = "clear")
     public void clear(SlashCommandInteractionEvent event) {
         Member member = Objects.requireNonNull(event.getMember());
         Guild guild = Objects.requireNonNull(event.getGuild());
-        Optional<VoiceChannel> voiceChannelOpt = getVoiceChannel(member);
-        if (voiceChannelOpt.isPresent() && isChannelContainBot(voiceChannelOpt.get())) {
-            BlockingQueue<AudioTrack> queue = audioManagerMap.get(guild.getId()).scheduler.getQueue();
-            queue.clear();
+        if (isMemberAndBotNotInSameChannel(member)) {
+            event.reply(content).setEphemeral(true).queue();
+            return;
         }
-        event.reply("Completed").queue();
+
+        BlockingQueue<AudioTrack> queue = audioManagerMap.get(guild.getId()).getQueue();
+        queue.clear();
+        event.reply("/clear completed").queue();
     }
 
-    private Optional<VoiceChannel> getVoiceChannel(Member member) {
-        return member.getVoiceState() == null || member.getVoiceState().getChannel() == null ?
-                Optional.empty() : Optional.of(member.getVoiceState().getChannel().asVoiceChannel());
-    }
+    private boolean isMemberAndBotNotInSameChannel(Member member) {
+        String memberId = member.getId();
+        String botId = member.getJDA().getSelfUser().getId();
+        VoiceChannel voiceChannel = getVoiceChannel(member);
+        if (voiceChannel == null) {
+            return true;
+        }
 
-    private boolean isChannelContainBot(VoiceChannel voiceChannel) {
         return voiceChannel.getMembers().parallelStream()
                 .map(ISnowflake::getId)
-                .anyMatch(id -> StringUtils.equals(id, voiceChannel.getJDA().getSelfUser().getId()));
+                .filter(id -> StringUtils.equals(id, memberId) || StringUtils.equals(id, botId))
+                .count() != 2;
+    }
+
+    @Nullable
+    private VoiceChannel getVoiceChannel(Member member) {
+        if (member.getVoiceState() == null || member.getVoiceState().getChannel() == null) {
+            return null;
+        }
+
+        return member.getVoiceState().getChannel().asVoiceChannel();
     }
 
     private String timeFormat(long milliseconds) {

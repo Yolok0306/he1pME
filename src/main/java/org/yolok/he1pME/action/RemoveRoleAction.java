@@ -1,6 +1,7 @@
 package org.yolok.he1pME.action;
 
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
@@ -39,6 +40,7 @@ public class RemoveRoleAction implements Action {
             title = "移除身分組成功";
             desc = String.format("目標成員 : %s\n移除身分組 : %s", targetMember.getAsMention(), targetRole.getAsMention());
         }
-        CommonUtil.replyByHe1pMETemplate(event, member, title, desc, targetMember.getEffectiveAvatarUrl());
+        MessageEmbed he1pMEMessageEmbed = CommonUtil.getHe1pMessageEmbed(member, title, desc, targetMember.getEffectiveAvatarUrl());
+        event.replyEmbeds(he1pMEMessageEmbed).queue();
     }
 }

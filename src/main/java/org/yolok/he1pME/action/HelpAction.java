@@ -7,6 +7,7 @@ import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 import org.yolok.he1pME.annotation.He1pME;
@@ -29,6 +30,9 @@ public class HelpAction implements Action {
 
     @Autowired
     private CallActionService callActionService;
+
+    @Value("${sign}")
+    public String sign;
 
     @Override
     public void execute(SlashCommandInteractionEvent event) {
@@ -53,7 +57,9 @@ public class HelpAction implements Action {
         EmbedBuilder embedBuilder = getEmbedBuilder(member, "音樂指令");
         musicActionSet.parallelStream()
                 .sorted(Comparator.comparing(He1pME::instruction))
-                .forEachOrdered(he1pME -> embedBuilder.addField(CommonUtil.SIGN + he1pME.example(), he1pME.description(), Boolean.FALSE));
+                .forEachOrdered(he1pME ->
+                        embedBuilder.addField(sign + he1pME.example(), he1pME.description(), Boolean.FALSE)
+                );
         messageEmbedList.add(embedBuilder.build());
     }
 
@@ -70,7 +76,9 @@ public class HelpAction implements Action {
         EmbedBuilder embedBuilder = getEmbedBuilder(member, "一般指令");
         customActionSet.parallelStream()
                 .sorted(Comparator.comparing(He1pME::instruction))
-                .forEachOrdered(he1pME -> embedBuilder.addField(CommonUtil.SIGN + he1pME.example(), he1pME.description(), Boolean.FALSE));
+                .forEachOrdered(he1pME ->
+                        embedBuilder.addField(sign + he1pME.example(), he1pME.description(), Boolean.FALSE)
+                );
         messageEmbedList.add(embedBuilder.build());
     }
 
@@ -83,7 +91,9 @@ public class HelpAction implements Action {
         EmbedBuilder embedBuilder = getEmbedBuilder(member, "呼叫指令");
         callActionList.parallelStream()
                 .sorted(Comparator.comparing(CallAction::getAction))
-                .forEachOrdered(callAction -> embedBuilder.addField(CommonUtil.SIGN + callAction.getAction(), callAction.getDescription(), Boolean.FALSE));
+                .forEachOrdered(callAction ->
+                        embedBuilder.addField(sign + callAction.getAction(), callAction.getDescription(), Boolean.FALSE)
+                );
         messageEmbedList.add(embedBuilder.build());
     }
 
