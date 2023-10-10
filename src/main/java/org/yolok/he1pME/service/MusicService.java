@@ -119,7 +119,7 @@ public class MusicService {
                 CommonUtil.descFormat("Author : " + audioTrackInfo.author) + StringUtils.LF +
                 CommonUtil.descFormat("Time : " + timeFormat(audioTrackInfo.length));
         MessageEmbed he1pMEMessageEmbed = CommonUtil.getHe1pMessageEmbed(member, title, desc, null);
-        event.replyEmbeds(he1pMEMessageEmbed).queue();
+        event.replyEmbeds(he1pMEMessageEmbed).setEphemeral(true).queue();
     }
 
     @He1pME(instruction = "list", description = "顯示播放清單", example = "list")
@@ -143,7 +143,7 @@ public class MusicService {
                     .collect(Collectors.joining(StringUtils.LF));
         }
         MessageEmbed he1pMEMessageEmbed = CommonUtil.getHe1pMessageEmbed(member, title, desc, null);
-        event.replyEmbeds(he1pMEMessageEmbed).queue();
+        event.replyEmbeds(he1pMEMessageEmbed).setEphemeral(true).queue();
     }
 
     @He1pME(instruction = "skip", description = "跳過這首歌曲", example = "skip")
