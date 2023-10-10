@@ -1,6 +1,7 @@
 package org.yolok.he1pME.action;
 
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import org.springframework.stereotype.Component;
@@ -23,7 +24,7 @@ public class EditNameAction implements Action {
         Member botMember = Objects.requireNonNull(member.getGuild().getMember(member.getJDA().getSelfUser()));
         Member targetMember = Objects.requireNonNull(event.getOption("member")).getAsMember();
         String newName = Objects.requireNonNull(event.getOption("nick-name")).getAsString();
-        String oldName = Objects.requireNonNull(targetMember).getNickname();
+        String oldName = Objects.requireNonNull(targetMember).getEffectiveName();
         String title, desc;
         if (CommonUtil.notHigher(botMember, targetMember)) {
             title = "修改暱稱失敗";
@@ -33,6 +34,7 @@ public class EditNameAction implements Action {
             title = "修改暱稱成功";
             desc = String.format("成員 : %s\n名稱變化 : %s -> %s", targetMember.getAsMention(), oldName, newName);
         }
-        CommonUtil.replyByHe1pMETemplate(event, member, title, desc, targetMember.getEffectiveAvatarUrl());
+        MessageEmbed he1pMEMessageEmbed = CommonUtil.getHe1pMessageEmbed(member, title, desc, targetMember.getEffectiveAvatarUrl());
+        event.replyEmbeds(he1pMEMessageEmbed).queue();
     }
 }
