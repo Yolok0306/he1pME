@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.yolok.he1pME.service.CallActionService;
 import org.yolok.he1pME.service.MessageEventService;
-import org.yolok.he1pME.util.CommonUtil;
 
 import java.util.List;
 import java.util.Objects;
@@ -27,9 +26,9 @@ public class JDAEventListener extends ListenerAdapter {
 
     @Override
     public void onGuildReady(@NotNull GuildReadyEvent event) {
-        String guildId = Objects.requireNonNull(event.getGuild()).getId();
+        String guildId = event.getGuild().getId();
         List<SlashCommandData> slashCommandDataList = callActionService.getSlashCommandDataList(guildId);
-        CommonUtil.JDA.updateCommands().addCommands(slashCommandDataList).queue();
+        event.getGuild().updateCommands().addCommands(slashCommandDataList).queue();
     }
 
     @Override
