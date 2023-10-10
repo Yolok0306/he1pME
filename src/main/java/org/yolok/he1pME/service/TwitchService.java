@@ -210,12 +210,12 @@ public class TwitchService {
             }
 
             MessageEmbed messageEmbed = new EmbedBuilder()
-                    .setTitle(title)
+                    .setTitle(title, twitchChannelBaseUrl + userLogin)
                     .setImage(image)
                     .setColor(twitchColor)
                     .setAuthor(userName, null, twitchLogoUrl)
                     .build();
-            messageChannel.sendMessage(twitchChannelBaseUrl + userLogin).addEmbeds(messageEmbed).queue();
+            messageChannel.sendMessageEmbeds(messageEmbed).queue();
         });
     }
 }
