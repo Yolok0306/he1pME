@@ -4,8 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
-import net.dv8tion.jda.api.interactions.commands.build.Commands;
-import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -56,9 +54,7 @@ public class CallActionService {
         event.reply(content.toString()).addEmbeds(messageEmbed).queue();
     }
 
-    public List<SlashCommandData> getSlashCommandDataList(String guildId) {
-        return callActionRepository.findByGuildId(guildId).parallelStream()
-                .map(callAction -> Commands.slash(callAction.getAction(), callAction.getDescription()))
-                .toList();
+    public List<CallAction> getCallActionList(String guildId) {
+        return callActionRepository.findByGuildId(guildId);
     }
 }

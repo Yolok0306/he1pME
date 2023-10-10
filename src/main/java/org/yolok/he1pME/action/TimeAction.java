@@ -1,35 +1,26 @@
 package org.yolok.he1pME.action;
 
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
-import org.apache.commons.lang3.StringUtils;
+import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import org.springframework.stereotype.Component;
-import org.yolok.he1pME.annotation.Help;
-import org.yolok.he1pME.util.CommonUtil;
+import org.yolok.he1pME.annotation.He1pME;
 
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Objects;
 
 @Component
-@Help(example = "time [zoneId]", description = "取得現在時間")
+@He1pME(instruction = "time", description = "取得現在時間",
+        options = {
+                @He1pME.Option(name = "zone-id", description = "zone id", required = false)
+        }, example = "time [zone-id]")
 public class TimeAction implements Action {
 
     @Override
-    public String getInstruction() {
-        return "time";
-    }
-
-    @Override
-    public void execute(Message message) {
-        String regex = String.format("\\%s%s\\p{Blank}*", CommonUtil.SIGN, getInstruction());
-        String userZoneId = message.getContentRaw().replaceAll(regex, StringUtils.EMPTY);
-        ZoneId zoneId = StringUtils.isNotBlank(userZoneId) ? ZoneId.of(userZoneId) : ZoneId.systemDefault();
-
-        Member member = Objects.requireNonNull(message.getMember());
-        String title = String.format("現在時間 (%s)", zoneId);
-        String desc = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(ZonedDateTime.now(zoneId));
-        CommonUtil.replyByHe1pMETemplate(message.getChannel(), member, title, desc, null);
+    public void execute(SlashCommandInteractionEvent event) {
+        OptionMapping option = event.getOption("zone-id");
+        ZoneId zoneId = option == null ? ZoneId.systemDefault() : ZoneId.of(option.getAsString());
+        String content = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(ZonedDateTime.now(zoneId));
+        event.reply(content).setEphemeral(true).queue();
     }
 }

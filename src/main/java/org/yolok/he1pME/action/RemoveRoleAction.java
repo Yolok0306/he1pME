@@ -1,51 +1,44 @@
 package org.yolok.he1pME.action;
 
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.interactions.commands.OptionType;
 import org.springframework.stereotype.Component;
-import org.yolok.he1pME.annotation.Help;
+import org.yolok.he1pME.annotation.He1pME;
 import org.yolok.he1pME.util.CommonUtil;
 
 import java.util.Objects;
-import java.util.Optional;
 
 @Component
-@Help(example = "removeRole @member @role", description = "為被標記的成員移除被標記的身分組")
+@He1pME(instruction = "remove-role", description = "為被標記的成員移除被標記的身分組",
+        options = {
+                @He1pME.Option(optionType = OptionType.USER, name = "member", description = "member name"),
+                @He1pME.Option(optionType = OptionType.ROLE, name = "role", description = "role name")
+        }, example = "remove-role @member @role")
 public class RemoveRoleAction implements Action {
 
     @Override
-    public String getInstruction() {
-        return "removeRole";
-    }
-
-    @Override
-    public void execute(Message message) {
-        Member member = Objects.requireNonNull(message.getMember());
-        Optional<Member> mentionMemberOpt = message.getMentions().getMembers().parallelStream().findFirst();
-        Optional<Role> mentionRoleOpt = message.getMentions().getRoles().parallelStream().findFirst();
-        Member botMember = member.getGuild().getMember(member.getJDA().getSelfUser());
-        if (mentionMemberOpt.isEmpty() || mentionRoleOpt.isEmpty() || botMember == null) {
-            return;
-        }
-
-        Member mentionMember = mentionMemberOpt.get();
-        Role mentionRole = mentionRoleOpt.get();
+    public void execute(SlashCommandInteractionEvent event) {
+        Member member = Objects.requireNonNull(event.getMember());
+        Member botMember = Objects.requireNonNull(member.getGuild().getMember(member.getJDA().getSelfUser()));
+        Member targetMember = Objects.requireNonNull(event.getOption("member")).getAsMember();
+        Role targetRole = Objects.requireNonNull(event.getOption("role")).getAsRole();
         String title, desc;
-        if (!mentionMember.getRoles().contains(mentionRole)) {
+        if (!Objects.requireNonNull(targetMember).getRoles().contains(targetRole)) {
             title = "移除身分組失敗";
-            desc = String.format("\"%s\"並未擁有\"%s\"的身分組", mentionMember.getEffectiveName(), mentionRole.getName());
-        } else if (CommonUtil.notHigher(member, mentionRole)) {
+            desc = String.format("\"%s\"並未擁有\"%s\"的身分組", targetMember.getEffectiveName(), targetRole.getName());
+        } else if (CommonUtil.notHigher(member, targetRole)) {
             title = "移除身分組失敗";
-            desc = String.format("\"%s\"並未擁有比\"%s\"還高的身分組", member.getEffectiveName(), mentionRole.getName());
-        } else if (CommonUtil.notHigher(botMember, mentionRole)) {
+            desc = String.format("\"%s\"並未擁有比\"%s\"還高的身分組", member.getEffectiveName(), targetRole.getName());
+        } else if (CommonUtil.notHigher(botMember, targetRole)) {
             title = "移除身分組失敗";
-            desc = String.format("\"%s\"並未擁有比\"%s\"還高的身分組", botMember.getEffectiveName(), mentionRole.getName());
+            desc = String.format("\"%s\"並未擁有比\"%s\"還高的身分組", botMember.getEffectiveName(), targetRole.getName());
         } else {
-            message.getGuild().removeRoleFromMember(mentionMember, mentionRole).queue();
+            Objects.requireNonNull(event.getGuild()).removeRoleFromMember(targetMember, targetRole).queue();
             title = "移除身分組成功";
-            desc = String.format("移除身分組 : %s", mentionRole.getName());
+            desc = String.format("目標成員 : %s\n移除身分組 : %s", targetMember.getAsMention(), targetRole.getAsMention());
         }
-        CommonUtil.replyByHe1pMETemplate(message.getChannel(), member, title, desc, mentionMember.getEffectiveAvatarUrl());
+        CommonUtil.replyByHe1pMETemplate(event, member, title, desc, targetMember.getEffectiveAvatarUrl());
     }
 }
