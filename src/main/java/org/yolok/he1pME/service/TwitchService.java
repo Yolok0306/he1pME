@@ -6,7 +6,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -17,14 +16,14 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
-import org.yolok.he1pME.entity.TwitchNotification;
 import org.yolok.he1pME.repository.TwitchNotificationRepository;
 import org.yolok.he1pME.util.CommonUtil;
 
 import java.awt.*;
 import java.net.URI;
-import java.util.List;
-import java.util.*;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -74,13 +73,11 @@ public class TwitchService {
     }
 
     public void initNotificationMap() {
-        List<TwitchNotification> twitchNotificationList = twitchNotificationRepository.findAll();
-        notificationMap = CollectionUtils.isEmpty(twitchNotificationList) ?
-                Collections.emptyMap() :
-                twitchNotificationList.parallelStream().collect(Collectors.groupingBy(
-                        TwitchNotification::getTwitchChannelId,
-                        Collectors.mapping(TwitchNotification::getMessageChannelId, Collectors.toSet())
-                ));
+        notificationMap = new ConcurrentHashMap<>();
+        twitchNotificationRepository.findAll().parallelStream()
+                .forEach(notification -> notificationMap.computeIfAbsent(
+                        notification.getTwitchChannelId(), key -> ConcurrentHashMap.newKeySet()
+                ).add(notification.getMessageChannelId()));
     }
 
     public void adjustCache() {
@@ -97,26 +94,6 @@ public class TwitchService {
                 .collect(Collectors.toSet());
         initCache(newDataSet);
         cache.putAll(existingDataMap);
-    }
-
-    private void initCache(Set<String> userLoginSet) {
-        String responseString = callStreamApi(userLoginSet);
-        if (StringUtils.isBlank(responseString)) {
-            return;
-        }
-
-        JSONArray dataJsonArray = new JSONObject(responseString).getJSONArray("data");
-        if (dataJsonArray.isEmpty()) {
-            return;
-        }
-
-        cache = dataJsonArray.toList().parallelStream()
-                .filter(data -> data instanceof HashMap<?, ?>)
-                .map(data -> (Map<?, ?>) data)
-                .filter(data -> StringUtils.equals(data.get("type").toString(), "live"))
-                .filter(data -> CommonUtil.checkStartTime(data.get("started_at").toString()))
-                .collect(Collectors.toMap(data -> data.get("user_login").toString(), data -> data.get("id").toString(),
-                        (existingValue, newValue) -> existingValue, ConcurrentHashMap::new));
     }
 
     @Async
@@ -153,6 +130,22 @@ public class TwitchService {
                 });
     }
 
+    private void initCache(Set<String> userLoginSet) {
+        String responseString = callStreamApi(userLoginSet);
+        if (StringUtils.isBlank(responseString)) {
+            cache = new ConcurrentHashMap<>();
+            return;
+        }
+
+        JSONArray dataJsonArray = new JSONObject(responseString).getJSONArray("data");
+        cache = dataJsonArray.toList().parallelStream()
+                .map(JSONObject::valueToString)
+                .map(JSONObject::new)
+                .filter(data -> StringUtils.equals(data.getString("type"), "live"))
+                .filter(data -> CommonUtil.checkStartTime(data.getString("started_at")))
+                .collect(Collectors.toConcurrentMap(data -> data.getString("user_login"), data -> data.getString("id")));
+    }
+
     @Nullable
     private String callStreamApi(Set<String> userLoginSet) {
         UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(twitchApiBaseUrl + "streams");
@@ -161,7 +154,7 @@ public class TwitchService {
         HttpHeaders headers = new HttpHeaders();
         headers.set("Client-Id", twitchApiClientId);
         headers.set("Authorization", twitchApiTokenType + StringUtils.SPACE + twitchApiAccessToken);
-        HttpEntity<?> entity = new HttpEntity<>(headers);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
         try {
             ResponseEntity<String> responseEntity = restTemplate.exchange(uri, HttpMethod.GET, entity, String.class);
             if (responseEntity.getStatusCode() == HttpStatus.UNAUTHORIZED) {
@@ -186,7 +179,7 @@ public class TwitchService {
                 .build()
                 .toUri();
         HttpHeaders headers = new HttpHeaders();
-        HttpEntity<?> entity = new HttpEntity<>(headers);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
         try {
             ResponseEntity<String> responseEntity = restTemplate.exchange(uri, HttpMethod.POST, entity, String.class);
             JSONObject response = new JSONObject(Objects.requireNonNull(responseEntity.getBody()));
