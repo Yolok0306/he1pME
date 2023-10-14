@@ -17,14 +17,15 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
-import org.yolok.he1pME.entity.YouTubeNotification;
 import org.yolok.he1pME.repository.YouTubeNotificationRepository;
 import org.yolok.he1pME.util.CommonUtil;
 
 import java.awt.*;
 import java.net.URI;
-import java.util.List;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -65,13 +66,11 @@ public class YouTubeService {
     }
 
     public void initNotificationMap() {
-        List<YouTubeNotification> youTubeNotificationList = youTubeNotificationRepository.findAll();
-        notificationMap = CollectionUtils.isEmpty(youTubeNotificationList) ?
-                Collections.emptyMap() :
-                youTubeNotificationList.parallelStream().collect(Collectors.groupingBy(
-                        YouTubeNotification::getYoutubeChannelPlaylistId,
-                        Collectors.mapping(YouTubeNotification::getMessageChannelId, Collectors.toSet())
-                ));
+        notificationMap = new ConcurrentHashMap<>();
+        youTubeNotificationRepository.findAll().parallelStream()
+                .forEach(notification -> notificationMap.computeIfAbsent(
+                        notification.getYoutubeChannelPlaylistId(), key -> ConcurrentHashMap.newKeySet()
+                ).add(notification.getMessageChannelId()));
     }
 
     public void adjustCache() {
@@ -82,8 +81,7 @@ public class YouTubeService {
 
         Map<String, String> existingDataMap = cache.entrySet().parallelStream()
                 .filter(entry -> notificationMap.containsKey(entry.getKey()))
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
-                        (existingValue, newValue) -> existingValue, ConcurrentHashMap::new));
+                .collect(Collectors.toConcurrentMap(Map.Entry::getKey, Map.Entry::getValue));
         Set<String> newDataSet = filterAndGetPlayListItemResponseSet(existingDataMap.keySet());
         initCache(newDataSet);
         cache.putAll(existingDataMap);
@@ -120,12 +118,9 @@ public class YouTubeService {
                 .filter(playlistItemJsonArray -> !playlistItemJsonArray.isEmpty())
                 .map(playlistItemJsonArray -> playlistItemJsonArray.getJSONObject(0).getJSONObject("snippet"))
                 .filter(snippetJsonObject -> CommonUtil.checkStartTime(snippetJsonObject.getString("publishedAt")))
-                .collect(Collectors.toMap(
+                .collect(Collectors.toConcurrentMap(
                         snippetJsonObject -> snippetJsonObject.getString("playlistId"),
-                        snippetJsonObject -> snippetJsonObject.getJSONObject("resourceId").getString("videoId"),
-                        (existingValue, newValue) -> existingValue,
-                        ConcurrentHashMap::new
-                ));
+                        snippetJsonObject -> snippetJsonObject.getJSONObject("resourceId").getString("videoId")));
     }
 
     private Set<String> filterAndGetPlayListItemResponseSet(Set<String> existingDataSet) {
