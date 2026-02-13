@@ -1,11 +1,12 @@
 package org.yolok.he1pME.service;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import org.apache.commons.collections4.CollectionUtils;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.yolok.he1pME.entity.CallAction;
 import org.yolok.he1pME.entity.MemberData;
@@ -17,16 +18,16 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class CallActionService {
 
-    @Autowired
-    private CallActionRepository callActionRepository;
+    private final CallActionRepository callActionRepository;
 
-    @Autowired
-    private MemberDataRepository memberDataRepository;
+    private final MemberDataRepository memberDataRepository;
 
     public void execute(SlashCommandInteractionEvent event) {
         String instruction = event.getName();
@@ -44,14 +45,23 @@ public class CallActionService {
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .toList();
-        Color color = CollectionUtils.size(memberDataList) > 1 ?
-                null :
-                new Color(memberDataList.get(0).getRed(), memberDataList.get(0).getGreen(), memberDataList.get(0).getBlue());
-        StringBuilder content = new StringBuilder();
-        memberDataList.forEach(memberData -> content.append("<@").append(memberData.getMemberId()).append("> "));
-        content.append(callAction.getMessage());
-        MessageEmbed messageEmbed = new EmbedBuilder().setColor(color).setImage(callAction.getImage()).build();
-        event.reply(content.toString()).addEmbeds(messageEmbed).queue();
+
+        Color color = null;
+        if (CollectionUtils.size(memberDataList) == 1) {
+            MemberData memberData = memberDataList.get(0);
+            color = new Color(memberData.getRed(), memberData.getGreen(), memberData.getBlue());
+        }
+
+        String content = memberDataList.stream()
+                .map(memberData -> "<@" + memberData.getMemberId() + ">")
+                .collect(Collectors.joining(StringUtils.SPACE, StringUtils.EMPTY, StringUtils.SPACE + callAction.getMessage()));
+
+        MessageEmbed messageEmbed = new EmbedBuilder()
+                .setColor(color)
+                .setImage(callAction.getImage())
+                .build();
+
+        event.reply(content).addEmbeds(messageEmbed).queue();
     }
 
     public List<CallAction> getCallActionList(String guildId) {

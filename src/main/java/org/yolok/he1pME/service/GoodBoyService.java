@@ -1,99 +1,139 @@
 package org.yolok.he1pME.service;
 
-import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
-import org.yolok.he1pME.entity.BadWord;
-import org.yolok.he1pME.repository.BadWordRepository;
 import org.yolok.he1pME.util.CommonUtil;
 
-import java.util.*;
+import java.util.EnumSet;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
 public class GoodBoyService {
 
-    @Autowired
-    private BadWordRepository badWordRepository;
+    private final Map<String, Set<String>> badWordMap;
 
-    private Map<String, Set<String>> badWordMap;
+    private static final Pattern EVERYONE_HERE_PATTERN = Pattern.compile("@everyone|@here");
+    private static final Pattern MEMBER_MENTION_PATTERN = Pattern.compile("<@[!&]?\\d{18}>");
+    private static final Pattern CHANNEL_MENTION_PATTERN = Pattern.compile("<#\\d{18}>");
+    private static final Pattern PUNCTUATION_PATTERN = Pattern.compile("\\p{Punct}");
+    private static final Pattern BLANK_PATTERN = Pattern.compile("\\p{Blank}");
 
-    @PostConstruct
-    public void initBadWordMap() {
-        List<BadWord> badWordList = badWordRepository.findAll();
-        badWordMap = CollectionUtils.isEmpty(badWordList) ?
-                Collections.emptyMap() :
-                badWordList.parallelStream().collect(Collectors.groupingBy(
-                        BadWord::getGuildId,
-                        Collectors.mapping(BadWord::getWord, Collectors.toSet())
-                ));
+    public GoodBoyService(@Qualifier("badWordMap") Map<String, Set<String>> badWordMap) {
+        this.badWordMap = badWordMap;
     }
 
     public void checkContent(Message message) {
-        if (!badWordMap.containsKey(message.getGuild().getId())) {
-            return;
+        try {
+            String guildId = message.getGuild().getId();
+            if (!badWordMap.containsKey(guildId)) {
+                return;
+            }
+
+            Set<String> badWordSet = badWordMap.get(guildId);
+            Member member = Objects.requireNonNull(message.getMember());
+            
+            if (member.getUser().isBot() || hasModerationPermission(member)) {
+                return;
+            }
+
+            String content = message.getContentRaw();
+            if (!isBadWord(content, badWordSet)) {
+                return;
+            }
+
+            punishMember(message, member, content);
+        } catch (Exception e) {
+            log.error("GoodBoyService checkContent failed: ", e);
         }
-
-        Set<String> badWordSet = badWordMap.get(message.getGuild().getId());
-        Member member = Objects.requireNonNull(message.getMember());
-        String content = message.getContentRaw();
-        if (member.getUser().isBot() || notNeedToCheck(member) || !isBadWord(content, badWordSet)) {
-            return;
-        }
-
-        message.delete().queue();
-
-        int punishmentTime = 3;
-        member.timeoutFor(punishmentTime, TimeUnit.MINUTES).queue();
-        String title = "言論審查系統";
-        String desc = String.format("◆ 不當言論 : %s\n◆ 懲處 : 禁言%d分鐘", content, punishmentTime);
-        MessageEmbed he1pMEMessageEmbed = CommonUtil.getHe1pMessageEmbed(member, title, desc, null);
-        message.getChannel().sendMessageEmbeds(he1pMEMessageEmbed).queue();
     }
 
-    private boolean notNeedToCheck(Member member) {
-        EnumSet<Permission> permissionSet = member.getPermissions();
-        return permissionSet.contains(Permission.ADMINISTRATOR) || permissionSet.contains(Permission.MODERATE_MEMBERS);
+    private boolean hasModerationPermission(Member member) {
+        EnumSet<Permission> permissions = member.getPermissions();
+        return permissions.contains(Permission.ADMINISTRATOR) || permissions.contains(Permission.MODERATE_MEMBERS);
+    }
+
+    private void punishMember(Message message, Member member, String content) {
+        message.delete().queue(null, e -> {
+            log.error("Failed to delete offensive message: ", e);
+        });
+
+        int punishmentTime = 3;
+        member.timeoutFor(punishmentTime, TimeUnit.MINUTES).queue(
+                null, 
+                e -> {
+                    log.error("Failed to timeout member {}: ", member.getEffectiveName(), e);
+                }
+        );
+
+        String title = "言論審查系統";
+        String desc = String.format("◆ 不當言論 : %s\n◆ 懲處 : 禁言%d分鐘", content, punishmentTime);
+        MessageEmbed embed = CommonUtil.getHe1pMessageEmbed(member, title, desc, null);
+        message.getChannel().sendMessageEmbeds(embed).queue();
     }
 
     private boolean isBadWord(String content, Set<String> badWordSet) {
-        content = content.replaceAll("@everyone|@here", StringUtils.EMPTY);
-        content = content.replaceAll("<@[!&]?\\d{18}>", StringUtils.EMPTY);
-        content = content.replaceAll("<#\\d{18}>", StringUtils.EMPTY);
-        content = fullWidthToHalfWidth(content);
-        content = content.replaceAll("\\p{Punct}", StringUtils.EMPTY);
-        content = content.replaceAll("\\p{Blank}", StringUtils.EMPTY);
-
         if (StringUtils.isBlank(content)) {
             return false;
         }
 
+        String normalizedContent = normalizeContent(content);
+        if (StringUtils.isBlank(normalizedContent)) {
+            return false;
+        }
+
+        String lowerContent = normalizedContent.toLowerCase();
         for (String badWord : badWordSet) {
-            if (badWord.length() == 1 && StringUtils.containsOnly(content.toLowerCase(), badWord.toLowerCase())) {
-                return true;
-            } else if (badWord.length() > 1 && StringUtils.contains(content.toLowerCase(), badWord.toLowerCase())) {
-                return true;
+            String lowerBadWord = badWord.toLowerCase();
+            if (badWord.length() == 1) {
+                if (StringUtils.containsOnly(lowerContent, lowerBadWord)) {
+                    return true;
+                }
+            } else {
+                if (StringUtils.contains(lowerContent, lowerBadWord)) {
+                    return true;
+                }
             }
         }
         return false;
     }
 
+    private String normalizeContent(String content) {
+        content = EVERYONE_HERE_PATTERN.matcher(content).replaceAll(StringUtils.EMPTY);
+        content = MEMBER_MENTION_PATTERN.matcher(content).replaceAll(StringUtils.EMPTY);
+        content = CHANNEL_MENTION_PATTERN.matcher(content).replaceAll(StringUtils.EMPTY);
+        content = fullWidthToHalfWidth(content);
+        content = PUNCTUATION_PATTERN.matcher(content).replaceAll(StringUtils.EMPTY);
+        content = BLANK_PATTERN.matcher(content).replaceAll(StringUtils.EMPTY);
+        return content;
+    }
+
     private String fullWidthToHalfWidth(String content) {
+        if (StringUtils.isEmpty(content)) {
+            return content;
+        }
+        
+        StringBuilder sb = new StringBuilder(content.length());
         for (char c : content.toCharArray()) {
-            content = content.replace("　", StringUtils.EMPTY);
-            if ((int) c >= 65281 && (int) c <= 65374) {
-                content = content.replace(c, (char) (((int) c) - 65248));
+            if (c == '　') {
+                continue;
+            }
+            if (c >= 65281 && c <= 65374) {
+                sb.append((char) (c - 65248));
+            } else {
+                sb.append(c);
             }
         }
-        return content;
+        return sb.toString();
     }
 }
