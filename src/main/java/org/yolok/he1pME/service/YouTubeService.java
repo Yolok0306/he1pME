@@ -6,39 +6,35 @@ import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriComponentsBuilder;
-import org.yolok.he1pME.repository.YouTubeNotificationRepository;
 import org.yolok.he1pME.util.CommonUtil;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.awt.*;
 import java.net.URI;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 @Slf4j
 @Service
 public class YouTubeService {
 
-    @Autowired
-    private RestTemplate restTemplate;
+    private final WebClient webClient;
 
-    @Autowired
-    private YouTubeNotificationRepository youTubeNotificationRepository;
+    private final Map<String, Set<String>> youtubeNotificationMap;
 
     @Value("${youtube.api.key}")
     private String youtubeApiKey;
@@ -52,184 +48,205 @@ public class YouTubeService {
     @Value("${youtube.logo.url}")
     private String youtubeLogoUrl;
 
-    private Map<String, String> cache;
-
-    private Map<String, Set<String>> notificationMap;
-
+    private final Map<String, String> cache = new ConcurrentHashMap<>();
+    private final AtomicBoolean isExecuting = new AtomicBoolean(false);
     private final Color youtubeColor = new Color(255, 0, 0);
+
+    public YouTubeService(WebClient webClient,
+                          @Qualifier("youtubeNotificationMap") Map<String, Set<String>> youtubeNotificationMap) {
+        this.webClient = webClient;
+        this.youtubeNotificationMap = youtubeNotificationMap;
+    }
 
     @PostConstruct
     public void init() {
-        initNotificationMap();
-        Set<String> playlistItemResponseSet = filterAndGetPlayListItemResponseSet(null);
-        initCache(playlistItemResponseSet);
-    }
-
-    public void initNotificationMap() {
-        notificationMap = new ConcurrentHashMap<>();
-        youTubeNotificationRepository.findAll().parallelStream()
-                .forEach(notification -> notificationMap.computeIfAbsent(
-                        notification.getYoutubeChannelPlaylistId(), key -> ConcurrentHashMap.newKeySet()
-                ).add(notification.getMessageChannelId()));
+        fetchPlaylistItems(null)
+                .collectList()
+                .subscribe(this::initCache);
     }
 
     public void adjustCache() {
-        if (notificationMap.isEmpty()) {
+        if (youtubeNotificationMap.isEmpty()) {
             cache.clear();
             return;
         }
 
-        Map<String, String> existingDataMap = cache.entrySet().parallelStream()
-                .filter(entry -> notificationMap.containsKey(entry.getKey()))
-                .collect(Collectors.toConcurrentMap(Map.Entry::getKey, Map.Entry::getValue));
-        Set<String> newDataSet = filterAndGetPlayListItemResponseSet(existingDataMap.keySet());
-        initCache(newDataSet);
-        cache.putAll(existingDataMap);
+        cache.keySet().retainAll(youtubeNotificationMap.keySet());
+        fetchPlaylistItems(cache.keySet())
+                .collectList()
+                .subscribe(this::initCache);
     }
 
     @Async
     public void execute() {
-        if (notificationMap.isEmpty()) {
+        if (youtubeNotificationMap.isEmpty() || !isExecuting.compareAndSet(false, true)) {
             return;
         }
 
-        Set<String> playlistItemResponseSet = filterAndGetPlayListItemResponseSet(null);
-        Map<String, Set<String>> needToBeNotifiedMap = constructNeedToBeNotifiedMap(playlistItemResponseSet);
-        if (needToBeNotifiedMap.isEmpty()) {
-            return;
-        }
+        fetchPlaylistItems(null)
+                .collectList()
+                .flatMap(responses -> {
+                    Map<String, Set<String>> pending = extractNewVideos(responses);
+                    if (pending.isEmpty()) {
+                        return Mono.empty();
+                    }
 
-        String videoResponseString = callVideoApi(needToBeNotifiedMap.keySet());
-        if (StringUtils.isBlank(videoResponseString)) {
-            return;
-        }
-
-        JSONArray itemJsonArray = new JSONObject(videoResponseString).getJSONArray("items");
-        itemJsonArray.toList().parallelStream()
-                .map(JSONObject::valueToString)
-                .map(JSONObject::new)
-                .forEach(item -> notification(item, needToBeNotifiedMap));
+                    return callVideoApi(pending.keySet())
+                            .doOnNext(videoData -> processNotifications(videoData, pending));
+                })
+                .doOnError(e -> {
+                    log.error("YouTubeService execution failed: ", e);
+                })
+                .doFinally(signal -> {
+                    isExecuting.set(false);
+                })
+                .subscribeOn(Schedulers.boundedElastic())
+                .subscribe();
     }
 
-    private void initCache(Set<String> playlistItemResponseSet) {
-        cache = playlistItemResponseSet.parallelStream()
-                .map(JSONObject::new)
-                .map(playlistJsonObject -> playlistJsonObject.getJSONArray("items"))
-                .filter(playlistItemJsonArray -> !playlistItemJsonArray.isEmpty())
-                .map(playlistItemJsonArray -> playlistItemJsonArray.getJSONObject(0).getJSONObject("snippet"))
-                .filter(snippetJsonObject -> CommonUtil.checkStartTime(snippetJsonObject.getString("publishedAt")))
-                .collect(Collectors.toConcurrentMap(
-                        snippetJsonObject -> snippetJsonObject.getString("playlistId"),
-                        snippetJsonObject -> snippetJsonObject.getJSONObject("resourceId").getString("videoId")));
+    private Flux<String> fetchPlaylistItems(@Nullable Set<String> ids) {
+        Set<String> targets = (ids == null || ids.isEmpty()) ? youtubeNotificationMap.keySet() : ids;
+        return Flux.fromIterable(targets)
+                .flatMap(this::callPlayListItemApi);
     }
 
-    private Set<String> filterAndGetPlayListItemResponseSet(Set<String> existingDataSet) {
-        return CollectionUtils.isEmpty(existingDataSet) ?
-                notificationMap.keySet().parallelStream()
-                        .map(this::callPlayListItemApi)
-                        .filter(Objects::nonNull)
-                        .collect(Collectors.toSet()) :
-                notificationMap.keySet().parallelStream()
-                        .filter(key -> !existingDataSet.contains(key))
-                        .map(this::callPlayListItemApi)
-                        .filter(Objects::nonNull)
-                        .collect(Collectors.toSet());
+    private Map<String, Set<String>> extractNewVideos(java.util.List<String> responses) {
+        Map<String, Set<String>> newVideos = new java.util.HashMap<>();
+        for (String response : responses) {
+            JSONObject snippet = getFirstItemSnippet(response);
+            if (snippet == null) {
+                continue;
+            }
+
+            String playlistId = snippet.getString("playlistId");
+            String videoId = snippet.getJSONObject("resourceId").getString("videoId");
+            if (!StringUtils.equals(cache.get(playlistId), videoId)) {
+                if (cache.containsKey(playlistId) || CommonUtil.checkStartTime(snippet.getString("publishedAt"))) {
+                    newVideos.put(videoId, youtubeNotificationMap.get(playlistId));
+                }
+                cache.put(playlistId, videoId);
+            }
+        }
+        return newVideos;
     }
 
     @Nullable
-    private String callPlayListItemApi(String playlistId) {
-        URI uri = UriComponentsBuilder.fromUriString(youtubeApiBaseUrl + "playlistItems")
+    private JSONObject getFirstItemSnippet(String response) {
+        try {
+            JSONObject json = new JSONObject(response);
+            JSONArray items = json.optJSONArray("items");
+            return (items != null && !items.isEmpty()) ? items.getJSONObject(0).optJSONObject("snippet") : null;
+        } catch (Exception e) {
+            log.error("Failed to parse first item snippet: ", e);
+            return null;
+        }
+    }
+
+    private void processNotifications(String videoData, Map<String, Set<String>> pendingNotifications) {
+        try {
+            JSONArray items = new JSONObject(videoData).optJSONArray("items");
+            if (items == null) {
+                return;
+            }
+
+            for (int i = 0; i < items.length(); i++) {
+                JSONObject item = items.getJSONObject(i);
+                if (isLiveStreamEnded(item)) {
+                    continue;
+                }
+
+                String videoId = item.getString("id");
+                sendEmbedToChannels(item.getJSONObject("snippet"), videoId, pendingNotifications.get(videoId));
+            }
+        } catch (Exception e) {
+            log.error("Failed to process notifications: ", e);
+        }
+    }
+
+    private void sendEmbedToChannels(JSONObject snippet, String videoId, Set<String> channelIds) {
+        if (channelIds == null) {
+            return;
+        }
+
+        try {
+            MessageEmbed embed = createEmbed(snippet, videoId);
+            channelIds.forEach(id -> {
+                MessageChannel channel = CommonUtil.JDA.getChannelById(MessageChannel.class, id);
+                if (channel != null) {
+                    channel.sendMessageEmbeds(embed).queue(null, e -> {
+                        log.error("Send failed to channel {}: ", id, e);
+                    });
+                }
+            });
+        } catch (Exception e) {
+            log.error("Failed to send embed to channels: ", e);
+        }
+    }
+
+    private MessageEmbed createEmbed(JSONObject snippet, String videoId) {
+        return new EmbedBuilder()
+                .setTitle(snippet.getString("title"), youtubeVideoBaseUrl + videoId)
+                .setImage(getThumbnail(snippet.getJSONObject("thumbnails")))
+                .setColor(youtubeColor)
+                .setAuthor(snippet.getString("channelTitle"), null, youtubeLogoUrl)
+                .build();
+    }
+
+    private void initCache(java.util.List<String> responses) {
+        for (String res : responses) {
+            JSONObject snippet = getFirstItemSnippet(res);
+            if (snippet != null && CommonUtil.checkStartTime(snippet.getString("publishedAt"))) {
+                cache.put(snippet.getString("playlistId"), snippet.getJSONObject("resourceId").getString("videoId"));
+            }
+        }
+    }
+
+    private Mono<String> callPlayListItemApi(String playlistId) {
+        URI uri = UriComponentsBuilder.fromHttpUrl(youtubeApiBaseUrl)
+                .path("playlistItems")
                 .queryParam("playlistId", playlistId)
                 .queryParam("part", "snippet")
                 .queryParam("maxResults", "1")
                 .queryParam("key", youtubeApiKey)
-                .build()
-                .toUri();
-        try {
-            ResponseEntity<String> responseEntity = restTemplate.getForEntity(uri, String.class);
-            log.debug(responseEntity.getStatusCode() + StringUtils.SPACE + handleResponseBodyLog(responseEntity.getBody()));
-            return responseEntity.getBody();
-        } catch (Exception e) {
-            log.error("Failed to execute Youtube play list item api", e);
-        }
+                .build().toUri();
 
-        return null;
-    }
-
-
-    private Map<String, Set<String>> constructNeedToBeNotifiedMap(Set<String> playlistItemResponseSet) {
-        Map<String, Set<String>> newVideoIdMap = new HashMap<>();
-        playlistItemResponseSet.parallelStream()
-                .map(JSONObject::new)
-                .map(playlistJsonObject -> playlistJsonObject.getJSONArray("items"))
-                .filter(playlistItemJsonArray -> !playlistItemJsonArray.isEmpty())
-                .map(playlistItemJsonArray -> playlistItemJsonArray.getJSONObject(0).getJSONObject("snippet"))
-                .forEach(snippetJsonObject -> {
-                    String playlistId = snippetJsonObject.getString("playlistId");
-                    String videoId = snippetJsonObject.getJSONObject("resourceId").getString("videoId");
-                    if (StringUtils.equals(cache.get(playlistId), videoId)) {
-                        return;
-                    }
-
-                    cache.put(playlistId, videoId);
-                    newVideoIdMap.putIfAbsent(videoId, notificationMap.get(playlistId));
+        return webClient.get()
+                .uri(uri)
+                .retrieve()
+                .bodyToMono(String.class)
+                .onErrorResume(e -> {
+                    log.warn("YouTube API error (playlistId: {}): ", playlistId, e);
+                    return Mono.empty();
                 });
-        return newVideoIdMap;
     }
 
-    @Nullable
-    private String callVideoApi(Set<String> videoIdSet) {
-        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(youtubeApiBaseUrl + "videos")
+    private Mono<String> callVideoApi(Set<String> ids) {
+        URI uri = UriComponentsBuilder.fromHttpUrl(youtubeApiBaseUrl)
+                .path("videos")
                 .queryParam("part", "snippet,liveStreamingDetails")
-                .queryParam("key", youtubeApiKey);
-        videoIdSet.parallelStream().forEach(videoId -> uriBuilder.queryParam("id", videoId));
-        URI uri = uriBuilder.build().toUri();
-        try {
-            ResponseEntity<String> responseEntity = restTemplate.getForEntity(uri, String.class);
-            log.debug(responseEntity.getStatusCode() + StringUtils.SPACE + handleResponseBodyLog(responseEntity.getBody()));
-            return responseEntity.getBody();
-        } catch (Exception e) {
-            log.error("Failed to execute Youtube video api", e);
-        }
+                .queryParam("key", youtubeApiKey)
+                .queryParam("id", String.join(",", ids))
+                .build().toUri();
 
-        return null;
+        return webClient.get()
+                .uri(uri)
+                .retrieve()
+                .bodyToMono(String.class)
+                .onErrorResume(e -> {
+                    log.error("YouTube Video API error: ", e);
+                    return Mono.empty();
+                });
     }
 
-    private String handleResponseBodyLog(String responseBody) {
-        return responseBody == null ? StringUtils.EMPTY : responseBody.replaceAll(StringUtils.LF, StringUtils.EMPTY);
+    private boolean isLiveStreamEnded(JSONObject item) {
+        return item.has("liveStreamingDetails") && item.getJSONObject("liveStreamingDetails").has("actualEndTime");
     }
 
-    private void notification(JSONObject item, Map<String, Set<String>> needToBeNotifiedMap) {
-        if (item.has("liveStreamingDetails") && item.getJSONObject("liveStreamingDetails").has("actualEndTime")) {
-            return;
-        }
-
-        JSONObject snippet = item.getJSONObject("snippet");
-        String videoId = item.getString("id");
-        String channelTitle = snippet.getString("channelTitle");
-        String videoTitle = snippet.getString("title");
-        String image = getImage(snippet.getJSONObject("thumbnails"));
-        needToBeNotifiedMap.get(videoId).parallelStream().forEach(messageChannelId -> {
-            MessageChannel messageChannel = CommonUtil.JDA.getChannelById(MessageChannel.class, messageChannelId);
-            if (messageChannel == null) {
-                return;
-            }
-
-            MessageEmbed messageEmbed = new EmbedBuilder()
-                    .setTitle(videoTitle, youtubeVideoBaseUrl + videoId)
-                    .setImage(image)
-                    .setColor(youtubeColor)
-                    .setAuthor(channelTitle, null, youtubeLogoUrl)
-                    .build();
-            messageChannel.sendMessageEmbeds(messageEmbed).queue();
-        });
-    }
-
-    private String getImage(JSONObject thumbnail) {
-        String maxSizeThumbnail = Stream.of("maxres", "standard", "high", "medium")
-                .filter(thumbnail::has)
+    private String getThumbnail(JSONObject thumbnails) {
+        return Stream.of("maxres", "standard", "high", "medium")
+                .filter(thumbnails::has)
                 .findFirst()
-                .orElse("default");
-        return thumbnail.getJSONObject(maxSizeThumbnail).getString("url");
+                .map(k -> thumbnails.getJSONObject(k).getString("url"))
+                .orElse(thumbnails.getJSONObject("default").getString("url"));
     }
 }

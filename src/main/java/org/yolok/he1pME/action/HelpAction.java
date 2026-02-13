@@ -1,106 +1,46 @@
 package org.yolok.he1pME.action;
 
-import lombok.extern.slf4j.Slf4j;
-import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.entities.Member;
+import lombok.RequiredArgsConstructor;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
-import org.apache.commons.collections4.CollectionUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.ApplicationContext;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 import org.yolok.he1pME.annotation.He1pME;
-import org.yolok.he1pME.entity.CallAction;
 import org.yolok.he1pME.service.CallActionService;
-import org.yolok.he1pME.service.MusicService;
 import org.yolok.he1pME.util.CommonUtil;
 
-import java.lang.reflect.Modifier;
-import java.util.*;
+import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
-@Slf4j
 @Component
-@He1pME(instruction = "help", description = "查看全部指令", example = "help")
+@He1pME(instruction = "help", description = "顯示幫助頁面", example = "help")
+@RequiredArgsConstructor
 public class HelpAction implements Action {
 
-    @Autowired
-    private ApplicationContext applicationContext;
+    private final CallActionService callActionService;
 
-    @Autowired
-    private CallActionService callActionService;
-
-    @Value("${sign}")
-    public String sign;
+    private final List<Action> actions;
 
     @Override
     public void execute(SlashCommandInteractionEvent event) {
-        Member member = Objects.requireNonNull(event.getMember());
-        List<MessageEmbed> messageEmbedList = new ArrayList<>();
-        addMusicActionEmbed(messageEmbedList, member);
-        addCustomActionEmbed(messageEmbedList, member);
-        addCallActionEmbed(messageEmbedList, member);
-        event.replyEmbeds(messageEmbedList).queue();
-    }
+        String title = "幫助頁面";
+        String desc = actions.stream()
+                .map(action -> action.getClass().getAnnotation(He1pME.class))
+                .filter(Objects::nonNull)
+                .map(he1pME -> CommonUtil.descFormat(he1pME.instruction() + " : " + he1pME.description()))
+                .collect(Collectors.joining(StringUtils.LF));
 
-    private void addMusicActionEmbed(List<MessageEmbed> messageEmbedList, Member member) {
-        Set<He1pME> musicActionSet = Arrays.stream(MusicService.class.getDeclaredMethods()).parallel()
-                .filter(method -> method.isAnnotationPresent(He1pME.class))
-                .filter(method -> Modifier.isPublic(method.getModifiers()))
-                .map(method -> method.getAnnotation(He1pME.class))
-                .collect(Collectors.toSet());
-        if (CollectionUtils.isEmpty(musicActionSet)) {
-            return;
+        String guildId = Objects.requireNonNull(event.getGuild()).getId();
+        String callActionDesc = callActionService.getCallActionList(guildId).stream()
+                .map(callAction -> CommonUtil.descFormat(callAction.getAction() + " : " + callAction.getDescription()))
+                .collect(Collectors.joining(StringUtils.LF));
+
+        if (StringUtils.isNotBlank(callActionDesc)) {
+            desc += StringUtils.LF + callActionDesc;
         }
 
-        EmbedBuilder embedBuilder = getEmbedBuilder(member, "音樂指令");
-        musicActionSet.parallelStream()
-                .sorted(Comparator.comparing(He1pME::instruction))
-                .forEachOrdered(he1pME ->
-                        embedBuilder.addField(sign + he1pME.example(), he1pME.description(), Boolean.FALSE)
-                );
-        messageEmbedList.add(embedBuilder.build());
-    }
-
-    private void addCustomActionEmbed(List<MessageEmbed> messageEmbedList, Member member) {
-        Set<He1pME> customActionSet = applicationContext.getBeansOfType(Action.class).values().parallelStream()
-                .map(Action::getClass)
-                .filter(clazz -> clazz.isAnnotationPresent(He1pME.class))
-                .map(clazz -> clazz.getAnnotation(He1pME.class))
-                .collect(Collectors.toSet());
-        if (CollectionUtils.isEmpty(customActionSet)) {
-            return;
-        }
-
-        EmbedBuilder embedBuilder = getEmbedBuilder(member, "一般指令");
-        customActionSet.parallelStream()
-                .sorted(Comparator.comparing(He1pME::instruction))
-                .forEachOrdered(he1pME ->
-                        embedBuilder.addField(sign + he1pME.example(), he1pME.description(), Boolean.FALSE)
-                );
-        messageEmbedList.add(embedBuilder.build());
-    }
-
-    private void addCallActionEmbed(List<MessageEmbed> messageEmbedList, Member member) {
-        List<CallAction> callActionList = callActionService.getCallActionList(member.getGuild().getId());
-        if (CollectionUtils.isEmpty(callActionList)) {
-            return;
-        }
-
-        EmbedBuilder embedBuilder = getEmbedBuilder(member, "呼叫指令");
-        callActionList.parallelStream()
-                .sorted(Comparator.comparing(CallAction::getAction))
-                .forEachOrdered(callAction ->
-                        embedBuilder.addField(sign + callAction.getAction(), callAction.getDescription(), Boolean.FALSE)
-                );
-        messageEmbedList.add(embedBuilder.build());
-    }
-
-    private EmbedBuilder getEmbedBuilder(Member member, String title) {
-        return new EmbedBuilder()
-                .setTitle(title)
-                .setColor(CommonUtil.HE1PME_COLOR)
-                .setAuthor(member.getEffectiveName(), null, member.getEffectiveAvatarUrl());
+        MessageEmbed he1pMEMessageEmbed = CommonUtil.getHe1pMessageEmbed(Objects.requireNonNull(event.getMember()), title, desc, null);
+        event.replyEmbeds(he1pMEMessageEmbed).queue();
     }
 }

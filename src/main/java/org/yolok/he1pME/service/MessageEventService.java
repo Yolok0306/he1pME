@@ -1,23 +1,25 @@
 package org.yolok.he1pME.service;
 
+import lombok.RequiredArgsConstructor;
 import net.dv8tion.jda.api.entities.Message;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.yolok.he1pME.util.CommonUtil;
-
-import java.util.Objects;
 
 @Service
+@RequiredArgsConstructor
 public class MessageEventService {
 
-    @Autowired
-    private GoodBoyService goodBoyService;
+    @Value("${sign}")
+    private String sign;
+
+    private final GoodBoyService goodBoyService;
 
     public void execute(Message message) {
-        if (CommonUtil.isNotInstructionChannel(message.getChannel().getName())) {
-            goodBoyService.checkContent(message);
-        } else if (!message.getContentRaw().startsWith("!") && !Objects.requireNonNull(message.getAuthor()).isBot()) {
-            message.delete().queue();
+        if (StringUtils.startsWith(message.getContentRaw(), sign)) {
+            return;
         }
+
+        goodBoyService.checkContent(message);
     }
 }
