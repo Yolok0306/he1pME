@@ -44,7 +44,8 @@ public class MusicService {
 
     @PostConstruct
     public void init() {
-        AudioSourceManagers.registerRemoteSources(audioPlayerManager);
+        audioPlayerManager.registerSourceManager(new dev.lavalink.youtube.YoutubeAudioSourceManager());
+        AudioSourceManagers.registerRemoteSources(audioPlayerManager, com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.class);
         AudioSourceManagers.registerLocalSource(audioPlayerManager);
         audioManagerMap = new HashMap<>();
     }
