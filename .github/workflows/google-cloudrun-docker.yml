@@ -30,7 +30,7 @@ jobs:
           maven-version: 3.8.2
 
       - name: Build Jar File
-        run: mvn -B package -Ddiscord.bot.token=${{ secrets.DISCORD_BOT_TOKEN }} -Damazon.aws.region=${{ secrets.AMAZON_AWS_REGION }} -Damazon.aws.accesskey=${{ secrets.AMAZON_AWS_ACCESSKEY }} -Damazon.aws.secretkey=${{ secrets.AMAZON_AWS_SECRETKEY }} -Dtwitch.api.client.id=${{ secrets.TWITCH_API_CLIENT_ID }} -Dtwitch.api.client.secret=${{ secrets.TWITCH_API_CLIENT_SECRET }} -Dyoutube.api.key=${{ secrets.YOUTUBE_API_KEY }}
+        run: mvn -B package -Ddiscord.bot.token=${{ secrets.DISCORD_BOT_TOKEN }} -Damazon.aws.region=${{ secrets.AMAZON_AWS_REGION }} -Damazon.aws.accesskey=${{ secrets.AMAZON_AWS_ACCESSKEY }} -Damazon.aws.secretkey=${{ secrets.AMAZON_AWS_SECRETKEY }} -Dtwitch.api.client.id=${{ secrets.TWITCH_API_CLIENT_ID }} -Dtwitch.api.client.secret=${{ secrets.TWITCH_API_CLIENT_SECRET }} -Dyoutube.api.key=${{ secrets.YOUTUBE_API_KEY }} -Dyoutube.oauth2.refresh-token=${{ secrets.YOUTUBE_OAUTH2_REFRESH_TOKEN }}
 
       - name: Set Up Docker
         uses: docker/setup-buildx-action@v2
