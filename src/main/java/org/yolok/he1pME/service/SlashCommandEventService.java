@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import org.apache.commons.lang3.reflect.MethodUtils;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.yolok.he1pME.action.Action;
 import org.yolok.he1pME.util.CommonUtil;
@@ -20,6 +21,7 @@ public class SlashCommandEventService {
 
     private final MusicService musicService;
 
+    @Qualifier("customActionMap")
     private final Map<String, Action> customActionMap;
 
     private final Set<String> musicActionSet;

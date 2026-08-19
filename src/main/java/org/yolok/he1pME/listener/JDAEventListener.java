@@ -8,6 +8,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.MessageUpdateEvent;
 import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.interactions.InteractionContextType;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
 import org.jetbrains.annotations.NotNull;
@@ -49,7 +50,7 @@ public class JDAEventListener extends ListenerAdapter {
                 .forEach(he1pME -> {
                     SlashCommandData slashCommandData = Commands.slash(he1pME.instruction(), he1pME.description());
                     slashCommandData.setNSFW(he1pME.nsfw());
-                    slashCommandData.setGuildOnly(true);
+                    slashCommandData.setContexts(InteractionContextType.GUILD);
                     Arrays.stream(he1pME.options()).forEach(option -> {
                         addOption(slashCommandData, option);
                     });
