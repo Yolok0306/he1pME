@@ -1,7 +1,10 @@
 package org.yolok.he1pME.runner;
 
 import lombok.RequiredArgsConstructor;
+import moe.kyokobot.libdave.NativeDaveFactory;
+import moe.kyokobot.libdave.jda.LDJDADaveSessionFactory;
 import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.audio.AudioModuleConfig;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,7 +28,11 @@ public class JDARunner implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        AudioModuleConfig audioModuleConfig = new AudioModuleConfig()
+                .withDaveSessionFactory(new LDJDADaveSessionFactory(new NativeDaveFactory()));
+
         CommonUtil.JDA = JDABuilder.createDefault(discordBotToken, gatewayIntentSet)
+                .setAudioModuleConfig(audioModuleConfig)
                 .addEventListeners(jdaEventListener)
                 .disableCache(CacheFlag.SCHEDULED_EVENTS)
                 .build();

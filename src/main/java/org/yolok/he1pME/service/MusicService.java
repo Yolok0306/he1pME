@@ -42,39 +42,37 @@ public class MusicService {
 
     private static final String NOT_IN_CHANNEL_CONTENT = "You cannot execute this command because you are not in any voice channel or Bot is not in your voice channel";
 
-    @He1pME(instruction = "play", description = "播放音樂",
-            options = {
-                    @He1pME.Option(name = "music-url", description = "music url")
-            }, example = "play [music-url]")
+//    @He1pME(instruction = "play", description = "播放音樂",
+//            options = {
+//                    @He1pME.Option(name = "music-url", description = "music url")
+//            }, example = "play [music-url]")
     public void play(SlashCommandInteractionEvent event) {
         try {
             Member member = Objects.requireNonNull(event.getMember());
             Guild guild = Objects.requireNonNull(event.getGuild());
-            VoiceChannel voiceChannel = getVoiceChannel(member);
-
-            if (voiceChannel == null) {
+            AudioChannelUnion audioChannel = getAudioChannel(member);
+            if (audioChannel == null) {
                 event.reply("You cannot execute this instruction because you are not in any voice channel").setEphemeral(true).queue();
                 return;
             }
 
+            AudioManager audioManager = guild.getAudioManager();
             if (isMemberAndBotNotInSameChannel(member)) {
-                AudioManager audioManager = guild.getAudioManager();
-                audioManager.openAudioConnection(voiceChannel);
-                audioManagerMap.compute(guild.getId(), (key, value) -> {
-                    if (value == null) {
-                        AudioPlayer audioPlayer = audioPlayerManager.createPlayer();
-                        audioManager.setSendingHandler(new AudioPlayerSendHandler(audioPlayer));
-                        value = new AudioTrackScheduler(audioPlayer, audioManager);
-                        audioPlayer.addListener(new AudioEventListener(value));
-                    } else {
-                        value.getPlayer().stopTrack();
-                        value.getQueue().clear();
-                    }
-                    return value;
-                });
+                audioManager.openAudioConnection(audioChannel);
             }
 
-            AudioTrackScheduler scheduler = audioManagerMap.get(guild.getId());
+            AudioTrackScheduler scheduler = audioManagerMap.compute(guild.getId(), (key, value) -> {
+                if (value == null) {
+                    AudioPlayer audioPlayer = audioPlayerManager.createPlayer();
+                    audioManager.setSendingHandler(new AudioPlayerSendHandler(audioPlayer));
+                    value = new AudioTrackScheduler(audioPlayer, audioManager);
+                    audioPlayer.addListener(new AudioEventListener(value));
+                } else {
+                    audioManager.setSendingHandler(new AudioPlayerSendHandler(value.getPlayer()));
+                }
+                return value;
+            });
+
             String musicUrl = Objects.requireNonNull(event.getOption("music-url")).getAsString();
             audioPlayerManager.loadItem(musicUrl, new ResultHandler(event, scheduler));
             event.reply("/play `" + musicUrl + "` completed").queue();
@@ -185,12 +183,12 @@ public class MusicService {
     }
 
     @Nullable
-    private VoiceChannel getVoiceChannel(Member member) {
+    private AudioChannelUnion getAudioChannel(Member member) {
         if (member.getVoiceState() == null || member.getVoiceState().getChannel() == null) {
             return null;
         }
 
-        return member.getVoiceState().getChannel().asVoiceChannel();
+        return member.getVoiceState().getChannel();
     }
 
     private String timeFormat(long milliseconds) {
